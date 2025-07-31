@@ -1,14 +1,12 @@
-/* === Подключение кастомного шрифта Forum === */
 @font-face {
-  font-family: 'Forum';
+  font-family: 'ForumLocal'; /* 👈 изменить имя */
   src: url('/fonts/ofont.ru_Forum.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
 
-/* === Применение шрифта ко всему сайту === */
 body {
-  font-family: 'Forum', sans-serif;
+  font-family: 'ForumLocal', sans-serif; /* 👈 использовать локальное имя */
 }
 
 /* === Остальной CSS из твоего App.css === */
