@@ -1,3 +1,18 @@
+/* === Подключение кастомного шрифта Forum === */
+@font-face {
+  font-family: 'Forum';
+  src: url('/fonts/ofont.ru_Forum.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* === Применение шрифта ко всему сайту === */
+body {
+  font-family: 'Forum', sans-serif;
+}
+
+/* === Остальной CSS из твоего App.css === */
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
