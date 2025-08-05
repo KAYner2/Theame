@@ -1,0 +1,85 @@
+import { Link } from 'react-router-dom';
+import { Flower } from '../types/flower';
+import { Button } from './ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import { ShoppingCart, Heart } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { useToast } from '../hooks/use-toast';
+
+interface FlowerCardProps {
+  flower: Flower;
+  onToggleFavorite?: (flower: Flower) => void;
+}
+
+export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
+  const { addToCart } = useCart();
+  const { toast } = useToast();
+
+  const handleAddToCart = () => {
+    addToCart(flower);
+    toast({
+      title: "Товар добавлен в корзину",
+      description: `${flower.name} добавлен в корзину`,
+    });
+  };
+  return (
+    <div className="group relative">
+      <Link to={`/product/${flower.id}`}>
+        <Card className="overflow-hidden bg-primary-soft/30 border border-primary/10 hover:shadow-soft transition-all duration-300 hover:scale-[1.02] rounded-2xl h-full flex flex-col">
+          <div className="relative aspect-square overflow-hidden rounded-t-2xl">
+            <img 
+              src={flower.image} 
+              alt={flower.name}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            {!flower.inStock && (
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <Badge variant="destructive" className="text-white">
+                  Нет в наличии
+                </Badge>
+              </div>
+            )}
+          </div>
+          
+          <div className="p-4 flex-1 flex flex-col">
+            <h3 className="font-medium text-foreground text-sm mb-4 line-clamp-2 leading-relaxed uppercase flex-1">
+              {flower.name}
+            </h3>
+            
+            {/* Bottom section with price and actions */}
+            <div className="flex items-center justify-between mt-auto">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-foreground">
+                  {flower.price.toLocaleString()} ₽
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleAddToCart();
+                  }}
+                  disabled={!flower.inStock}
+                  className="p-1.5 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleFavorite?.(flower);
+                }}
+                className="p-1.5 rounded-full bg-muted hover:bg-destructive hover:text-destructive-foreground transition-all duration-200"
+              >
+                <Heart className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </Card>
+      </Link>
+    </div>
+  );
+};
