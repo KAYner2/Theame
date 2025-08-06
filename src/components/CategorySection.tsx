@@ -41,7 +41,7 @@ export function CategorySection() {
         <h2 className="text-4xl font-bold text-center mb-12">
           Коллекции
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {categories.map((category) => (
             <Link key={category.id} to={`/catalog?category=${encodeURIComponent(category.name)}`}>
               <Card className="group overflow-hidden border-0 shadow-soft hover:shadow-elegant transition-all duration-300 aspect-square">
@@ -52,12 +52,12 @@ export function CategorySection() {
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   </div>
-                  <div className="absolute bottom-0 left-0 p-6">
-                    <h3 className="text-2xl font-bold text-white mb-2">
+                  <div className="absolute bottom-0 left-0 p-2 sm:p-4 lg:p-6">
+                    <h3 className="text-sm sm:text-lg lg:text-2xl font-bold text-white mb-1 sm:mb-2">
                       {category.name}
                     </h3>
                     {category.description && (
-                      <p className="text-white/80 text-sm">
+                      <p className="text-white/80 text-xs sm:text-sm hidden sm:block">
                         {category.description}
                       </p>
                     )}
