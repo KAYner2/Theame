@@ -138,7 +138,7 @@ export default function Contact() {
                 <CardContent>
                   <Accordion type="single" collapsible className="w-full">
                     {[
-                      { area: "Центр Сочи", freeFrom: 5000, price: 300 },
+                      { area: "Центр Сочи", freeFrom: 4000, price: 300 },
                       { area: "Дагомыс, Мацеста", freeFrom: 7000, price: 500 },
                       { area: "Хоста", freeFrom: 10000, price: 700 },
                       { area: "Адлер", freeFrom: 15000, price: 1000 },
