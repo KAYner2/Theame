@@ -73,12 +73,14 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     <Input
       id={id}
       type="tel"
+      inputMode="tel"
       placeholder={placeholder}
       value={value}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
       className={className}
       required={required}
+      autoComplete="tel"
     />
   );
 };

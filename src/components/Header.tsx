@@ -56,15 +56,15 @@ export const Header = () => {
 
           {/* Действия */}
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" className="hidden sm:flex">
-              <Heart className="w-4 h-4" />
+            <Button variant="ghost" className="hidden sm:flex h-11 w-11 p-0">
+              <Heart className="w-5 h-5" />
             </Button>
             
-            <Button variant="ghost" size="sm" className="relative" asChild>
+            <Button variant="ghost" className="relative h-11 w-11 p-0" asChild>
               <Link to="/cart">
-                <ShoppingCart className="w-4 h-4" />
+                <ShoppingCart className="w-5 h-5" />
                 {state.itemCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 text-xs p-0 flex items-center justify-center">
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 text-xs p-0 flex items-center justify-center">
                     {state.itemCount}
                   </Badge>
                 )}
@@ -74,8 +74,8 @@ export const Header = () => {
             {/* Мобильное меню */}
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="md:hidden">
-                  <Menu className="w-4 h-4" />
+                <Button variant="ghost" className="md:hidden h-11 w-11 p-0">
+                  <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
@@ -85,8 +85,8 @@ export const Header = () => {
                     <span className="text-sm text-muted-foreground font-light">цветы Х чувства</span>
                   </SheetTitle>
                 </SheetHeader>
-                <nav className="flex flex-col space-y-2 mt-6">
-                  <NavLink to="/" className="w-full text-left">Главная</NavLink>
+                <nav className="flex flex-col space-y-3 mt-6">
+                  <NavLink to="/" className="w-full text-left h-12 flex items-center">Главная</NavLink>
                   <NavLink to="/catalog" className="w-full text-left">Каталог</NavLink>
                   <NavLink to="/about" className="w-full text-left">О нас</NavLink>
                   <NavLink to="/contact" className="w-full text-left">Контакты</NavLink>
