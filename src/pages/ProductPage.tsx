@@ -290,6 +290,17 @@ export default function ProductPage() {
               )}
               
               
+              {product.size_info && (
+                <AccordionItem value="size">
+                  <AccordionTrigger className="text-left font-medium">
+                    РАЗМЕРЫ
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    <p className="whitespace-pre-line">{product.size_info}</p>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+              
               {product.delivery_info && (
                 <AccordionItem value="delivery">
                   <AccordionTrigger className="text-left font-medium">
@@ -307,7 +318,7 @@ export default function ProductPage() {
                     КАК УХАЖИВАТЬ ЗА ЦВЕТАМИ
                   </AccordionTrigger>
                   <AccordionContent className="text-muted-foreground">
-                    {product.care_instructions}
+                    <p className="whitespace-pre-line">{product.care_instructions}</p>
                   </AccordionContent>
                 </AccordionItem>
               )}
