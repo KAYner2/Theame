@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Input } from './ui/input';
 import { useAddressAutocomplete } from '../hooks/useAddressAutocomplete';
 import { cn } from '@/lib/utils';
@@ -27,18 +27,18 @@ export const AddressAutocomplete = ({
     if (value !== query) {
       setQuery(value);
     }
-  }, [value]);
+  }, [value, query, setQuery]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setQuery(newValue);
     onChange(newValue);
-  };
+  }, [setQuery, onChange]);
 
-  const handleSuggestionClick = (address: string) => {
+  const handleSuggestionClick = useCallback((address: string) => {
     selectAddress(address);
     onChange(address);
-  };
+  }, [selectAddress, onChange]);
 
   const handleInputFocus = () => {
     if (suggestions.length > 0) {

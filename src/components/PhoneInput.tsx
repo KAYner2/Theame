@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Input } from './ui/input';
 
 interface PhoneInputProps {
@@ -18,7 +18,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   required = false,
   id
 }) => {
-  const formatPhoneNumber = (val: string): string => {
+  const formatPhoneNumber = useCallback((val: string): string => {
     const digits = val.replace(/\D/g, '');
     
     if (!digits) return '';
@@ -46,9 +46,9 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     } else {
       return `+7 (${limitedDigits.slice(1, 4)}) ${limitedDigits.slice(4, 7)}-${limitedDigits.slice(7, 9)}-${limitedDigits.slice(9)}`;
     }
-  };
+  }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     
     // Если пользователь очистил поле полностью или оставил только "+7"
@@ -59,15 +59,15 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     
     const formatted = formatPhoneNumber(newValue);
     onChange(formatted);
-  };
+  }, [formatPhoneNumber, onChange]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     // При Backspace, если остался только "+7", очищаем поле
     if (e.key === 'Backspace' && (value === '+7' || value === '+7 (')) {
       e.preventDefault();
       onChange('');
     }
-  };
+  }, [value, onChange]);
 
   return (
     <Input
