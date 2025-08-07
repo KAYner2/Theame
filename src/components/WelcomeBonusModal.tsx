@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from './ui/drawer';
 import { Button } from './ui/button';
@@ -31,12 +31,24 @@ export function WelcomeBonusModal() {
     }
   }, []);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsOpen(false);
     sessionStorage.setItem('hasSeenWelcomeModal', 'true');
-  };
+  }, []);
 
-  const handleSubmit = async () => {
+  const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+  }, []);
+
+  const handlePhoneChange = useCallback((value: string) => {
+    setPhone(value);
+  }, []);
+
+  const handleTermsChange = useCallback((checked: boolean | string) => {
+    setAgreeToTerms(checked === true);
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
     if (!name.trim() || !phone.trim() || !validatePhoneNumber(phone) || !agreeToTerms) {
       toast({
         title: "Ошибка",
@@ -84,7 +96,7 @@ export function WelcomeBonusModal() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [name, phone, agreeToTerms, toast, handleClose]);
 
   const FormContent = () => (
     <div className={isMobile ? "p-6" : "p-8 pt-12"}>
@@ -113,7 +125,7 @@ export function WelcomeBonusModal() {
               type="text"
               placeholder="Введите имя"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={handleNameChange}
               className="mt-1 h-11"
             />
           </div>
@@ -124,7 +136,7 @@ export function WelcomeBonusModal() {
               id="phone"
               placeholder="+7 (999) 123-45-67"
               value={phone}
-              onChange={setPhone}
+              onChange={handlePhoneChange}
               className="mt-1 h-11"
             />
           </div>
@@ -134,7 +146,7 @@ export function WelcomeBonusModal() {
           <Checkbox
             id="terms"
             checked={agreeToTerms}
-            onCheckedChange={(checked) => setAgreeToTerms(checked === true)}
+            onCheckedChange={handleTermsChange}
             className="mt-1"
           />
           <label
