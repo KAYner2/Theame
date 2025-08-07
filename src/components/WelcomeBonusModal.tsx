@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from './ui/drawer';
 import { Button } from './ui/button';
@@ -32,11 +32,13 @@ export function WelcomeBonusModal() {
   }, []);
 
   const handleClose = useCallback(() => {
+    console.log('Modal close triggered');
     setIsOpen(false);
     sessionStorage.setItem('hasSeenWelcomeModal', 'true');
   }, []);
 
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('Name change triggered:', e.target.value);
     setName(e.target.value);
   }, []);
 
@@ -98,7 +100,7 @@ export function WelcomeBonusModal() {
     }
   }, [name, phone, agreeToTerms, toast, handleClose]);
 
-  const FormContent = () => (
+  const FormContent = useMemo(() => (
     <div className={isMobile ? "p-6" : "p-8 pt-12"}>
       {/* Заголовок */}
       <div className="text-center mb-8">
@@ -178,28 +180,28 @@ export function WelcomeBonusModal() {
         </p>
       </div>
     </div>
-  );
+  ), [isMobile, name, phone, agreeToTerms, isSubmitting, handleNameChange, handlePhoneChange, handleTermsChange, handleSubmit]);
 
   if (isMobile) {
     return (
-      <Drawer open={isOpen} onOpenChange={handleClose}>
+      <Drawer open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DrawerContent className="max-h-[90vh]">
           <DrawerHeader className="sr-only">
             <DrawerTitle>Приветственный бонус</DrawerTitle>
           </DrawerHeader>
-          <FormContent />
+          {FormContent}
         </DrawerContent>
       </Drawer>
     );
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-2xl w-[90vw] max-h-[80vh] mx-auto bg-white border shadow-lg overflow-y-auto">
         <DialogHeader className="sr-only">
           <DialogTitle>Приветственный бонус</DialogTitle>
         </DialogHeader>
-        <FormContent />
+        {FormContent}
       </DialogContent>
     </Dialog>
   );
