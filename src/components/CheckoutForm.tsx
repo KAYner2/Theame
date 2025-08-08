@@ -35,7 +35,7 @@ const checkoutSchema = z.object({
   address: z.string().optional(),
   recipientName: z.string().optional(),
   recipientPhone: z.string().optional(),
-  recipientAddress: z.string().optional(),
+  district: z.string().optional(),
   cardWishes: z.string().optional(),
   
   // Способ оплаты
@@ -49,7 +49,7 @@ const checkoutSchema = z.object({
 }).refine((data) => {
   if (data.deliveryType === "delivery") {
     return data.deliveryTime && data.address && data.recipientName && 
-           data.recipientPhone && data.recipientAddress &&
+           data.recipientPhone && data.district &&
            validatePhoneNumber(data.recipientPhone);
   }
   if (data.deliveryType === "clarify") {
@@ -70,6 +70,19 @@ const timeSlots = [
   "18:00 - 21:00"
 ];
 
+const districts = [
+  { name: "Центр Сочи", price: 300, freeFrom: 5000 },
+  { name: "Дагомыс, Мацеста", price: 500, freeFrom: 7000 },
+  { name: "Хоста", price: 700, freeFrom: 10000 },
+  { name: "Адлер", price: 1000, freeFrom: 15000 },
+  { name: "Лоо", price: 1000, freeFrom: 15000 },
+  { name: "Сириус", price: 1200, freeFrom: 15000 },
+  { name: "п. Красная поляна", price: 1500, freeFrom: 20000 },
+  { name: "п. Эсто-Садок", price: 1700, freeFrom: 20000 },
+  { name: "п. Роза-Хутор", price: 1900, freeFrom: 20000 },
+  { name: "На высоту 960м (Роза-Хутор/Горки город)", price: 2100, freeFrom: 25000 }
+];
+
 
 export const CheckoutForm = () => {
   const { state, updateQuantity, removeFromCart, clearCart } = useCart();
@@ -81,6 +94,7 @@ export const CheckoutForm = () => {
     type: 'fixed' | 'percent';
   } | null>(null);
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
   
   const {
     register,
@@ -100,6 +114,21 @@ export const CheckoutForm = () => {
   const deliveryType = watch("deliveryType");
   const paymentMethod = watch("paymentMethod");
   const selectedDate = watch("deliveryDate");
+  
+  // Расчет доставки
+  const calculateDeliveryPrice = () => {
+    if (!selectedDistrict || deliveryType !== "delivery") return 0;
+    
+    const district = districts.find(d => d.name === selectedDistrict);
+    if (!district) return 0;
+    
+    // Если сумма больше или равна минимальной для бесплатной доставки
+    if (state.total >= district.freeFrom) return 0;
+    
+    return district.price;
+  };
+  
+  const deliveryPrice = calculateDeliveryPrice();
 
   const updateItemQuantity = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -126,7 +155,8 @@ export const CheckoutForm = () => {
   };
 
   const discountAmount = appliedDiscount ? calculateDiscount(state.total, appliedDiscount) : 0;
-  const finalTotal = state.total - discountAmount;
+  const subtotalWithDelivery = state.total + deliveryPrice;
+  const finalTotal = subtotalWithDelivery - discountAmount;
 
   const handlePromoCode = async () => {
     if (!promoCode.trim()) {
@@ -207,7 +237,7 @@ export const CheckoutForm = () => {
         district: data.address,
         recipient_name: data.recipientName,
         recipient_phone: data.recipientPhone ? getCleanPhoneNumber(data.recipientPhone) : null,
-        recipient_address: data.deliveryType === 'delivery' ? data.recipientAddress : null,
+        recipient_address: data.deliveryType === 'delivery' ? selectedDistrict : null,
         card_wishes: data.cardWishes,
         payment_method: data.paymentMethod,
         order_comment: data.orderComment,
@@ -582,6 +612,30 @@ export const CheckoutForm = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
+                      <Label htmlFor="district">Район *</Label>
+                      <Select 
+                        value={selectedDistrict} 
+                        onValueChange={(value) => {
+                          setSelectedDistrict(value);
+                          setValue("district", value);
+                        }}
+                      >
+                        <SelectTrigger className={errors.district ? "border-red-500" : ""}>
+                          <SelectValue placeholder="Выберите район" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {districts.map((district) => (
+                            <SelectItem key={district.name} value={district.name}>
+                              {district.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.district && (
+                        <p className="text-red-500 text-sm mt-1">Район обязателен</p>
+                      )}
+                    </div>
+                    <div>
                       <Label htmlFor="recipientPhone">Номер получателя *</Label>
                       <PhoneInput
                         id="recipientPhone"
@@ -592,18 +646,6 @@ export const CheckoutForm = () => {
                       />
                       {errors.recipientPhone && (
                         <p className="text-red-500 text-sm mt-1">Номер получателя обязателен</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="recipientAddress">Адрес получателя *</Label>
-                      <Input
-                        id="recipientAddress"
-                        placeholder="Адрес получателя"
-                        {...register("recipientAddress")}
-                        className={errors.recipientAddress ? "border-red-500" : ""}
-                      />
-                      {errors.recipientAddress && (
-                        <p className="text-red-500 text-sm mt-1">Адрес получателя обязателен</p>
                       )}
                     </div>
                   </div>
@@ -777,6 +819,20 @@ export const CheckoutForm = () => {
                   <span>{state.itemCount} Товар(а)</span>
                   <span>{state.total.toLocaleString()} ₽</span>
                 </div>
+                
+                {deliveryPrice > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span>Доставка</span>
+                    <span>+{deliveryPrice.toLocaleString()} ₽</span>
+                  </div>
+                )}
+                
+                {deliveryPrice === 0 && selectedDistrict && deliveryType === "delivery" && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Доставка</span>
+                    <span>Бесплатно</span>
+                  </div>
+                )}
                 
                 {appliedDiscount && (
                   <div className="flex justify-between text-sm text-green-600">
