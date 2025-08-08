@@ -45,6 +45,7 @@ export interface Review {
   comment: string;
   is_approved: boolean;
   is_active: boolean;
+  publication_date?: string;
   created_at: string;
   updated_at: string;
 }
@@ -86,6 +87,7 @@ export interface CreateReviewDto {
   comment: string;
   is_approved?: boolean;
   is_active?: boolean;
+  publication_date?: string;
 }
 
 export interface HeroSlide {

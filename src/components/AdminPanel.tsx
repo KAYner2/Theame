@@ -462,6 +462,7 @@ export const AdminPanel = () => {
       client_avatar_url: review?.client_avatar_url || '',
       is_approved: review?.is_approved ?? true,
       is_active: review?.is_active ?? true,
+      publication_date: review?.publication_date ? new Date(review.publication_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     });
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
@@ -538,6 +539,15 @@ export const AdminPanel = () => {
           {formData.client_avatar_url && (
             <img src={formData.client_avatar_url} alt="Avatar" className="mt-2 w-12 h-12 object-cover rounded-full" />
           )}
+        </div>
+        <div>
+          <Label htmlFor="publication_date">Дата публикации</Label>
+          <Input
+            id="publication_date"
+            type="date"
+            value={formData.publication_date}
+            onChange={(e) => setFormData({ ...formData, publication_date: e.target.value })}
+          />
         </div>
         <div className="flex items-center space-x-2">
           <Switch

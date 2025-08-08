@@ -50,11 +50,11 @@ export function ReviewsSection() {
                     <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
                   ))}
                 </div>
-                <p className="text-muted-foreground mb-4">"{review.comment}"</p>
+                <p className="text-muted-foreground mb-4">{review.comment}</p>
                 <div className="flex justify-between items-center">
                   <span className="font-semibold">{review.client_name}</span>
                   <span className="text-sm text-muted-foreground">
-                    {new Date(review.created_at).toLocaleDateString('ru-RU')}
+                    {new Date(review.publication_date || review.created_at).toLocaleDateString('ru-RU')}
                   </span>
                 </div>
               </CardContent>
