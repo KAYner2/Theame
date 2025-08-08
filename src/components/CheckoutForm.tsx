@@ -22,6 +22,7 @@ import { PhoneInput } from "./PhoneInput";
 import { toast } from "sonner";
 import { supabase } from "../integrations/supabase/client";
 import { AddressAutocomplete } from "./AddressAutocomplete";
+import { TinkoffPaymentButton } from "./TinkoffPaymentButton";
 
 const checkoutSchema = z.object({
   // Заказчик
@@ -87,6 +88,7 @@ const districts = [
 export const CheckoutForm = () => {
   const { state, updateQuantity, removeFromCart, clearCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savedOrderId, setSavedOrderId] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<{
     code: string;
@@ -264,31 +266,14 @@ export const CheckoutForm = () => {
 
       console.log("Заказ успешно сохранен:", savedOrder);
 
-      // Интеграция с Тинькофф для онлайн-оплаты
+      // Сохраняем ID заказа для виджета оплаты
+      setSavedOrderId(savedOrder.id);
+
+      // Для онлайн-оплаты заказ сохранён, но оплата будет через виджет
       if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
-        console.log("Отправляем пользователя на оплату через Тинькофф...");
-
-        const paymentRes = await fetch("/api/create-payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            amount: finalTotal * 100, // Тинькофф принимает в копейках
-            orderId: savedOrder.id,
-            description: `Заказ №${savedOrder.id}`,
-            email: data.customerPhone + "@example.com",
-            phone: data.customerPhone
-          })
-        });
-
-        const paymentJson = await paymentRes.json();
-
-        if (paymentJson.PaymentURL) {
-          window.location.href = paymentJson.PaymentURL;
-        } else {
-          console.error("Ошибка оплаты:", paymentJson);
-          toast.error("Не удалось инициировать оплату");
-        }
-
+        // Не очищаем корзину сразу, подождем успешной оплаты
+        console.log("Заказ сохранён, ожидаем оплату через виджет");
+        setIsSubmitting(false);
         return;
       }
 
@@ -892,13 +877,45 @@ export const CheckoutForm = () => {
                 </div>
               </div>
               
-              <Button 
-                type="submit"
-                className="w-full"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Оформляем заказ..." : "Оформить заказ"}
-              </Button>
+              {(paymentMethod === "card" || paymentMethod === "sbp") ? (
+                // Для онлайн-оплаты показываем Tinkoff виджет
+                <div className="space-y-4">
+                  <Button 
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Сохраняем заказ..." : "Сохранить заказ"}
+                  </Button>
+                  
+                  {/* Показываем Tinkoff виджет только после сохранения заказа */}
+                  {savedOrderId && (
+                    <TinkoffPaymentButton
+                      amount={finalTotal * 100} // в копейках
+                      orderId={savedOrderId}
+                      customerName={watch("customerName") || ""}
+                      customerPhone={watch("customerPhone") || ""}
+                      onSuccess={() => {
+                        toast.success("Оплата прошла успешно!");
+                        clearCart();
+                        setSavedOrderId(null);
+                      }}
+                      onFail={() => {
+                        toast.error("Ошибка оплаты. Попробуйте ещё раз.");
+                      }}
+                    />
+                  )}
+                </div>
+              ) : (
+                // Для оплаты наличными обычная кнопка
+                <Button 
+                  type="submit"
+                  className="w-full"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Оформляем заказ..." : "Оформить заказ"}
+                </Button>
+              )}
               
               <p className="text-xs text-muted-foreground mt-3">
                 Нажимая на кнопку "Оформить заказ", Вы автоматически соглашаетесь{" "}
