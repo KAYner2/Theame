@@ -565,18 +565,34 @@ export const CheckoutForm = () => {
                     </div>
                     <div>
                       <Label htmlFor="deliveryTime">Время *</Label>
-                      <Select onValueChange={(value) => setValue("deliveryTime", value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите время" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {timeSlots.map((slot) => (
-                            <SelectItem key={slot} value={slot}>
-                              {slot}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        id="deliveryTime"
+                        placeholder="09:00 - 10:00"
+                        value={watch("deliveryTime") || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          
+                          // Оставляем только цифры
+                          const digitsOnly = value.replace(/[^\d]/g, '');
+                          
+                          let formatted = '';
+                          
+                          if (digitsOnly.length === 0) {
+                            formatted = '';
+                          } else if (digitsOnly.length <= 2) {
+                            formatted = digitsOnly;
+                          } else if (digitsOnly.length <= 4) {
+                            formatted = digitsOnly.slice(0, 2) + ':' + digitsOnly.slice(2);
+                          } else if (digitsOnly.length <= 6) {
+                            formatted = digitsOnly.slice(0, 2) + ':' + digitsOnly.slice(2, 4) + ' - ' + digitsOnly.slice(4);
+                          } else {
+                            formatted = digitsOnly.slice(0, 2) + ':' + digitsOnly.slice(2, 4) + ' - ' + digitsOnly.slice(4, 6) + ':' + digitsOnly.slice(6, 8);
+                          }
+                          
+                          setValue("deliveryTime", formatted);
+                        }}
+                        className={errors.deliveryTime ? "border-red-500" : ""}
+                      />
                       {errors.deliveryTime && (
                         <p className="text-red-500 text-sm mt-1">Время доставки обязательно</p>
                       )}
