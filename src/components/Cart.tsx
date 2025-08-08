@@ -30,7 +30,6 @@ export const Cart = () => {
         
         {/* Recommendations */}
         <div className="mt-12">
-          <h2 className="text-xl font-semibold mb-6">С этим товаром также покупают</h2>
           <ProductRecommendations productId={state.items[0]?.id || ""} />
         </div>
       </div>
