@@ -18,6 +18,10 @@ export default async function handler(req, res) {
   const terminalKey = process.env.TINKOFF_TERMINAL_KEY;
   const password = process.env.TINKOFF_SECRET;
 
+  // 🔍 DEBUG: проверяем, читаются ли переменные
+  console.log("🔥 DEBUG: TINKOFF_TERMINAL_KEY =", terminalKey);
+  console.log("🔥 DEBUG: TINKOFF_SECRET =", password);
+
   if (!terminalKey || !password) {
     return res.status(500).json({ message: "Server misconfigured: missing Tinkoff credentials" });
   }
@@ -45,6 +49,9 @@ export default async function handler(req, res) {
     });
 
     const result = await response.json();
+
+    console.log("🔥 DEBUG: RESPONSE FROM TINKOFF =", result); // 🔍 Ответ от Тинькофф
+
     res.status(200).json(result);
   } catch (err) {
     console.error("Tinkoff error", err);
