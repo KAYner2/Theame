@@ -285,63 +285,135 @@ export const CheckoutForm = () => {
               <h2 className="text-lg font-semibold mb-4">ВАШ ЗАКАЗ</h2>
               <div className="space-y-4">
                 {state.items.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-6 p-4 border rounded-lg">
-                    <div className="relative">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-48 h-48 object-cover rounded-2xl"
-                      />
-                    </div>
-                    <div className="flex-1 ml-8">
-                      <h4 className="font-medium text-sm">{item.name}</h4>
-                      <div className="flex items-center space-x-2 mt-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => updateItemQuantity(item.id, item.cartQuantity - 1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="text-sm font-medium w-12 text-center">
-                          {item.cartQuantity} шт
-                        </span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => updateItemQuantity(item.id, item.cartQuantity + 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
+                  <div key={item.id} className="border rounded-lg overflow-hidden">
+                    {/* Mobile Layout */}
+                    <div className="md:hidden">
+                      {/* Image - Large on top */}
+                      <div className="relative w-full">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-64 object-cover"
+                        />
+                      </div>
+                      
+                      {/* Content below image */}
+                      <div className="p-4 space-y-3">
+                        <h4 className="font-medium text-base">{item.name}</h4>
+                        
+                        {/* Controls row */}
+                        <div className="flex items-center justify-between">
+                          {/* Quantity controls */}
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => updateItemQuantity(item.id, item.cartQuantity - 1)}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="text-sm font-medium w-12 text-center">
+                              {item.cartQuantity} шт
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => updateItemQuantity(item.id, item.cartQuantity + 1)}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          
+                          {/* Price and action buttons */}
+                          <div className="flex items-center space-x-2">
+                            <p className="font-semibold text-lg">
+                              {(item.price * item.cartQuantity).toLocaleString()} ₽
+                            </p>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Heart className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => removeFromCart(item.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                        >
-                          <Heart className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => removeFromCart(item.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+
+                    {/* Desktop Layout - Original */}
+                    <div className="hidden md:flex items-center space-x-6 p-4">
+                      <div className="relative">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-48 h-48 object-cover rounded-2xl"
+                        />
                       </div>
-                      <p className="font-semibold">
-                        {(item.price * item.cartQuantity).toLocaleString()} ₽
-                      </p>
+                      <div className="flex-1 ml-8">
+                        <h4 className="font-medium text-sm">{item.name}</h4>
+                        <div className="flex items-center space-x-2 mt-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => updateItemQuantity(item.id, item.cartQuantity - 1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="text-sm font-medium w-12 text-center">
+                            {item.cartQuantity} шт
+                          </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => updateItemQuantity(item.id, item.cartQuantity + 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                          >
+                            <Heart className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => removeFromCart(item.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <p className="font-semibold">
+                          {(item.price * item.cartQuantity).toLocaleString()} ₽
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))}
