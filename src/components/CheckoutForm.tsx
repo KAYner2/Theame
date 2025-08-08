@@ -264,6 +264,34 @@ export const CheckoutForm = () => {
 
       console.log("Заказ успешно сохранен:", savedOrder);
 
+      // Интеграция с Тинькофф для онлайн-оплаты
+      if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
+        console.log("Отправляем пользователя на оплату через Тинькофф...");
+
+        const paymentRes = await fetch("/api/create-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: finalTotal * 100, // Тинькофф принимает в копейках
+            orderId: savedOrder.id,
+            description: `Заказ №${savedOrder.id}`,
+            email: data.customerPhone + "@example.com",
+            phone: data.customerPhone
+          })
+        });
+
+        const paymentJson = await paymentRes.json();
+
+        if (paymentJson.PaymentURL) {
+          window.location.href = paymentJson.PaymentURL;
+        } else {
+          console.error("Ошибка оплаты:", paymentJson);
+          toast.error("Не удалось инициировать оплату");
+        }
+
+        return;
+      }
+
       // Обновляем счетчик использования промокода
       if (appliedDiscount) {
         console.log("Обновляем промокод...");
