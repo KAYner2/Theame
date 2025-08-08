@@ -18,14 +18,14 @@ export default async function handler(req, res) {
   const terminalKey = process.env.TINKOFF_TERMINAL_KEY;
   const password = process.env.TINKOFF_SECRET;
 
-  // 🔍 DEBUG: проверяем, читаются ли переменные
   console.log("🔥 DEBUG: TINKOFF_TERMINAL_KEY =", terminalKey);
   console.log("🔥 DEBUG: TINKOFF_SECRET =", password);
 
   if (!terminalKey || !password) {
-    return res.status(500).json({ message: "Server misconfigured: missing Tinkoff credentials" });
+    return res.status(500).json({ message: "Missing Tinkoff credentials" });
   }
 
+  // Данные, которые отправим в Tinkoff
   const data = {
     TerminalKey: terminalKey,
     Amount: amount,
@@ -37,8 +37,15 @@ export default async function handler(req, res) {
     }
   };
 
-  // Генерация токена
-  const token = generateToken({ ...data, Password: password });
+  // Правильный токен
+  const token = generateToken({
+    TerminalKey: terminalKey,
+    Amount: amount,
+    OrderId: orderId,
+    Description: description || "Оплата заказа",
+    Password: password
+  });
+
   data.Token = token;
 
   try {
@@ -49,9 +56,7 @@ export default async function handler(req, res) {
     });
 
     const result = await response.json();
-
-    console.log("🔥 DEBUG: RESPONSE FROM TINKOFF =", result); // 🔍 Ответ от Тинькофф
-
+    console.log("🔥 DEBUG: RESPONSE FROM TINKOFF =", result);
     res.status(200).json(result);
   } catch (err) {
     console.error("Tinkoff error", err);
@@ -59,26 +64,9 @@ export default async function handler(req, res) {
   }
 }
 
-function generateToken(data) {
-  const flat = {};
-
-  for (const key in data) {
-    if (typeof data[key] === "object" && key === "DATA") {
-      for (const subKey in data[key]) {
-        flat[`DATA[${subKey}]`] = data[key][subKey];
-      }
-    } else if (key !== "Password") {
-      flat[key] = data[key];
-    }
-  }
-
-  const sorted = Object.keys(flat).sort();
-  let str = "";
-  for (const key of sorted) {
-    str += `${key}=${flat[key]}`;
-  }
-
-  str += data.Password;
-
-  return crypto.createHash("sha256").update(str).digest("hex");
+// Генерация токена по документации Тинькофф
+function generateToken(params) {
+  const sortedKeys = Object.keys(params).sort();
+  const tokenString = sortedKeys.map(key => `${key}=${params[key]}`).join("");
+  return crypto.createHash("sha256").update(tokenString).digest("hex");
 }
