@@ -299,7 +299,13 @@ export const CheckoutForm = () => {
                       
                       {/* Content below image */}
                       <div className="p-4 space-y-3">
-                        <h4 className="font-medium text-base">{item.name}</h4>
+                        {/* Name and price row */}
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="font-medium text-base flex-1">{item.name}</h4>
+                          <p className="font-semibold text-lg text-nowrap">
+                            {(item.price * item.cartQuantity).toLocaleString()} ₽
+                          </p>
+                        </div>
                         
                         {/* Controls row */}
                         <div className="flex items-center justify-between">
@@ -328,11 +334,8 @@ export const CheckoutForm = () => {
                             </Button>
                           </div>
                           
-                          {/* Price and action buttons */}
+                          {/* Action buttons only */}
                           <div className="flex items-center space-x-2">
-                            <p className="font-semibold text-lg">
-                              {(item.price * item.cartQuantity).toLocaleString()} ₽
-                            </p>
                             <Button
                               type="button"
                               variant="ghost"
