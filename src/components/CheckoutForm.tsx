@@ -318,7 +318,7 @@ export const CheckoutForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <div className="space-y-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Левая колонка - Форма */}
         <div className="lg:col-span-2 space-y-8">
@@ -878,18 +878,25 @@ export const CheckoutForm = () => {
               </div>
               
               {(paymentMethod === "card" || paymentMethod === "sbp") ? (
-                // Для онлайн-оплаты показываем Tinkoff виджет
+                // Для онлайн-оплаты сначала сохраняем заказ, потом показываем виджет
                 <div className="space-y-4">
-                  <Button 
-                    type="submit"
-                    className="w-full"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Сохраняем заказ..." : "Сохранить заказ"}
-                  </Button>
-                  
-                  {/* Показываем Tinkoff виджет только после сохранения заказа */}
-                  {savedOrderId && (
+                  {!savedOrderId ? (
+                    <Button 
+                      onClick={async () => {
+                        const formData = getValues();
+                        const validation = checkoutSchema.safeParse(formData);
+                        if (!validation.success) {
+                          toast.error("Заполните все обязательные поля");
+                          return;
+                        }
+                        await onSubmit(formData);
+                      }}
+                      className="w-full"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Подготавливаем оплату..." : "Перейти к оплате"}
+                    </Button>
+                  ) : (
                     <TinkoffPaymentButton
                       amount={finalTotal * 100} // в копейках
                       orderId={savedOrderId}
@@ -909,7 +916,15 @@ export const CheckoutForm = () => {
               ) : (
                 // Для оплаты наличными обычная кнопка
                 <Button 
-                  type="submit"
+                  onClick={async () => {
+                    const formData = getValues();
+                    const validation = checkoutSchema.safeParse(formData);
+                    if (!validation.success) {
+                      toast.error("Заполните все обязательные поля");
+                      return;
+                    }
+                    await onSubmit(formData);
+                  }}
                   className="w-full"
                   disabled={isSubmitting}
                 >
@@ -926,6 +941,6 @@ export const CheckoutForm = () => {
           </Card>
         </div>
       </div>
-    </form>
+    </div>
   );
 };
