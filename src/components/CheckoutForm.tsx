@@ -269,10 +269,45 @@ export const CheckoutForm = () => {
       // Сохраняем ID заказа для виджета оплаты
       setSavedOrderId(savedOrder.id);
 
-      // Для онлайн-оплаты заказ сохранён, но оплата будет через виджет
+      // Для онлайн-оплаты заказ сохранён, теперь инициализируем платеж
       if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
-        // Не очищаем корзину сразу, подождем успешной оплаты
-        console.log("Заказ сохранён, ожидаем оплату через виджет");
+        console.log("Заказ сохранён, инициализируем платеж через Tinkoff API");
+        
+        try {
+          // Вызываем API Tinkoff для инициализации платежа
+          const initPaymentData = {
+            TerminalKey: '1754488339817DEMO',
+            Amount: finalTotal * 100, // в копейках
+            OrderId: savedOrder.id,
+            Description: `Заказ цветов №${savedOrder.id}`,
+            CustomerName: data.customerName,
+            Phone: data.customerPhone,
+            Connection_type: 'Widget'
+          };
+
+          console.log('Отправляем запрос на инициализацию платежа:', initPaymentData);
+          
+          const response = await fetch('https://securepay.tinkoff.ru/v2/Init', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(initPaymentData)
+          });
+
+          const paymentResult = await response.json();
+          console.log('Ответ от Tinkoff API:', paymentResult);
+
+          if (paymentResult.Success && paymentResult.PaymentURL) {
+            window.open(paymentResult.PaymentURL, '_blank');
+          } else {
+            throw new Error(paymentResult.Message || 'Ошибка инициализации платежа');
+          }
+        } catch (error) {
+          console.error('Ошибка при инициализации платежа:', error);
+          toast.error("Ошибка при подключении к платежной системе");
+        }
+        
         setIsSubmitting(false);
         return;
       }
