@@ -1,8 +1,9 @@
+// src/components/TinkoffPaymentButton.tsx
 import { useEffect, useRef, useId } from 'react';
 import { Button } from './ui/button';
 
 interface TinkoffPaymentButtonProps {
-  amount: number; // в копейках
+  amount: number; // Сумма в КОПЕЙКАХ (напр. 800000 = 8000.00 ₽)
   orderId: string;
   customerName: string;
   customerPhone: string;
@@ -16,7 +17,6 @@ declare global {
       init: (config: any) => Promise<any>;
       Helpers?: any;
     };
-    onPaymentIntegrationLoad?: () => void;
   }
 }
 
@@ -32,102 +32,110 @@ export const TinkoffPaymentButton = ({
   const scriptLoaded = useRef(false);
   const integrationInitialized = useRef(false);
 
+  // Берём PaymentURL у нашего серверного роута на Vercel
+  async function getPaymentUrl() {
+    const resp = await fetch('/api/tinkoff-init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount,
+        orderId,
+        description: `Оплата заказа ${orderId}`,
+        customerKey: customerPhone || customerName || orderId,
+        successUrl: typeof window !== 'undefined' ? window.location.origin + '/success' : undefined,
+        failUrl: typeof window !== 'undefined' ? window.location.origin + '/fail' : undefined,
+      }),
+    });
+
+    const data = await resp.json();
+    if (!resp.ok || !data?.paymentUrl) {
+      throw new Error(data?.error || 'Не удалось получить PaymentURL');
+    }
+    return data.paymentUrl as string;
+  }
+
   useEffect(() => {
-    const initPaymentIntegration = async () => {
+    const init = async () => {
+      if (integrationInitialized.current) return;
+
+      // 1) Подгружаем официальный скрипт интеграции
       if (!scriptLoaded.current) {
-        // Создаем глобальную функцию для инициализации
-        window.onPaymentIntegrationLoad = async () => {
+        const script = document.createElement('script');
+        script.src = 'https://acq-paymentform-integrationjs.t-static.ru/integration.js';
+        script.async = true;
+
+        script.onload = async () => {
+          scriptLoaded.current = true;
+
           try {
-            const initConfig = {
-              terminalKey: '1754488339817DEMO', // Демо ключ
-              product: 'eacq' as const,
+            // 2) Инициализируем виджет и говорим откуда брать PaymentURL
+            const integration = await window.PaymentIntegration!.init({
+              terminalKey: '1754488339817DEMO', // демо-терминал; боевой укажешь в кабинете + в /api
+              product: 'eacq',
               features: {
                 payment: {
-                  container: document.getElementById(containerId),
+                  container: document.getElementById(containerId)!,
                   paymentStartCallback: async () => {
-                    try {
-                      // Для демо используем рабочую тестовую ссылку
-                      // В реальном проекте здесь должен быть вызов вашего backend API
-                      console.log('Инициализация платежа для заказа:', orderId, 'на сумму:', amount);
-                      
-                      // Демо ссылка для тестирования (работающая)
-                      const demoPaymentUrl = `https://securepayments.tinkoff.ru/v2/terminal/1754488339817DEMO/payment?orderId=${orderId}&amount=${amount}`;
-                      
-                      return demoPaymentUrl;
-                    } catch (error) {
-                      console.error('Ошибка в paymentStartCallback:', error);
-                      onFail?.();
-                      throw error;
-                    }
+                    // вместо “ручных” ссылок получаем PaymentURL у нашего API
+                    return await getPaymentUrl();
                   },
                   config: {
                     status: {
-                      changedCallback: async (status: string) => {
-                        console.log('Статус платежа:', status);
-                        if (status === 'SUCCESS') {
-                          onSuccess?.();
-                        } else if (['CANCELED', 'REJECTED', 'PROCESSING_ERROR'].includes(status)) {
-                          onFail?.();
-                        }
-                      }
+                      changedCallback: (status: string) => {
+                        // SUCCESS / CANCELED / REJECTED / PROCESSING_ERROR / ...
+                        if (status === 'SUCCESS') onSuccess?.();
+                        if (['CANCELED', 'REJECTED', 'PROCESSING_ERROR'].includes(status)) onFail?.();
+                      },
                     },
                     dialog: {
-                      closedCallback: async () => {
-                        console.log('Диалог платежа закрыт');
-                      }
-                    }
-                  }
-                }
-              }
-            };
+                      closedCallback: () => {
+                        // Пользователь закрыл окно оплаты — опционально что-то делаем
+                      },
+                    },
+                  },
+                },
+              },
+            });
 
-            const integration = await window.PaymentIntegration!.init(initConfig);
             integrationInitialized.current = true;
-            console.log('Tinkoff Integration успешно инициализирован:', integration);
-          } catch (error) {
-            console.error('Ошибка инициализации Tinkoff:', error);
+            console.log('Tinkoff Integration ready:', integration);
+          } catch (e) {
+            console.error('Tinkoff init error:', e);
             onFail?.();
           }
         };
 
-        // Загружаем скрипт
-        const script = document.createElement('script');
-        script.src = 'https://acq-paymentform-integrationjs.t-static.ru/integration.js';
-        script.async = true;
-        script.onload = () => {
-          scriptLoaded.current = true;
-          window.onPaymentIntegrationLoad?.();
+        script.onerror = () => {
+          console.error('Не удалось загрузить скрипт интеграции Tinkoff');
+          onFail?.();
         };
-        
+
         document.head.appendChild(script);
-      } else if (window.PaymentIntegration && !integrationInitialized.current) {
-        window.onPaymentIntegrationLoad?.();
       }
     };
 
-    initPaymentIntegration();
+    init();
   }, [containerId, amount, orderId, customerName, customerPhone, onSuccess, onFail]);
 
-  const handleManualPayment = () => {
-    // Альтернативная ссылка для оплаты через Tinkoff
-    const paymentUrl = `https://securepayments.tinkoff.ru/terminal/1754488339817DEMO/payment?orderId=${orderId}&amount=${amount}`;
-    window.open(paymentUrl, '_blank');
+  // Фолбэк-кнопка: если виджет не появился, всё равно откроем оплату по полученному PaymentURL
+  const handleFallback = async () => {
+    try {
+      const url = await getPaymentUrl();
+      window.open(url, '_blank');
+    } catch (e) {
+      console.error(e);
+      onFail?.();
+    }
   };
 
   return (
     <div className="w-full space-y-4">
-      <div 
-        id={containerId}
-        className="w-full min-h-[60px]"
-      />
-      
-      {/* Fallback кнопка если виджет не загрузился */}
+      {/* сюда Tinkoff сам отрисует кнопку/виджет */}
+      <div id={containerId} className="w-full min-h-[60px]" />
+
+      {/* запасная кнопка */}
       <div className="flex justify-center">
-        <Button 
-          onClick={handleManualPayment}
-          className="w-full max-w-sm"
-          variant="outline"
-        >
+        <Button onClick={handleFallback} className="w-full max-w-sm" variant="outline">
           Оплатить через Tinkoff
         </Button>
       </div>
