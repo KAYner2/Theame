@@ -70,7 +70,7 @@ export const TinkoffPaymentButton = ({
           try {
             // 2) Инициализируем виджет и говорим откуда брать PaymentURL
             const integration = await window.PaymentIntegration!.init({
-              terminalKey: '1754488339817DEMO', // демо-терминал; боевой укажешь в кабинете + в /api
+              terminalKey: import.meta.env.VITE_TINKOFF_TERMINAL_KEY || '1754488339817DEMO',
               product: 'eacq',
               features: {
                 payment: {
