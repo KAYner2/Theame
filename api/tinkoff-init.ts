@@ -1,6 +1,12 @@
-// /api/tinkoff-init.ts
 import crypto from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
+
+function sendJSON(res: ServerResponse, status: number, data: any) {
+  res.statusCode = status;
+  // @ts-ignore
+  if (res.setHeader) res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify(data));
+}
 
 function makeToken(fields: Record<string, any>, password: string) {
   const clean: Record<string, string> = {};
@@ -12,37 +18,33 @@ function makeToken(fields: Record<string, any>, password: string) {
   return crypto.createHash('sha256').update(str).digest('hex');
 }
 
-export default async function handler(req: IncomingMessage & { body?: any; method?: string }, res: ServerResponse & { json?: (data: any) => void }) {
+export default async function handler(
+  req: IncomingMessage & { method?: string },
+  res: ServerResponse
+) {
   if (req.method !== 'POST') {
-    res.statusCode = 405;
-    res.end(JSON.stringify({ error: 'Method not allowed' }));
-    return;
+    return sendJSON(res, 405, { error: 'Method not allowed' });
   }
 
   let body = '';
-  req.on('data', chunk => { body += chunk; });
+  req.on('data', (chunk) => { body += chunk; });
+
   req.on('end', async () => {
     try {
-      const parsed = JSON.parse(body || '{}');
-      const { amount, orderId, description, customerKey, successUrl, failUrl } = parsed;
+      const { amount, orderId, description, customerKey, successUrl, failUrl } =
+        JSON.parse(body || '{}');
 
       if (!Number.isInteger(amount) || amount <= 0) {
-        res.statusCode = 400;
-        res.end(JSON.stringify({ error: 'amount (kopecks) is required and must be > 0' }));
-        return;
+        return sendJSON(res, 400, { error: 'amount (kopecks) is required and must be > 0' });
       }
       if (!orderId || typeof orderId !== 'string') {
-        res.statusCode = 400;
-        res.end(JSON.stringify({ error: 'orderId is required' }));
-        return;
+        return sendJSON(res, 400, { error: 'orderId is required' });
       }
 
-      const TerminalKey = process.env.TINKOFF_TERMINAL_KEY!;
-      const Password = process.env.TINKOFF_PASSWORD!;
+      const TerminalKey = process.env.TINKOFF_TERMINAL_KEY;
+      const Password    = process.env.TINKOFF_PASSWORD;
       if (!TerminalKey || !Password) {
-        res.statusCode = 500;
-        res.end(JSON.stringify({ error: 'Server not configured: missing env vars' }));
-        return;
+        return sendJSON(res, 500, { error: 'Server not configured: missing env vars' });
       }
 
       const payload = {
@@ -63,22 +65,23 @@ export default async function handler(req: IncomingMessage & { body?: any; metho
         body: JSON.stringify({ ...payload, Token }),
       });
 
-      const data = await tinkoffRes.json();
-      if (!data?.Success) {
-        res.statusCode = 400;
-        res.end(JSON.stringify({ error: data?.Message || 'Init failed', details: data }));
-        return;
+      const raw = await tinkoffRes.text();
+      let data: any;
+      try { data = JSON.parse(raw); } catch { data = null; }
+
+      if (!data) {
+        return sendJSON(res, 502, { error: 'Bad gateway to Tinkoff', raw });
+      }
+      if (!data.Success) {
+        return sendJSON(res, 400, { error: data.Message || 'Init failed', details: data });
       }
 
-      res.statusCode = 200;
-      res.end(JSON.stringify({
+      return sendJSON(res, 200, {
         paymentUrl: data.PaymentURL,
         paymentId: data.PaymentId,
-      }));
-    } catch (err) {
-      console.error('tinkoff-init error:', err);
-      res.statusCode = 500;
-      res.end(JSON.stringify({ error: 'Server error' }));
+      });
+    } catch (e: any) {
+      return sendJSON(res, 500, { error: e?.message || 'Server error' });
     }
   });
 }

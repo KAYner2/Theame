@@ -3,7 +3,7 @@ import { useEffect, useRef, useId } from 'react';
 import { Button } from './ui/button';
 
 interface TinkoffPaymentButtonProps {
-  amount: number; // Сумма в КОПЕЙКАХ (напр. 800000 = 8000.00 ₽)
+  amount: number;        // сумма в КОПЕЙКАХ (пример: 800000 = 8000 ₽)
   orderId: string;
   customerName: string;
   customerPhone: string;
@@ -32,7 +32,7 @@ export const TinkoffPaymentButton = ({
   const scriptLoaded = useRef(false);
   const integrationInitialized = useRef(false);
 
-  // Берём PaymentURL у нашего серверного роута на Vercel
+  // Берём PaymentURL у нашего API-роута на Vercel
   async function getPaymentUrl() {
     const resp = await fetch('/api/tinkoff-init', {
       method: 'POST',
@@ -42,12 +42,17 @@ export const TinkoffPaymentButton = ({
         orderId,
         description: `Оплата заказа ${orderId}`,
         customerKey: customerPhone || customerName || orderId,
-        successUrl: typeof window !== 'undefined' ? window.location.origin + '/success' : undefined,
-        failUrl: typeof window !== 'undefined' ? window.location.origin + '/fail' : undefined,
+        successUrl:
+          typeof window !== 'undefined' ? window.location.origin + '/success' : undefined,
+        failUrl:
+          typeof window !== 'undefined' ? window.location.origin + '/fail' : undefined,
       }),
     });
 
-    const data = await resp.json();
+    const text = await resp.text(); // на всякий если прилетит не-JSON
+    let data: any;
+    try { data = JSON.parse(text); } catch { data = { error: text }; }
+
     if (!resp.ok || !data?.paymentUrl) {
       throw new Error(data?.error || 'Не удалось получить PaymentURL');
     }
@@ -58,7 +63,6 @@ export const TinkoffPaymentButton = ({
     const init = async () => {
       if (integrationInitialized.current) return;
 
-      // 1) Подгружаем официальный скрипт интеграции
       if (!scriptLoaded.current) {
         const script = document.createElement('script');
         script.src = 'https://acq-paymentform-integrationjs.t-static.ru/integration.js';
@@ -66,37 +70,27 @@ export const TinkoffPaymentButton = ({
 
         script.onload = async () => {
           scriptLoaded.current = true;
-
           try {
-            // 2) Инициализируем виджет и говорим откуда брать PaymentURL
             const integration = await window.PaymentIntegration!.init({
+              // используем один и тот же терминал, что и на бэке
               terminalKey: import.meta.env.VITE_TINKOFF_TERMINAL_KEY || '1754488339817DEMO',
               product: 'eacq',
               features: {
                 payment: {
                   container: document.getElementById(containerId)!,
-                  paymentStartCallback: async () => {
-                    // вместо “ручных” ссылок получаем PaymentURL у нашего API
-                    return await getPaymentUrl();
-                  },
+                  paymentStartCallback: async () => await getPaymentUrl(),
                   config: {
                     status: {
                       changedCallback: (status: string) => {
-                        // SUCCESS / CANCELED / REJECTED / PROCESSING_ERROR / ...
                         if (status === 'SUCCESS') onSuccess?.();
                         if (['CANCELED', 'REJECTED', 'PROCESSING_ERROR'].includes(status)) onFail?.();
                       },
                     },
-                    dialog: {
-                      closedCallback: () => {
-                        // Пользователь закрыл окно оплаты — опционально что-то делаем
-                      },
-                    },
+                    dialog: { closedCallback: () => {} },
                   },
                 },
               },
             });
-
             integrationInitialized.current = true;
             console.log('Tinkoff Integration ready:', integration);
           } catch (e) {
@@ -117,7 +111,7 @@ export const TinkoffPaymentButton = ({
     init();
   }, [containerId, amount, orderId, customerName, customerPhone, onSuccess, onFail]);
 
-  // Фолбэк-кнопка: если виджет не появился, всё равно откроем оплату по полученному PaymentURL
+  // Фолбэк: если виджет не появился, откроем оплату по URL
   const handleFallback = async () => {
     try {
       const url = await getPaymentUrl();
@@ -130,10 +124,8 @@ export const TinkoffPaymentButton = ({
 
   return (
     <div className="w-full space-y-4">
-      {/* сюда Tinkoff сам отрисует кнопку/виджет */}
+      {/* сюда Tinkoff отрисует кнопку/виджет */}
       <div id={containerId} className="w-full min-h-[60px]" />
-
-      {/* запасная кнопка */}
       <div className="flex justify-center">
         <Button onClick={handleFallback} className="w-full max-w-sm" variant="outline">
           Оплатить через Tinkoff
