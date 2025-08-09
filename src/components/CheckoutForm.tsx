@@ -1,15 +1,3 @@
-// Типы для глобальных функций Tinkoff
-declare global {
-  interface Window {
-    initTinkoffPayment?: (params: {
-      orderId: string;
-      amount: number;
-      customerName: string;
-      customerPhone: string;
-    }) => void;
-  }
-}
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -279,28 +267,13 @@ export const CheckoutForm = () => {
       console.log("Заказ успешно сохранен:", savedOrder);
 
       // Сохраняем ID заказа для виджета оплаты
-      setSavedOrderId(savedOrder.id);
+setSavedOrderId(savedOrder.id);
 
-      // Для онлайн-оплаты заказ сохранён, теперь используем Tinkoff Widget
-      if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
-        console.log("Заказ сохранён, инициализируем платеж через Tinkoff Widget");
-        
-        // Используем глобальную функцию инициализации платежа
-        if (window.initTinkoffPayment) {
-          window.initTinkoffPayment({
-            orderId: savedOrder.id,
-            amount: finalTotal * 100,
-            customerName: data.customerName,
-            customerPhone: data.customerPhone
-          });
-        } else {
-          console.error('Tinkoff integration не готов');
-          toast.error("Ошибка инициализации платежной системы");
-        }
-        
-        setIsSubmitting(false);
-        return;
-      }
+// Если онлайн-оплата — просто показываем виджет Tinkoff
+if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
+  setIsSubmitting(false);
+  return; // Дальше UI сам покажет <TinkoffPaymentButton />
+}
 
       // Обновляем счетчик использования промокода
       if (appliedDiscount) {
