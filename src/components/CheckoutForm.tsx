@@ -1,3 +1,15 @@
+// Типы для глобальных функций Tinkoff
+declare global {
+  interface Window {
+    initTinkoffPayment?: (params: {
+      orderId: string;
+      amount: number;
+      customerName: string;
+      customerPhone: string;
+    }) => void;
+  }
+}
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -269,43 +281,21 @@ export const CheckoutForm = () => {
       // Сохраняем ID заказа для виджета оплаты
       setSavedOrderId(savedOrder.id);
 
-      // Для онлайн-оплаты заказ сохранён, теперь инициализируем платеж
+      // Для онлайн-оплаты заказ сохранён, теперь используем Tinkoff Widget
       if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
-        console.log("Заказ сохранён, инициализируем платеж через Tinkoff API");
+        console.log("Заказ сохранён, инициализируем платеж через Tinkoff Widget");
         
-        try {
-          // Вызываем API Tinkoff для инициализации платежа
-          const initPaymentData = {
-            TerminalKey: '1754488339817DEMO',
-            Amount: finalTotal * 100, // в копейках
-            OrderId: savedOrder.id,
-            Description: `Заказ цветов №${savedOrder.id}`,
-            CustomerName: data.customerName,
-            Phone: data.customerPhone,
-            Connection_type: 'Widget'
-          };
-
-          console.log('Отправляем запрос на инициализацию платежа:', initPaymentData);
-          
-          const response = await fetch('https://securepay.tinkoff.ru/v2/Init', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(initPaymentData)
+        // Используем глобальную функцию инициализации платежа
+        if (window.initTinkoffPayment) {
+          window.initTinkoffPayment({
+            orderId: savedOrder.id,
+            amount: finalTotal * 100,
+            customerName: data.customerName,
+            customerPhone: data.customerPhone
           });
-
-          const paymentResult = await response.json();
-          console.log('Ответ от Tinkoff API:', paymentResult);
-
-          if (paymentResult.Success && paymentResult.PaymentURL) {
-            window.open(paymentResult.PaymentURL, '_blank');
-          } else {
-            throw new Error(paymentResult.Message || 'Ошибка инициализации платежа');
-          }
-        } catch (error) {
-          console.error('Ошибка при инициализации платежа:', error);
-          toast.error("Ошибка при подключении к платежной системе");
+        } else {
+          console.error('Tinkoff integration не готов');
+          toast.error("Ошибка инициализации платежной системы");
         }
         
         setIsSubmitting(false);
