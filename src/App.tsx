@@ -9,7 +9,11 @@ import ProductPage from "./pages/ProductPage";
 import Admin from "./pages/Admin";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Privacy from "./pages/Privacy";
+import PublicOffer from "./pages/PublicOffer";
 import CartPage from "./pages/CartPage";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentError from "./pages/PaymentError";
 import NotFound from "./pages/NotFound";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
@@ -35,6 +39,10 @@ const App = () => (
               <Route path="/admin" element={<Admin />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/public-offer" element={<PublicOffer />} />
+              <Route path="/success" element={<PaymentSuccess />} />
+              <Route path="/payment-error" element={<PaymentError />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>

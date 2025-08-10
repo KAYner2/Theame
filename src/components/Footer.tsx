@@ -192,11 +192,8 @@ export const Footer = () => {
               <Link to="/privacy" className="text-muted-foreground hover:text-primary transition-colors">
                 Политика конфиденциальности
               </Link>
-              <Link to="/terms" className="text-muted-foreground hover:text-primary transition-colors">
-                Условия использования
-              </Link>
-              <Link to="/delivery" className="text-muted-foreground hover:text-primary transition-colors">
-                Доставка и оплата
+              <Link to="/public-offer" className="text-muted-foreground hover:text-primary transition-colors">
+                Публичная оферта
               </Link>
             </div>
           </div>
