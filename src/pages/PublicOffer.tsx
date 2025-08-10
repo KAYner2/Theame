@@ -1,6 +1,10 @@
+import { useEffect } from "react";
 import { Header } from "../components/Header";
 
 export default function PublicOffer() {
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
   return (
     <div className="bg-background">
       <div className="container mx-auto px-4 py-12">
