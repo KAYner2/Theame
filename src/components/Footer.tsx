@@ -1,3 +1,4 @@
+import logoUrl from '@/assets/logo.png';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
@@ -67,7 +68,13 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Логотип и описание */}
           <div className="space-y-4">
-            <div className="flex flex-col">
+            <div className="flex items-center gap-3">
+              <img
+              src={logoUrl}
+              alt="The Áme"
+              className="h-7 w-7 md:h-8 md:w-8 object-contain"
+            />
+            <div className="flex flex-col"></div>
               <span className="text-2xl font-bold text-primary">The Áme</span>
               <span className="text-sm text-muted-foreground font-light tracking-wide">цветы Х чувства</span>
             </div>

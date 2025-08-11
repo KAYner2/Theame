@@ -1,3 +1,4 @@
+import logoUrl from '@/assets/logo.png';
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from './ui/button';
@@ -44,7 +45,12 @@ export const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Логотип */}
           <Link to="/" className="flex items-center gap-3">
-            <div className="flex flex-col">
+            <img
+            src={logoUrl}
+            alt="The Áme"
+            className="h-8 w-8 md:h-9 md:w-9 object-contain"
+            />
+              <div className="flex flex-col">
               <span className="text-2xl font-bold text-primary">The Áme</span>
               <span className="text-sm text-muted-foreground font-light tracking-wide">цветы Х чувства</span>
             </div>
