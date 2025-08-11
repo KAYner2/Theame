@@ -68,11 +68,11 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Логотип и описание */}
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-2">
               <img
               src={logoUrl}
               alt="The Áme"
-              className="h-7 w-7 md:h-8 md:w-8 object-contain"
+              className="h-7 w-7 md:h-8 md:w-8 object-contain self-start mt-0.5"
             />
             <div className="flex flex-col"></div>
               <span className="text-2xl font-bold text-primary">The Áme</span>
