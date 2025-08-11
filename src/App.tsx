@@ -19,6 +19,8 @@ import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { WhatsAppFloat } from "./components/WhatsAppFloat";
 import { CartProvider } from "./context/CartContext";
+import { FavoritesProvider } from "./context/FavoritesContext";
+import Favorites from "./pages/Favorites";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <CartProvider>
+        <FavoritesProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -34,6 +37,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/catalog" element={<Catalog />} />
+              <Route path="/favorites" element={<Favorites />} />
               <Route path="/product/:id" element={<ProductPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/admin" element={<Admin />} />
@@ -49,6 +53,7 @@ const App = () => (
           <Footer />
           <WhatsAppFloat />
         </BrowserRouter>
+        </FavoritesProvider>
       </CartProvider>
     </TooltipProvider>
   </QueryClientProvider>

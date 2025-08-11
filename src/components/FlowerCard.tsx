@@ -5,6 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card'
 import { Badge } from './ui/badge';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useFavorites } from '../context/FavoritesContext';
 import { useToast } from '../hooks/use-toast';
 
 interface FlowerCardProps {
@@ -14,7 +15,10 @@ interface FlowerCardProps {
 
 export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
   const { addToCart } = useCart();
+  const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
   const { toast } = useToast();
+  
+  const isInFavorites = isFavorite(flower.id);
 
   const handleAddToCart = () => {
     addToCart(flower);
@@ -22,6 +26,23 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
       title: "Товар добавлен в корзину",
       description: `${flower.name} добавлен в корзину`,
     });
+  };
+
+  const handleToggleFavorite = () => {
+    if (isInFavorites) {
+      removeFromFavorites(flower.id);
+      toast({
+        title: "Удалено из избранного",
+        description: `${flower.name} удален из избранного`,
+      });
+    } else {
+      addToFavorites(flower);
+      toast({
+        title: "Добавлено в избранное",
+        description: `${flower.name} добавлен в избранное`,
+      });
+    }
+    onToggleFavorite?.(flower);
   };
   return (
     <div className="group relative">
@@ -70,11 +91,15 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onToggleFavorite?.(flower);
+                  handleToggleFavorite();
                 }}
-                className="p-1.5 rounded-full bg-muted hover:bg-destructive hover:text-destructive-foreground transition-all duration-200"
+                className={`p-1.5 rounded-full transition-all duration-200 ${
+                  isInFavorites 
+                    ? 'bg-destructive text-destructive-foreground' 
+                    : 'bg-muted hover:bg-destructive hover:text-destructive-foreground'
+                }`}
               >
-                <Heart className="w-4 h-4" />
+                <Heart className={`w-4 h-4 ${isInFavorites ? 'fill-current' : ''}`} />
               </button>
             </div>
           </div>

@@ -15,11 +15,13 @@ import {
   Heart
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useFavorites } from '../context/FavoritesContext';
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const { state } = useCart();
+  const { state: favoritesState } = useFavorites();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -41,9 +43,11 @@ export const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Логотип */}
-          <Link to="/" className="flex flex-col">
-            <span className="text-2xl font-bold text-primary">The Áme</span>
-            <span className="text-sm text-muted-foreground font-light tracking-wide">цветы Х чувства</span>
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex flex-col">
+              <span className="text-2xl font-bold text-primary">The Áme</span>
+              <span className="text-sm text-muted-foreground font-light tracking-wide">цветы Х чувства</span>
+            </div>
           </Link>
 
           {/* Навигация для десктопа */}
@@ -56,8 +60,15 @@ export const Header = () => {
 
           {/* Действия */}
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" className="hidden sm:flex h-11 w-11 p-0">
-              <Heart className="w-5 h-5" />
+            <Button variant="ghost" className="hidden sm:flex relative h-11 w-11 p-0" asChild>
+              <Link to="/favorites">
+                <Heart className="w-5 h-5" />
+                {favoritesState.itemCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 text-xs p-0 flex items-center justify-center">
+                    {favoritesState.itemCount}
+                  </Badge>
+                )}
+              </Link>
             </Button>
             
             <Button variant="ghost" className="relative h-11 w-11 p-0" asChild>
@@ -87,9 +98,19 @@ export const Header = () => {
                 </SheetHeader>
                 <nav className="flex flex-col space-y-3 mt-6">
                   <NavLink to="/" className="w-full text-left h-12 flex items-center">Главная</NavLink>
-                  <NavLink to="/catalog" className="w-full text-left">Каталог</NavLink>
-                  <NavLink to="/about" className="w-full text-left">О нас</NavLink>
-                  <NavLink to="/contact" className="w-full text-left">Контакты</NavLink>
+                  <NavLink to="/catalog" className="w-full text-left h-12 flex items-center">Каталог</NavLink>
+                  <NavLink to="/favorites" className="w-full text-left h-12 flex items-center">
+                    <span className="flex items-center gap-2">
+                      Избранное
+                      {favoritesState.itemCount > 0 && (
+                        <Badge className="h-5 w-5 text-xs p-0 flex items-center justify-center">
+                          {favoritesState.itemCount}
+                        </Badge>
+                      )}
+                    </span>
+                  </NavLink>
+                  <NavLink to="/about" className="w-full text-left h-12 flex items-center">О нас</NavLink>
+                  <NavLink to="/contact" className="w-full text-left h-12 flex items-center">Контакты</NavLink>
                 </nav>
               </SheetContent>
             </Sheet>

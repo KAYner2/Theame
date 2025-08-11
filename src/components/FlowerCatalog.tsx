@@ -346,7 +346,7 @@ export const FlowerCatalog = () => {
           <FlowerCard
             key={flower.id}
             flower={flower}
-            onToggleFavorite={handleToggleFavorite}
+            
           />
         ))}
       </div>
