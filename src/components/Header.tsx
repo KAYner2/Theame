@@ -51,8 +51,8 @@ export const Header = () => {
             className="h-8 w-8 md:h-9 md:w-9 object-contain"
             />
               <div className="flex flex-col leading-tight">
-              <span className="text-2xl font-bold text-green-400">The Áme</span>
-              <span className="text-sm text-green-400 font-light tracking-wide">ЦВЕТЫ × ЧУВСТВА</span>
+              <span className="text-2xl font-bold text-primary">The Áme</span>
+              <span className="text-sm font-light tracking-wide text-primary">ЦВЕТЫ × ЧУВСТВА</span>
             </div>
           </Link>
 
