@@ -87,11 +87,13 @@ export default async function handler(req, res) {
     }
 
     if (!data) {
+      console.error('Tinkoff Init: non-JSON:', text); // ← лог в консоль сервера
       res.statusCode = 502;
       res.end(JSON.stringify({ error: 'Bad gateway to Tinkoff', raw: text }));
       return;
     }
     if (!data.Success) {
+      console.error('Tinkoff Init failed:', JSON.stringify(data, null, 2)); // ← лог в консоль сервера
       res.statusCode = 400;
       res.end(JSON.stringify({ error: data.Message || 'Init failed', details: data }));
       return;
