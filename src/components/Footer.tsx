@@ -69,7 +69,7 @@ export const Footer = () => {
           {/* Логотип и описание */}
           <div className="space-y-4">
             <div className="flex flex-col items-start">
-             <span className="text-2xl font-bold text-primary">The Áme</span>
+             <span className="text-2xl font-bold text-primary">  The Áme</span>
               <span className="text-sm text-muted-foreground font-light tracking-wide">
       ЦВЕТЫ х ЧУВСТВА
     </span>
