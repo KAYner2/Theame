@@ -7,6 +7,7 @@ interface TinkoffPaymentButtonProps {
   orderId: string;
   customerName: string;
   customerPhone: string;
+  receipt?: any;         // <-- добавили проп для чека
   onSuccess?: () => void;
   onFail?: () => void;
 }
@@ -25,6 +26,7 @@ export const TinkoffPaymentButton = ({
   orderId,
   customerName,
   customerPhone,
+  receipt,
   onSuccess,
   onFail
 }: TinkoffPaymentButtonProps) => {
@@ -45,6 +47,7 @@ export const TinkoffPaymentButton = ({
           typeof window !== 'undefined' ? window.location.origin + '/success' : undefined,
         failUrl:
           typeof window !== 'undefined' ? window.location.origin + '/fail' : undefined,
+        receipt // <-- пробрасываем чек на сервер
       }),
     });
 
