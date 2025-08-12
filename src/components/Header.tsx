@@ -50,7 +50,7 @@ export const Header = () => {
             alt="The Áme"
             className="h-8 w-8 md:h-9 md:w-9 object-contain"
             />
-              <div className="flex flex-col leading-tight">
+              <div className="flex flex-col items-center leading-tight">
               <span className="text-2xl font-bold text-primary">  The Áme</span>
               <span className="text-sm font-light tracking-wide text-primary">ЦВЕТЫ х ЧУВСТВА</span>
             </div>

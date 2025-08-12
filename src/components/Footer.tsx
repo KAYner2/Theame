@@ -68,7 +68,7 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Логотип и описание */}
           <div className="space-y-4">
-            <div className="flex flex-col items-start">
+            <div className="flex flex-col items-center leading-tight">
              <span className="text-2xl font-bold text-primary">  The Áme</span>
               <span className="text-sm text-muted-foreground font-light tracking-wide">
       ЦВЕТЫ х ЧУВСТВА
