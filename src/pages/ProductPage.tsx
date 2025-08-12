@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ChevronLeft, ChevronRight, Heart, Share2, Minus, Plus, ShoppingBag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { toast } from '@/hooks/use-toast';
 import { ProductRecommendations } from '@/components/ProductRecommendations';
+import { useFavorites } from '@/context/FavoritesContext';
 
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();
@@ -17,6 +18,7 @@ export default function ProductPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
+  const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
 
   // Smooth scroll to top when component mounts or product changes
   useEffect(() => {
@@ -80,6 +82,36 @@ export default function ProductPage() {
       title: "Добавлено в корзину",
       description: `${product.name} (${quantity} шт.) добавлен в корзину`,
     });
+  };
+
+  const isInFavorites = isFavorite(product.id);
+
+  const handleToggleFavorite = () => {
+    if (isInFavorites) {
+      removeFromFavorites(product.id);
+      toast({
+        title: "Удалено из избранного",
+        description: `${product.name} удален из избранного`,
+      });
+    } else {
+      addToFavorites({
+        id: product.id,
+        name: product.name,
+        price: product.price || 0,
+        image: product.image_url || '/placeholder.svg',
+        description: product.description || '',
+        category: product.category?.name || 'Разное',
+        inStock: product.is_active,
+        quantity: 1,
+        colors: [],
+        size: 'medium',
+        occasion: [],
+      });
+      toast({
+        title: "Добавлено в избранное",
+        description: `${product.name} добавлен в избранное`,
+      });
+    }
   };
 
   const nextImage = () => {
@@ -190,12 +222,16 @@ export default function ProductPage() {
                 {product.availability_status === 'in_stock' ? 'В НАЛИЧИИ' : 'НЕТ В НАЛИЧИИ'}
               </Badge>
               <div className="flex gap-2">
-                <Button variant="outline" size="icon">
-                  <Heart className="w-4 h-4" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleToggleFavorite}
+                  aria-label={isInFavorites ? "Убрать из избранного" : "Добавить в избранное"}
+                  className={isInFavorites ? "bg-destructive text-destructive-foreground" : ""}
+                >
+                  <Heart className={`w-4 h-4 ${isInFavorites ? "fill-current" : ""}`} />
                 </Button>
-                <Button variant="outline" size="icon">
-                  <Share2 className="w-4 h-4" />
-                </Button>
+                {/* Кнопку «Поделиться» удалили */}
               </div>
             </div>
 
@@ -203,7 +239,6 @@ export default function ProductPage() {
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">
               {product.name.toUpperCase()}
             </h1>
-
 
             {/* Quantity and Price */}
             <div className="space-y-4">
