@@ -32,7 +32,6 @@ export const TinkoffPaymentButton = ({
   const scriptLoaded = useRef(false);
   const integrationInitialized = useRef(false);
 
-  // Берём PaymentURL у нашего API-роута на Vercel
   async function getPaymentUrl() {
     const resp = await fetch('/api/tinkoff-init', {
       method: 'POST',
@@ -49,7 +48,7 @@ export const TinkoffPaymentButton = ({
       }),
     });
 
-    const text = await resp.text(); // на всякий если прилетит не-JSON
+    const text = await resp.text();
     let data: any;
     try { data = JSON.parse(text); } catch { data = { error: text }; }
 
@@ -71,8 +70,7 @@ export const TinkoffPaymentButton = ({
         script.onload = async () => {
           scriptLoaded.current = true;
           try {
-            const integration = await window.PaymentIntegration!.init({
-              // используем один и тот же терминал, что и на бэке
+            await window.PaymentIntegration!.init({
               terminalKey: import.meta.env.VITE_TINKOFF_TERMINAL_KEY || '1754488339817DEMO',
               product: 'eacq',
               features: {
@@ -92,7 +90,6 @@ export const TinkoffPaymentButton = ({
               },
             });
             integrationInitialized.current = true;
-            console.log('Tinkoff Integration ready:', integration);
           } catch (e) {
             console.error('Tinkoff init error:', e);
             onFail?.();
@@ -111,7 +108,6 @@ export const TinkoffPaymentButton = ({
     init();
   }, [containerId, amount, orderId, customerName, customerPhone, onSuccess, onFail]);
 
-  // Фолбэк: если виджет не появился, откроем оплату по URL
   const handleFallback = async () => {
     try {
       const url = await getPaymentUrl();
@@ -124,8 +120,8 @@ export const TinkoffPaymentButton = ({
 
   return (
     <div className="w-full space-y-4">
-      {/* сюда Tinkoff отрисует кнопку/виджет */}
-      <div id={containerId} className="w-full min-h-[60px]" />
+      {/* контейнер для инициализации Tinkoff, скрыт чтобы кнопка не была видна */}
+      <div id={containerId} className="hidden" aria-hidden="true" />
       <div className="flex justify-center">
         <Button onClick={handleFallback} className="w-full max-w-sm" variant="outline">
           Оплатить
