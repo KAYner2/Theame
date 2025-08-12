@@ -21,6 +21,7 @@ import { WhatsAppFloat } from "./components/WhatsAppFloat";
 import { CartProvider } from "./context/CartContext";
 import { FavoritesProvider } from "./context/FavoritesContext";
 import Favorites from "./pages/Favorites";
+import { Navigate } from "react-router-dom";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,8 @@ const App = () => (
               <Route path="/success" element={<PaymentSuccess />} />
               <Route path="/payment-error" element={<PaymentError />} />
               <Route path="*" element={<NotFound />} />
+              <Route path="/success" element={<Navigate to="/payment-success" replace />} />
+              <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
             </Routes>
           </main>
           <Footer />
