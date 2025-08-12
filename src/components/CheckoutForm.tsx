@@ -159,6 +159,46 @@ export const CheckoutForm = () => {
   const discountAmount = appliedDiscount ? calculateDiscount(state.total, appliedDiscount) : 0;
   const subtotalWithDelivery = state.total + deliveryPrice;
   const finalTotal = subtotalWithDelivery - discountAmount;
+  const toKop = (rub: number) => Math.round(rub * 100);
+
+const receiptItems = [
+  ...state.items.map((item) => ({
+    Name: String(item.name).slice(0, 128),
+    Price: toKop(item.price),
+    Quantity: String(item.cartQuantity),
+    Amount: toKop(item.price) * item.cartQuantity,
+    PaymentMethod: "full_payment",
+    PaymentObject: "commodity",
+    Tax: "none", // УСН без НДС
+  })),
+  ...(deliveryPrice > 0
+    ? [{
+        Name: "Доставка",
+        Price: toKop(deliveryPrice),
+        Quantity: "1",
+        Amount: toKop(deliveryPrice),
+        PaymentMethod: "full_payment",
+        PaymentObject: "service",
+        Tax: "none",
+      }]
+    : [])
+];
+
+const finalTotalKop = toKop(finalTotal);
+
+// Страхуемся от расхождения копеек
+const sumKop = receiptItems.reduce((sum, i) => sum + Number(i.Amount), 0);
+if (sumKop !== finalTotalKop && receiptItems.length > 0) {
+  const diff = finalTotalKop - sumKop;
+  receiptItems[receiptItems.length - 1].Amount =
+    Number(receiptItems[receiptItems.length - 1].Amount) + diff;
+}
+
+const receipt = {
+  Phone: getCleanPhoneNumber(watch("customerPhone") || ""),
+  Taxation: "usn_income_outcome", // или "usn_income" — выбери свою
+  Items: receiptItems
+};
 
   const handlePromoCode = async () => {
     if (!promoCode.trim()) {
@@ -896,19 +936,20 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                     </Button>
                   ) : (
                     <TinkoffPaymentButton
-                      amount={finalTotal * 100} // в копейках
+                      amount={finalTotalKop} // в копейках
                       orderId={savedOrderId}
                       customerName={watch("customerName") || ""}
                       customerPhone={watch("customerPhone") || ""}
+                      receipt={receipt} // ← передаём чек на бэкенд
                       onSuccess={() => {
                         toast.success("Оплата прошла успешно!");
                         clearCart();
                         setSavedOrderId(null);
                       }}
-                      onFail={() => {
+                        onFail={() => {
                         toast.error("Ошибка оплаты. Попробуйте ещё раз.");
-                      }}
-                    />
+                        }}
+                      />
                   )}
                 </div>
               ) : (
