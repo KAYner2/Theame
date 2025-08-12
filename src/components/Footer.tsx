@@ -71,7 +71,7 @@ export const Footer = () => {
             <div className="flex flex-col items-start">
              <span className="text-2xl font-bold text-primary">The Áme</span>
               <span className="text-sm text-muted-foreground font-light tracking-wide">
-      цветы Х чувства
+      ЦВЕТЫ х ЧУВСТВА
     </span>
                </div>
             <p className="text-muted-foreground">
