@@ -67,10 +67,10 @@ export const Footer = () => {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Логотип и описание */}
-          <div className="space-y-4">
-            <div className="flex flex-col items-center leading-tight">
+          <div className="flex flex-col items-end text-right space-y-4">
+            <div className="flex flex-col items-center leading-tigh">
              <span className="text-2xl font-bold text-primary">  The Áme</span>
-              <span className="text-sm text-muted-foreground font-light tracking-wide">
+              <span className="text-sm font-light tracking-wide text-primary">
       ЦВЕТЫ х ЧУВСТВА
     </span>
                </div>
