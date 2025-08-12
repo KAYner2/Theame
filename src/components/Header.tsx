@@ -44,15 +44,15 @@ export const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Логотип */}
-          <Link to="/" className="flex items-start gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <img
             src={logoUrl}
             alt="The Áme"
-            className="h-8 w-8 md:h-9 md:w-9 object-contain self-start mt-0.5"
+            className="h-8 w-8 md:h-9 md:w-9 object-contain"
             />
-              <div className="flex flex-col">
-              <span className="text-2xl font-bold text-primary">The Áme</span>
-              <span className="text-sm text-muted-foreground font-light tracking-wide">цветы Х чувства</span>
+              <div className="flex flex-col leading-tight">
+              <span className="text-2xl font-bold text-green-400">The Áme</span>
+              <span className="text-sm text-green-400 font-light tracking-wide">ЦВЕТЫ × ЧУВСТВА</span>
             </div>
           </Link>
 

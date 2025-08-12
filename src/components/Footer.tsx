@@ -68,16 +68,12 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Логотип и описание */}
           <div className="space-y-4">
-            <div className="flex items-start gap-2">
-              <img
-              src={logoUrl}
-              alt="The Áme"
-              className="h-7 w-7 md:h-8 md:w-8 object-contain self-start mt-0.5"
-            />
-            <div className="flex flex-col"></div>
-              <span className="text-2xl font-bold text-primary">The Áme</span>
-              <span className="text-sm text-muted-foreground font-light tracking-wide">цветы Х чувства</span>
-            </div>
+            <div className="flex flex-col items-start">
+             <span className="text-2xl font-bold text-primary">The Áme</span>
+              <span className="text-sm text-muted-foreground font-light tracking-wide">
+      цветы Х чувства
+    </span>
+               </div>
             <p className="text-muted-foreground">
               Премиальные букеты из Сочи, вдохновлённые французской эстетикой. 
               Дарим не просто цветы — передаём чувства, стиль и настроение.
