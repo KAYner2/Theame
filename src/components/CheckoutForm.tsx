@@ -878,9 +878,26 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
               {(paymentMethod === "card" || paymentMethod === "sbp") ? (
                 // Для онлайн-оплаты сначала сохраняем заказ, потом показываем виджет
                 <div className="space-y-4">
-                  <TinkoffPaymentButton 
+                  {!savedOrderId ? (
+                    <Button 
+                      onClick={async () => {
+                        const formData = getValues();
+                        const validation = checkoutSchema.safeParse(formData);
+                        if (!validation.success) {
+                          toast.error("Заполните все обязательные поля");
+                          return;
+                        }
+                        await onSubmit(formData);
+                      }}
+                      className="w-full"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Подготавливаем оплату..." : "Перейти к оплате"}
+                    </Button>
+                  ) : (
+                    <TinkoffPaymentButton
                       amount={finalTotal * 100} // в копейках
-                      orderId={savedOrderId || ""} // можно передать пустую строку, но лучше убедиться, что orderId есть
+                      orderId={savedOrderId}
                       customerName={watch("customerName") || ""}
                       customerPhone={watch("customerPhone") || ""}
                       onSuccess={() => {
@@ -890,10 +907,10 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                       }}
                       onFail={() => {
                         toast.error("Ошибка оплаты. Попробуйте ещё раз.");
-                    }}
+                      }}
                     />
-                    </div>
-
+                  )}
+                </div>
               ) : (
                 // Для оплаты наличными обычная кнопка
                 <Button 
@@ -917,8 +934,6 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
   Нажимая на кнопку "Оформить заказ", Вы автоматически соглашаетесь{" "}
   <a
     href="/public-offer"
-    target="_blank"
-    rel="noopener noreferrer"
     className="underline hover:text-primary transition-colors"
   >
     с условиями публичной оферты
@@ -926,14 +941,11 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
   и{" "}
   <a
     href="/privacy"
-    target="_blank"
-    rel="noopener noreferrer"
     className="underline hover:text-primary transition-colors"
   >
     политикой конфиденциальности
   </a>.
 </p>
-
             </CardContent>
           </Card>
         </div>
