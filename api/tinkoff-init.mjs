@@ -65,18 +65,21 @@ export default async function handler(req, res) {
       FailURL: failUrl || 'https://your-site.ru/fail',
     };
 
-    // Если есть чек, добавляем его в Init
-    if (receipt && typeof receipt === 'object') {
-      payload.Receipt = receipt;
-    }
+    // 1) Считаем токен БЕЗ Receipt
+const tokenFields = { ...payload }; // тут только базовые поля
+const Token = makeToken(tokenFields, Password);
 
-    const Token = makeToken(payload, Password);
+// 2) Формируем тело запроса: Receipt кладём рядом, но в токене его нет
+const bodyToSend = receipt && typeof receipt === 'object'
+  ? { ...payload, Receipt: receipt, Token }
+  : { ...payload, Token };
 
-    const r = await fetch('https://securepay.tinkoff.ru/v2/Init', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, Token }),
-    });
+// 3) Шлём Init
+const r = await fetch('https://securepay.tinkoff.ru/v2/Init', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(bodyToSend),
+});
 
     const text = await r.text();
     let data;
