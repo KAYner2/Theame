@@ -1,10 +1,12 @@
-// api/tinkoff-init.mjs  (ESM, без TypeScript)
+// api/tinkoff-init.mjs
 import crypto from 'node:crypto';
 
 function makeToken(fields, password) {
   const clean = {};
   for (const [k, v] of Object.entries(fields)) {
-    if (v !== undefined && v !== null && v !== '') clean[k] = String(v);
+    if (v !== undefined && v !== null && v !== '') {
+      clean[k] = String(v);
+    }
   }
   clean.Password = password;
   const str = Object.keys(clean).sort().map((k) => clean[k]).join('');
@@ -24,7 +26,15 @@ export default async function handler(req, res) {
     const bodyRaw = req.body ?? {};
     const body = typeof bodyRaw === 'string' ? JSON.parse(bodyRaw || '{}') : bodyRaw;
 
-    const { amount, orderId, description, customerKey, successUrl, failUrl } = body;
+    const {
+      amount,
+      orderId,
+      description,
+      customerKey,
+      successUrl,
+      failUrl,
+      receipt, // <-- сюда фронт передаёт чек
+    } = body;
 
     if (!Number.isInteger(amount) || amount <= 0) {
       res.statusCode = 400;
@@ -55,6 +65,11 @@ export default async function handler(req, res) {
       FailURL: failUrl || 'https://your-site.ru/fail',
     };
 
+    // Если есть чек, добавляем его в Init
+    if (receipt && typeof receipt === 'object') {
+      payload.Receipt = receipt;
+    }
+
     const Token = makeToken(payload, Password);
 
     const r = await fetch('https://securepay.tinkoff.ru/v2/Init', {
@@ -65,7 +80,11 @@ export default async function handler(req, res) {
 
     const text = await r.text();
     let data;
-    try { data = JSON.parse(text); } catch { data = null; }
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = null;
+    }
 
     if (!data) {
       res.statusCode = 502;
