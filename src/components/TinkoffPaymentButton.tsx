@@ -56,8 +56,19 @@ export const TinkoffPaymentButton = ({
     try { data = JSON.parse(text); } catch { data = { error: text }; }
 
     if (!resp.ok || !data?.paymentUrl) {
-  console.error('Init error payload:', data); // ← добавили лог
-  throw new Error(data?.error || 'Не удалось получить PaymentURL');
+  // Печатаем JSON целиком, чтобы увидеть, какой параметр неверный
+  console.error('Init error payload:', data);
+  try {
+    console.error('Init error payload (json):', JSON.stringify(data, null, 2));
+  } catch {}
+
+  // Пробуем собрать понятное сообщение
+  const details =
+    (data?.details && (data.details.Message || data.details.Details)) ||
+    data?.details ||
+    data;
+
+  throw new Error(`${data?.error || 'Не удалось получить PaymentURL'}: ${typeof details === 'string' ? details : JSON.stringify(details)}`);
 }
     return data.paymentUrl as string;
   }
