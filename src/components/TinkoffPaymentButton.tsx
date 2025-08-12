@@ -128,7 +128,7 @@ export const TinkoffPaymentButton = ({
       <div id={containerId} className="w-full min-h-[60px]" />
       <div className="flex justify-center">
         <Button onClick={handleFallback} className="w-full max-w-sm" variant="outline">
-          Оплатить через Tinkoff
+          Оплатить
         </Button>
       </div>
     </div>
