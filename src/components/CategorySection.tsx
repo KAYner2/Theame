@@ -50,7 +50,8 @@ export function CategorySection() {
                     className="absolute inset-0 bg-cover bg-center bg-no-repeat transform group-hover:scale-110 transition-transform duration-500"
                     style={{ backgroundImage: `url(${category.image_url || '/placeholder.svg'})` }}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 h-24 
+                bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
                   </div>
                   <div className="absolute bottom-0 left-0 p-2 sm:p-4 lg:p-6">
                     <h3 className="text-sm sm:text-lg lg:text-2xl font-bold text-white mb-1 sm:mb-2">
