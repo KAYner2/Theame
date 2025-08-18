@@ -8,13 +8,12 @@ export const useProducts = () => {
     queryKey: ['products'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          category:categories(*)
-        `)
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+  .from('products')
+  .select(`
+    *,
+    category:categories(*)
+  `)
+  .order('sort_order', { ascending: true });
       
       if (error) throw error;
       return data as Product[];
