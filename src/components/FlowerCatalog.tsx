@@ -1,164 +1,260 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+
 import { FlowerCard } from './FlowerCard';
 import { Flower } from '../types/flower';
+
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Slider } from './ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from './ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from './ui/dropdown-menu';
+
 import { SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+
 import { useProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
-import { Product } from '@/types/database';
+import type { Product } from '@/types/database';
+
+// -------------------------------------------------------------
+// Вспомогательные функции
+// -------------------------------------------------------------
+
+/** Безопасное преобразование Product → Flower */
+function toFlower(product: Product): Flower {
+  return {
+    id: product.id,
+    name: product.name,
+    price: product.price || 0,
+    image: product.image_url || '/placeholder.svg',
+    description: product.description || '',
+    category: product.category?.name || 'Разное',
+    inStock: Boolean(product.is_active ?? true),
+    quantity: 1,
+    colors: product.colors || [],
+    size: 'medium',
+    occasion: [],
+  };
+}
+
+/** Получить [min,max] цен по набору букетов */
+function getPriceBounds(flowers: Flower[]): [number, number] {
+  if (!flowers.length) return [0, 10000];
+  const prices = flowers.map((f) => f.price ?? 0);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  return [min, Math.max(max, min)]; // защитимся от одинаковых значений
+}
+
+// -------------------------------------------------------------
+// Основной компонент каталога
+// -------------------------------------------------------------
 
 export const FlowerCatalog = () => {
+  // URL-параметры (например, ?category=Букеты)
   const [searchParams] = useSearchParams();
   const categoryFromUrl = searchParams.get('category');
-  
+
+  // Состояния фильтров/сортировки
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedColor, setSelectedColor] = useState('all');
   const [selectedComposition, setSelectedComposition] = useState('all');
-  const [priceRange, setPriceRange] = useState([0, 10000]);
-  const [sortBy, setSortBy] = useState('popularity');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  
-  
-  const { data: products = [], isLoading: productsLoading, error: productsError } = useProducts();
-  const { data: categories = [], isLoading: categoriesLoading, error: categoriesError } = useCategories();
 
-  // Set category from URL and scroll to top when component mounts or category changes
+  // Диапазон цен (инициализируем после загрузки данных)
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+
+  // popularity | price-asc | price-desc | newest
+  const [sortBy, setSortBy] = useState<'popularity' | 'price-asc' | 'price-desc' | 'name' | 'newest'>('popularity');
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Данные
+  const {
+    data: products = [],
+    isLoading: productsLoading,
+    error: productsError,
+  } = useProducts();
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    error: categoriesError,
+  } = useCategories();
+
+  // -----------------------------------------------------------
+  // Подхват категории из URL, плавный скролл при загрузке
+  // -----------------------------------------------------------
   useEffect(() => {
     if (categoryFromUrl && categories.length > 0) {
-      const categoryExists = categories.some(cat => cat.name === categoryFromUrl);
-      if (categoryExists) {
-        setSelectedCategory(categoryFromUrl);
-      }
+      const exists = categories.some((c) => c.name === categoryFromUrl);
+      if (exists) setSelectedCategory(categoryFromUrl);
     }
-    
-    // Smooth scroll to top when catalog loads
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [categoryFromUrl, categories]);
-  
-  // Reset URL params when category is manually changed
+
+  // Сброс category параметра из URL если пользователь вручную сменил категорию
   useEffect(() => {
-    if (categoryFromUrl && selectedCategory !== categoryFromUrl && selectedCategory !== 'all') {
-      // Update URL without the category parameter when user manually selects a different category
+    if (
+      categoryFromUrl &&
+      selectedCategory !== categoryFromUrl &&
+      selectedCategory !== 'all'
+    ) {
       const url = new URL(window.location.href);
       url.searchParams.delete('category');
       window.history.replaceState({}, '', url.pathname);
     }
   }, [selectedCategory, categoryFromUrl]);
 
-  // Transform products to flowers
-  const flowers = useMemo(() => {
-    return products.map((product: Product): Flower => ({
-      id: product.id,
-      name: product.name,
-      price: product.price || 0,
-      image: product.image_url || '/placeholder.svg',
-      description: product.description || '',
-      category: product.category?.name || 'Разное',
-      inStock: product.is_active,
-      quantity: 1, // Default quantity since we don't have stock management yet
-      colors: product.colors || [], // Use product colors or empty array
-      size: 'medium' as const,
-      occasion: []
-    }));
+  // -----------------------------------------------------------
+  // Преобразуем продукты → цветы (для карточек)
+  // -----------------------------------------------------------
+  const flowers = useMemo<Flower[]>(() => {
+    return products.map(toFlower);
   }, [products]);
 
-  // Get all available colors and compositions
+  // -----------------------------------------------------------
+  // Формируем справочники: цвета / составы
+  // -----------------------------------------------------------
   const availableColors = useMemo(() => {
     const colors = new Set<string>();
-    flowers.forEach(flower => {
-      flower.colors.forEach(color => colors.add(color));
-    });
-    return Array.from(colors).sort();
+    flowers.forEach((f) => (f.colors ?? []).forEach((c) => colors.add(c)));
+    return Array.from(colors).sort((a, b) => a.localeCompare(b));
   }, [flowers]);
 
   const availableCompositions = useMemo(() => {
-    const compositions = new Set<string>();
-    products.forEach(product => {
-      if (product.composition) {
-        product.composition.forEach(comp => compositions.add(comp));
-      }
+    const comps = new Set<string>();
+    products.forEach((p) => {
+      (p.composition ?? []).forEach((c) => comps.add(c));
     });
-    return Array.from(compositions).sort();
+    return Array.from(comps).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
-  // Get price range
-  const priceRangeMinMax = useMemo(() => {
-    if (flowers.length === 0) return [0, 10000];
-    const prices = flowers.map(f => f.price);
-    return [Math.min(...prices), Math.max(...prices)];
-  }, [flowers]);
+  // -----------------------------------------------------------
+  // Инициализация диапазона цен по данным (однократно на изменение)
+  // -----------------------------------------------------------
+  const absolutePriceBounds = useMemo(() => getPriceBounds(flowers), [flowers]);
 
+  useEffect(() => {
+    // как только данные появились или изменились — обновим priceRange
+    setPriceRange(absolutePriceBounds);
+  }, [absolutePriceBounds[0], absolutePriceBounds[1]]); // завязываемся на сами числа
+
+  // -----------------------------------------------------------
+  // Фильтрация и сортировка
+  // -----------------------------------------------------------
   const filteredFlowers = useMemo(() => {
-    let filtered = flowers.filter(flower => {
-      const matchesCategory = selectedCategory === 'all' || flower.category === selectedCategory;
-      
-      // Fixed: Allow flowers with empty colors array when "all" is selected
-      const matchesColor = selectedColor === 'all' || flower.colors.length === 0 || flower.colors.some(color => 
-        color.toLowerCase().includes(selectedColor.toLowerCase())
-      );
-      
-      // Fixed: Allow flowers with empty composition array when "all" is selected  
-      const product = products.find(p => p.id === flower.id);
-      const matchesComposition = selectedComposition === 'all' || 
-        !product?.composition || 
-        product.composition.length === 0 || 
-        product.composition.some(comp => 
+    // Предподготовим индексы для сортировки
+    const productMap = new Map<string, Product>();
+    products.forEach((p) => productMap.set(p.id, p));
+
+    const [minPrice, maxPrice] = priceRange;
+
+    const filtered = flowers.filter((flower) => {
+      // 1) Категория: если выбрана 'all', пропускаем всё, включая null категорию
+      const matchesCategory =
+        selectedCategory === 'all' || flower.category === selectedCategory;
+
+      if (!matchesCategory) return false;
+
+      // 2) Цвет: если выбран не 'all', а у товара пустой список — не режем
+      const fColors = flower.colors ?? [];
+      const matchesColor =
+        selectedColor === 'all' ||
+        fColors.length === 0 ||
+        fColors.some((c) =>
+          c.toLowerCase().includes(selectedColor.toLowerCase())
+        );
+
+      if (!matchesColor) return false;
+
+      // 3) Состав: аналогично цвету — не режем пустые
+      const p = productMap.get(flower.id);
+      const pComp = p?.composition ?? [];
+      const matchesComposition =
+        selectedComposition === 'all' ||
+        pComp.length === 0 ||
+        pComp.some((comp) =>
           comp.toLowerCase().includes(selectedComposition.toLowerCase())
         );
-      
-      const matchesPrice = flower.price >= priceRange[0] && flower.price <= priceRange[1];
-      
-      return matchesCategory && matchesColor && matchesComposition && matchesPrice;
+
+      if (!matchesComposition) return false;
+
+      // 4) Цена: inclusive (<= / >=), чтобы крайние цены не выпадали
+      const price = flower.price ?? 0;
+      const matchesPrice = price >= minPrice && price <= maxPrice;
+
+      if (!matchesPrice) return false;
+
+      return true;
     });
 
-    // Apply sorting
+    // Сортировка
     switch (sortBy) {
       case 'price-asc':
-        filtered.sort((a, b) => a.price - b.price);
+        filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
         break;
       case 'price-desc':
-        filtered.sort((a, b) => b.price - a.price);
+        filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
         break;
       case 'name':
         filtered.sort((a, b) => a.name.localeCompare(b.name));
         break;
       case 'newest':
-        // Assuming newer products have higher sort_order or created_at
         filtered.sort((a, b) => {
-          const productA = products.find(p => p.id === a.id);
-          const productB = products.find(p => p.id === b.id);
-          return (productB?.sort_order || 0) - (productA?.sort_order || 0);
+          const A = productMap.get(a.id)?.sort_order ?? 0;
+          const B = productMap.get(b.id)?.sort_order ?? 0;
+          return B - A;
         });
         break;
-      default: // popularity
+      case 'popularity':
+      default:
+        // по умолчанию — тоже по sort_order (как "популярность")
         filtered.sort((a, b) => {
-          const productA = products.find(p => p.id === a.id);
-          const productB = products.find(p => p.id === b.id);
-          return (productB?.sort_order || 0) - (productA?.sort_order || 0);
+          const A = productMap.get(a.id)?.sort_order ?? 0;
+          const B = productMap.get(b.id)?.sort_order ?? 0;
+          return B - A;
         });
+        break;
     }
 
     return filtered;
-  }, [flowers, selectedCategory, selectedColor, selectedComposition, priceRange, sortBy, products]);
+  }, [
+    flowers,
+    products,
+    selectedCategory,
+    selectedColor,
+    selectedComposition,
+    priceRange,
+    sortBy,
+  ]);
 
+  // -----------------------------------------------------------
+  // Избранное (заглушка)
+  // -----------------------------------------------------------
   const handleToggleFavorite = (flower: Flower) => {
     console.log('Добавлено в избранное:', flower.name);
-    // Здесь будет логика добавления в избранное
   };
 
+  // -----------------------------------------------------------
+  // Состояния загрузки/ошибок
+  // -----------------------------------------------------------
   if (productsLoading || categoriesLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-foreground mb-4">
+          <h1 className="mb-4 text-4xl font-bold text-foreground">
             Каталог цветов и букетов
           </h1>
           <p className="text-lg text-muted-foreground">Загрузка каталога...</p>
@@ -171,7 +267,7 @@ export const FlowerCatalog = () => {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-foreground mb-4">
+          <h1 className="mb-4 text-4xl font-bold text-foreground">
             Каталог цветов и букетов
           </h1>
           <p className="text-destructive">Ошибка загрузки каталога</p>
@@ -180,22 +276,25 @@ export const FlowerCatalog = () => {
     );
   }
 
+  // -----------------------------------------------------------
+  // Рендер
+  // -----------------------------------------------------------
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Заголовок */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+      <div className="mb-8 text-center">
+        <h1 className="mb-4 text-3xl font-bold text-foreground md:text-4xl">
           Каталог цветов и букетов
         </h1>
       </div>
 
       {/* Фильтры и сортировка */}
-      <div className="flex justify-between items-center mb-6 gap-4 flex-wrap">
-        {/* Кнопка фильтров */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        {/* Кнопка "Фильтры" */}
         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="h-10">
-              <SlidersHorizontal className="w-4 h-4 mr-2" />
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
               КАТЕГОРИИ
             </Button>
           </DropdownMenuTrigger>
@@ -205,13 +304,16 @@ export const FlowerCatalog = () => {
               <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
                 Категория
               </DropdownMenuLabel>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <Select
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите категорию" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все категории</SelectItem>
-                  {categories.map(category => (
+                  {categories.map((category) => (
                     <SelectItem key={category.id} value={category.name}>
                       {category.name}
                     </SelectItem>
@@ -228,13 +330,16 @@ export const FlowerCatalog = () => {
                 <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
                   Цветы в составе
                 </DropdownMenuLabel>
-                <Select value={selectedComposition} onValueChange={setSelectedComposition}>
+                <Select
+                  value={selectedComposition}
+                  onValueChange={setSelectedComposition}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите цветы" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Все цветы</SelectItem>
-                    {availableCompositions.map(comp => (
+                    {availableCompositions.map((comp) => (
                       <SelectItem key={comp} value={comp}>
                         {comp}
                       </SelectItem>
@@ -252,13 +357,16 @@ export const FlowerCatalog = () => {
                 <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
                   Цвета
                 </DropdownMenuLabel>
-                <Select value={selectedColor} onValueChange={setSelectedColor}>
+                <Select
+                  value={selectedColor}
+                  onValueChange={setSelectedColor}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите цвет" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Все цвета</SelectItem>
-                    {availableColors.map(color => (
+                    {availableColors.map((color) => (
                       <SelectItem key={color} value={color}>
                         {color}
                       </SelectItem>
@@ -273,14 +381,14 @@ export const FlowerCatalog = () => {
             {/* Цена */}
             <div className="space-y-3">
               <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
-                Цена: {priceRange[0]} - {priceRange[1]} ₽
+                Цена: {priceRange[0]} — {priceRange[1]} ₽
               </DropdownMenuLabel>
               <div className="px-2">
                 <Slider
                   value={priceRange}
-                  onValueChange={setPriceRange}
-                  max={priceRangeMinMax[1]}
-                  min={priceRangeMinMax[0]}
+                  onValueChange={(v) => setPriceRange([v[0], v[1]] as [number, number])}
+                  min={absolutePriceBounds[0]}
+                  max={absolutePriceBounds[1]}
                   step={100}
                   className="w-full"
                 />
@@ -288,69 +396,66 @@ export const FlowerCatalog = () => {
             </div>
 
             {/* Кнопки управления */}
-            <div className="flex gap-2 pt-4 border-t">
-              <Button 
-                variant="default" 
-                size="sm" 
-                className="flex-1 transition-all duration-200"
-                onClick={() => {
-                  // Закрываем dropdown с анимацией
-                  setDropdownOpen(false);
-                }}
-              >
-                Применить
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1"
-                onClick={() => {
-                  setSelectedCategory('all');
-                  setSelectedColor('all');
-                  setSelectedComposition('all');
-                  setPriceRange(priceRangeMinMax);
-                }}
-              >
-                Сбросить
-              </Button>
+            <div className="border-t pt-4">
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1 transition-all duration-200"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Применить
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setSelectedColor('all');
+                    setSelectedComposition('all');
+                    setPriceRange(absolutePriceBounds);
+                  }}
+                >
+                  Сбросить
+                </Button>
+              </div>
             </div>
-
           </DropdownMenuContent>
         </DropdownMenu>
 
         {/* Сортировка */}
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-auto min-w-[180px]">
-            <ArrowUpDown className="w-4 h-4 mr-2" />
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+          <SelectTrigger className="min-w-[180px] w-auto">
+            <ArrowUpDown className="mr-2 h-4 w-4" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="popularity">По популярности</SelectItem>
             <SelectItem value="price-asc">По возрастанию цены</SelectItem>
             <SelectItem value="price-desc">По убыванию цены</SelectItem>
+            <SelectItem value="name">По названию</SelectItem>
             <SelectItem value="newest">По новизне</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Статистика */}
-      <div className="flex justify-between items-center mb-6 text-sm text-muted-foreground">
-        <div>
-          Найдено: {filteredFlowers.length} из {flowers.length}
-        </div>
+      <div className="mb-6 flex items-center justify-between text-sm text-muted-foreground">
+        <div>Найдено: {filteredFlowers.length} из {flowers.length}</div>
         <div className="flex gap-2">
           <Badge variant="secondary">
-            В наличии: {flowers.filter(f => f.inStock).length}
+            В наличии: {flowers.filter((f) => f.inStock).length}
           </Badge>
           <Badge variant="outline">
-            Нет в наличии: {flowers.filter(f => !f.inStock).length}
+            Нет в наличии: {flowers.filter((f) => !f.inStock).length}
           </Badge>
         </div>
       </div>
 
       {/* Каталог */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-6">
-        {filteredFlowers.map(flower => (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 sm:gap-6 lg:gap-6">
+        {filteredFlowers.map((flower) => (
           <FlowerCard
             key={flower.id}
             flower={flower}
@@ -359,18 +464,17 @@ export const FlowerCatalog = () => {
         ))}
       </div>
 
+      {/* Пустой результат */}
       {filteredFlowers.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-lg text-muted-foreground mb-4">
-            Цветы не найдены
-          </p>
+        <div className="py-12 text-center">
+          <p className="mb-4 text-lg text-muted-foreground">Цветы не найдены</p>
           <Button
             variant="outline"
             onClick={() => {
               setSelectedCategory('all');
               setSelectedColor('all');
               setSelectedComposition('all');
-              setPriceRange(priceRangeMinMax);
+              setPriceRange(absolutePriceBounds);
               setSortBy('popularity');
             }}
           >
