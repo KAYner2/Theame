@@ -99,13 +99,21 @@ export const FlowerCatalog = () => {
   const filteredFlowers = useMemo(() => {
     let filtered = flowers.filter(flower => {
       const matchesCategory = selectedCategory === 'all' || flower.category === selectedCategory;
-      const matchesColor = selectedColor === 'all' || flower.colors.some(color => 
+      
+      // Fixed: Allow flowers with empty colors array when "all" is selected
+      const matchesColor = selectedColor === 'all' || flower.colors.length === 0 || flower.colors.some(color => 
         color.toLowerCase().includes(selectedColor.toLowerCase())
       );
+      
+      // Fixed: Allow flowers with empty composition array when "all" is selected  
+      const product = products.find(p => p.id === flower.id);
       const matchesComposition = selectedComposition === 'all' || 
-        products.find(p => p.id === flower.id)?.composition?.some(comp => 
+        !product?.composition || 
+        product.composition.length === 0 || 
+        product.composition.some(comp => 
           comp.toLowerCase().includes(selectedComposition.toLowerCase())
         );
+      
       const matchesPrice = flower.price >= priceRange[0] && flower.price <= priceRange[1];
       
       return matchesCategory && matchesColor && matchesComposition && matchesPrice;
@@ -346,7 +354,7 @@ export const FlowerCatalog = () => {
           <FlowerCard
             key={flower.id}
             flower={flower}
-            
+            onToggleFavorite={handleToggleFavorite}
           />
         ))}
       </div>
