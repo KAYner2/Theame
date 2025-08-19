@@ -8,10 +8,10 @@ export const useProducts = () => {
     queryKey: ['products'],
     queryFn: async () => {
       const { data, error } = await supabase
-  .from('products')
-  .select('*')
-  .order('sort_order', { ascending: true });
-      
+        .from('products')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
       if (error) throw error;
       return data as Product[];
     },
@@ -28,22 +28,26 @@ export const useFeaturedProducts = () => {
         .eq('is_active', true)
         .eq('is_featured', true)
         .order('sort_order', { ascending: true });
-      
+
       if (error) throw error;
       return data as Product[];
     },
   });
 };
 
+/**
+ * Список для админки. ВАЖНО: queryKey = ['products'],
+ * чтобы инвалидация из админки попадала точно в этот кэш.
+ */
 export const useAllProducts = () => {
   return useQuery({
-    queryKey: ['all-products'],
+    queryKey: ['products'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('sort_order', { ascending: true });
-      
+
       if (error) throw error;
       return data as Product[];
     },
@@ -61,24 +65,23 @@ export const useCreateProduct = () => {
         .insert(product)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-      queryClient.invalidateQueries({ queryKey: ['all-products'] });
       toast({
-        title: "Успешно",
-        description: "Продукт создан",
+        title: 'Успешно',
+        description: 'Продукт создан',
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Ошибка",
+        title: 'Ошибка',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -96,24 +99,23 @@ export const useUpdateProduct = () => {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-      queryClient.invalidateQueries({ queryKey: ['all-products'] });
       toast({
-        title: "Успешно",
-        description: "Продукт обновлен",
+        title: 'Успешно',
+        description: 'Продукт обновлен',
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Ошибка",
+        title: 'Ошибка',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -129,23 +131,22 @@ export const useDeleteProduct = () => {
         .from('products')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-      queryClient.invalidateQueries({ queryKey: ['all-products'] });
       toast({
-        title: "Успешно",
-        description: "Продукт удален",
+        title: 'Успешно',
+        description: 'Продукт удален',
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Ошибка",
+        title: 'Ошибка',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });

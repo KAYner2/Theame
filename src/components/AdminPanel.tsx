@@ -23,6 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { arrayMove } from "@dnd-kit/sortable";
 import type { DragEndEvent } from "@dnd-kit/core";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const AdminPanel = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -34,6 +35,9 @@ export const AdminPanel = () => {
   const { data: categories = [], isLoading: categoriesLoading } = useAllCategories();
   const { data: products = [], isLoading: productsLoading } = useAllProducts();
   const [orderedProducts, setOrderedProducts] = useState<Product[]>([]);
+  React.useEffect(() => {
+  setOrderedProducts(products ?? []);
+}, [products]);
 
   const handleDragEnd = (event: DragEndEvent) => {
   const { active, over } = event;
@@ -41,15 +45,18 @@ export const AdminPanel = () => {
 
   const oldIndex = orderedProducts.findIndex((p) => String(p.id) === String(active.id));
   const newIndex = orderedProducts.findIndex((p) => String(p.id) === String(over.id));
-
   if (oldIndex === -1 || newIndex === -1) return;
 
-  setOrderedProducts((items) => arrayMove(items, oldIndex, newIndex));
+  // локально переставляем
+  const newOrderArr = arrayMove(orderedProducts, oldIndex, newIndex);
+  setOrderedProducts(newOrderArr);
+
+  // сохраняем порядок в базе
+  updateProductOrder.mutate(
+    newOrderArr.map((p, i) => ({ id: String(p.id), sort_order: i }))
+  );
 };
 
-React.useEffect(() => {
-  setOrderedProducts(products ?? []);
-}, [products]);
   const { data: reviews = [], isLoading: reviewsLoading } = useAllReviews();
   const { data: heroSlides = [], isLoading: heroSlidesLoading } = useAllHeroSlides();
   const { data: recommendations = [], isLoading: recommendationsLoading } = useAllRecommendations();
@@ -61,6 +68,27 @@ React.useEffect(() => {
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
+  const queryClient = useQueryClient();
+
+const updateProductOrder = useMutation({
+  mutationFn: async (newOrder: Array<{ id: string; sort_order: number }>) => {
+    const results = await Promise.all(
+      newOrder.map((row) =>
+        supabase.from("products").update({ sort_order: row.sort_order }).eq("id", row.id)
+      )
+    );
+    const firstError = results.find((r: any) => r.error)?.error;
+    if (firstError) throw firstError;
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+    toast({ title: "Порядок сохранён" });
+  },
+  onError: (err: any) => {
+    console.error(err);
+    toast({ variant: "destructive", title: "Не удалось сохранить порядок" });
+  },
+});
   const createReview = useCreateReview();
   const updateReview = useUpdateReview();
   const deleteReview = useDeleteReview();
