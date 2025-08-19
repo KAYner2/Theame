@@ -15,7 +15,6 @@ import { useAllProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } 
 import { useAllReviews, useCreateReview, useUpdateReview, useDeleteReview } from '@/hooks/useReviews';
 import { useAllHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSlide } from '@/hooks/useHeroSlides';
 import { useAllRecommendations, useCreateRecommendation, useUpdateRecommendation, useDeleteRecommendation } from '@/hooks/useRecommendations';
-import { DndContext } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import SortableProductCard from "./SortableProductCard"; // поправь путь при необходимости
 import { Category, Product, Review, HeroSlide } from '@/types/database';
@@ -24,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { arrayMove } from "@dnd-kit/sortable";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { DndContext, useSensors, useSensor, MouseSensor, TouchSensor } from "@dnd-kit/core";
 
 export const AdminPanel = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -38,6 +38,12 @@ export const AdminPanel = () => {
   React.useEffect(() => {
   setOrderedProducts(products ?? []);
 }, [products]);
+
+// Сенсоры для DnD (мышь + тач)
+const sensors = useSensors(
+  useSensor(MouseSensor),
+  useSensor(TouchSensor)
+);
 
   const handleDragEnd = (event: DragEndEvent) => {
   const { active, over } = event;
@@ -917,7 +923,7 @@ const updateProductOrder = useMutation({
           {productsLoading ? (
   <p>Загрузка...</p>
 ) : (
-  <DndContext onDragEnd={handleDragEnd}>
+  <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
     <SortableContext
       items={orderedProducts.map((p) => String(p.id))}
       strategy={verticalListSortingStrategy}
@@ -952,9 +958,14 @@ const updateProductOrder = useMutation({
                 <div className="flex space-x-2">
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={() => setEditingItem(product)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <Button
+  variant="outline"
+  size="sm"
+  onPointerDown={(e) => e.stopPropagation()}
+  onClick={() => setEditingItem(product)}
+>
+  <Edit className="h-4 w-4" />
+</Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
                       <DialogHeader>
@@ -963,13 +974,14 @@ const updateProductOrder = useMutation({
                       <ProductForm product={product} />
                     </DialogContent>
                   </Dialog>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => deleteProduct.mutate(product.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <Button
+  variant="outline"
+  size="sm"
+  onPointerDown={(e) => e.stopPropagation()}
+  onClick={() => deleteProduct.mutate(product.id)}
+>
+  <Trash2 className="h-4 w-4" />
+</Button>
                 </div>
               </CardContent>
             </Card>
