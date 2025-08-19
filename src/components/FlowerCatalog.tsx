@@ -64,12 +64,12 @@ function getPriceBounds(flowers: Flower[]): [number, number] {
 // -------------------------------------------------------------
 
 export const FlowerCatalog = () => {
-  // URL-параметры (например, ?category=Букеты)
-  const [searchParams] = useSearchParams();
-  const categoryFromUrl = searchParams.get('category');
+  // URL-параметры (теперь ?category=<categoryId>)
+const [searchParams] = useSearchParams();
+const categoryIdFromUrl = searchParams.get('category');
 
   // Состояния фильтров/сортировки
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | 'all'>('all');
   const [selectedColor, setSelectedColor] = useState('all');
   const [selectedComposition, setSelectedComposition] = useState('all');
 
@@ -98,25 +98,25 @@ export const FlowerCatalog = () => {
   // Подхват категории из URL, плавный скролл при загрузке
   // -----------------------------------------------------------
   useEffect(() => {
-    if (categoryFromUrl && categories.length > 0) {
-      const exists = categories.some((c) => c.name === categoryFromUrl);
-      if (exists) setSelectedCategory(categoryFromUrl);
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [categoryFromUrl, categories]);
+  if (categoryIdFromUrl && categories.length > 0) {
+    const exists = categories.some((c) => String(c.id) === String(categoryIdFromUrl));
+    if (exists) setSelectedCategoryId(categoryIdFromUrl);
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}, [categoryIdFromUrl, categories]);
 
   // Сброс category параметра из URL если пользователь вручную сменил категорию
   useEffect(() => {
-    if (
-      categoryFromUrl &&
-      selectedCategory !== categoryFromUrl &&
-      selectedCategory !== 'all'
-    ) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('category');
-      window.history.replaceState({}, '', url.pathname);
-    }
-  }, [selectedCategory, categoryFromUrl]);
+  if (
+    categoryIdFromUrl &&
+    selectedCategoryId !== categoryIdFromUrl &&
+    selectedCategoryId !== 'all'
+  ) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('category');
+    window.history.replaceState({}, '', url.pathname);
+  }
+}, [selectedCategoryId, categoryIdFromUrl]);
 
   // -----------------------------------------------------------
   // Преобразуем продукты → цветы (для карточек)
@@ -159,7 +159,8 @@ export const FlowerCatalog = () => {
     const filtered = flowers.filter((flower) => {
       // 1) Категория ('all' пропускает всё)
       const matchesCategory =
-        selectedCategory === 'all' || flower.category === selectedCategory;
+  selectedCategoryId === 'all' ||
+  String(productMap.get(flower.id)?.category_id ?? '') === String(selectedCategoryId);
       if (!matchesCategory) return false;
 
       // 2) Цвет ('all' пропускает всё; пустой список цветов не режем)
@@ -223,7 +224,7 @@ export const FlowerCatalog = () => {
   }, [
     flowers,
     products,
-    selectedCategory,
+    selectedCategoryId,
     selectedColor,
     selectedComposition,
     priceRange,
@@ -295,21 +296,21 @@ export const FlowerCatalog = () => {
                 Категория
               </DropdownMenuLabel>
               <Select
-                value={selectedCategory}
-                onValueChange={setSelectedCategory}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите категорию" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все категории</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.name}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+  value={selectedCategoryId}
+  onValueChange={(v) => setSelectedCategoryId(v as any)}
+>
+  <SelectTrigger>
+    <SelectValue placeholder="Выберите категорию" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">Все категории</SelectItem>
+    {categories.map((category) => (
+      <SelectItem key={category.id} value={String(category.id)}>
+        {category.name}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
             </div>
 
             <DropdownMenuSeparator className="my-4" />
@@ -401,7 +402,7 @@ export const FlowerCatalog = () => {
                   size="sm"
                   className="flex-1"
                   onClick={() => {
-                    setSelectedCategory('all');
+                    setSelectedCategoryId('all');
                     setSelectedColor('all');
                     setSelectedComposition('all');
                     setPriceRange(absolutePriceBounds);
@@ -461,7 +462,7 @@ export const FlowerCatalog = () => {
           <Button
             variant="outline"
             onClick={() => {
-              setSelectedCategory('all');
+              setSelectedCategoryId('all');
               setSelectedColor('all');
               setSelectedComposition('all');
               setPriceRange(absolutePriceBounds);
