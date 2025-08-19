@@ -24,10 +24,7 @@ export const useFeaturedProducts = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select(`
-          *,
-          category:categories(*)
-        `)
+        .select('*')
         .eq('is_active', true)
         .eq('is_featured', true)
         .order('sort_order', { ascending: true });
@@ -44,10 +41,7 @@ export const useAllProducts = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select(`
-          *,
-          category:categories(*)
-        `)
+        .select('*')
         .order('sort_order', { ascending: true });
       
       if (error) throw error;

@@ -30,10 +30,7 @@ export const useProductRecommendations = (productId: string) => {
       // Получаем настройки рекомендаций для данной категории
       const { data: recommendations } = await supabase
         .from('product_recommendations')
-        .select(`
-          target_category_id,
-          sort_order
-        `)
+        .select('*')
         .eq('source_category_id', currentProduct.category_id)
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
@@ -106,10 +103,7 @@ export const useProductRecommendations = (productId: string) => {
       // Получаем товары из целевых категорий
       const { data: products, error } = await supabase
         .from('products')
-        .select(`
-          *,
-          category:categories(*)
-        `)
+        .select('*')
         .in('category_id', targetCategoryIds)
         .eq('is_active', true)
         .neq('id', productId) // Исключаем текущий товар

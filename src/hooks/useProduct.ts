@@ -7,10 +7,7 @@ export const useProduct = (id: string) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select(`
-          *,
-          category:categories(*)
-        `)
+        .select('*')
         .eq('id', id)
         .eq('is_active', true)
         .maybeSingle();
