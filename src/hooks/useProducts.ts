@@ -9,10 +9,7 @@ export const useProducts = () => {
     queryFn: async () => {
       const { data, error } = await supabase
   .from('products')
-  .select(`
-    *,
-    category:categories(*)
-  `)
+  .select('*')
   .order('sort_order', { ascending: true });
       
       if (error) throw error;
