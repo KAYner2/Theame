@@ -15,9 +15,14 @@ import { useAllProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } 
 import { useAllReviews, useCreateReview, useUpdateReview, useDeleteReview } from '@/hooks/useReviews';
 import { useAllHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSlide } from '@/hooks/useHeroSlides';
 import { useAllRecommendations, useCreateRecommendation, useUpdateRecommendation, useDeleteRecommendation } from '@/hooks/useRecommendations';
+import { DndContext } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import SortableProductCard from "./SortableProductCard"; // поправь путь при необходимости
 import { Category, Product, Review, HeroSlide } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { arrayMove } from "@dnd-kit/sortable";
+import type { DragEndEvent } from "@dnd-kit/core";
 
 export const AdminPanel = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -28,6 +33,23 @@ export const AdminPanel = () => {
   // Queries
   const { data: categories = [], isLoading: categoriesLoading } = useAllCategories();
   const { data: products = [], isLoading: productsLoading } = useAllProducts();
+  const [orderedProducts, setOrderedProducts] = useState<Product[]>([]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+  const { active, over } = event;
+  if (!over || active.id === over.id) return;
+
+  const oldIndex = orderedProducts.findIndex((p) => String(p.id) === String(active.id));
+  const newIndex = orderedProducts.findIndex((p) => String(p.id) === String(over.id));
+
+  if (oldIndex === -1 || newIndex === -1) return;
+
+  setOrderedProducts((items) => arrayMove(items, oldIndex, newIndex));
+};
+
+React.useEffect(() => {
+  setOrderedProducts(products ?? []);
+}, [products]);
   const { data: reviews = [], isLoading: reviewsLoading } = useAllReviews();
   const { data: heroSlides = [], isLoading: heroSlidesLoading } = useAllHeroSlides();
   const { data: recommendations = [], isLoading: recommendationsLoading } = useAllRecommendations();
@@ -862,61 +884,71 @@ export const AdminPanel = () => {
           </div>
 
           {productsLoading ? (
-            <p>Загрузка...</p>
-          ) : (
-            <div className="grid gap-4">
-              {products.map((product) => (
-                <Card key={product.id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center space-x-4">
-                      {product.image_url && (
-                        <img src={product.image_url} alt={product.name} className="w-12 h-12 object-cover rounded" />
+  <p>Загрузка...</p>
+) : (
+  <DndContext onDragEnd={handleDragEnd}>
+    <SortableContext
+      items={orderedProducts.map((p) => String(p.id))}
+      strategy={verticalListSortingStrategy}
+    >
+      <div className="grid gap-4">
+        {orderedProducts.map((product) => (
+          <SortableProductCard key={product.id} id={String(product.id)}>
+            <Card>
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="flex items-center space-x-4">
+                  {product.image_url && (
+                    <img src={product.image_url} alt={product.name} className="w-12 h-12 object-cover rounded" />
+                  )}
+                  <div>
+                    <h3 className="font-semibold">{product.name}</h3>
+                    <p className="text-sm text-muted-foreground">{product.description}</p>
+                    <p className="text-sm font-medium">₽{product.price}</p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      {product.is_featured && (
+                        <Badge variant="default">
+                          <Star className="w-3 h-3 mr-1" />
+                          Рекомендуемый
+                        </Badge>
                       )}
-                      <div>
-                        <h3 className="font-semibold">{product.name}</h3>
-                        <p className="text-sm text-muted-foreground">{product.description}</p>
-                        <p className="text-sm font-medium">₽{product.price}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          {product.is_featured && (
-                            <Badge variant="default">
-                              <Star className="w-3 h-3 mr-1" />
-                              Рекомендуемый
-                            </Badge>
-                          )}
-                          <Badge variant={product.is_active ? "default" : "secondary"}>
-                            {product.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
-                            {product.is_active ? 'Активен' : 'Неактивен'}
-                          </Badge>
-                        </div>
-                      </div>
+                      <Badge variant={product.is_active ? "default" : "secondary"}>
+                        {product.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
+                        {product.is_active ? 'Активен' : 'Неактивен'}
+                      </Badge>
                     </div>
-                    <div className="flex space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setEditingItem(product)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
-                          <DialogHeader>
-                            <DialogTitle>Редактировать товар</DialogTitle>
-                          </DialogHeader>
-                          <ProductForm product={product} />
-                        </DialogContent>
-                      </Dialog>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => deleteProduct.mutate(product.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={() => setEditingItem(product)}>
+                        <Edit className="h-4 w-4" />
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+                      <DialogHeader>
+                        <DialogTitle>Редактировать товар</DialogTitle>
+                      </DialogHeader>
+                      <ProductForm product={product} />
+                    </DialogContent>
+                  </Dialog>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => deleteProduct.mutate(product.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </SortableProductCard>
+        ))}
+      </div>
+    </SortableContext>
+  </DndContext>
+)}
+
         </TabsContent>
 
         <TabsContent value="reviews" className="space-y-4">
