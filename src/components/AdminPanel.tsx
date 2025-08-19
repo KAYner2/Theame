@@ -39,10 +39,15 @@ export const AdminPanel = () => {
   setOrderedProducts(products ?? []);
 }, [products]);
 
-// Сенсоры для DnD (мышь + тач)
 const sensors = useSensors(
-  useSensor(MouseSensor),
-  useSensor(TouchSensor)
+  // Мышь: начать dnd только если протащили ≥12px (чуть больше, чтобы клики не срабатывали)
+  useSensor(MouseSensor, {
+    activationConstraint: { distance: 12 },
+  }),
+  // Тач: начать dnd только если подержали палец ≥200мс и сдвиг ≤8px
+  useSensor(TouchSensor, {
+    activationConstraint: { delay: 200, tolerance: 8 },
+  })
 );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -935,8 +940,13 @@ const updateProductOrder = useMutation({
               <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center space-x-4">
                   {product.image_url && (
-                    <img src={product.image_url} alt={product.name} className="w-12 h-12 object-cover rounded" />
-                  )}
+  <img
+    src={product.image_url}
+    alt={product.name}
+    className="w-12 h-12 object-cover rounded"
+    draggable={false}
+  />
+)}
                   <div>
                     <h3 className="font-semibold">{product.name}</h3>
                     <p className="text-sm text-muted-foreground">{product.description}</p>
