@@ -36,9 +36,22 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
     );
   }
 
+  // --- ПУСТОЕ СОСТОЯНИЕ ВМЕСТО return null ---
   if (!recommendations || recommendations.length === 0) {
-    return null;
+    return (
+      <section className="py-8">
+        <div className="container mx-auto px-4">
+          <h2 className="text-xl font-bold text-center mb-6">
+            С ЭТИМ ТАКЖЕ ПОКУПАЮТ
+          </h2>
+          <p className="text-center text-muted-foreground">
+            Пока нет рекомендаций
+          </p>
+        </div>
+      </section>
+    );
   }
+  // --------------------------------------------
 
   const handleAddToCart = (product: any) => {
     const cartItem = {
@@ -57,7 +70,6 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
     };
 
     addToCart(cartItem);
-
     toast.success(`${product.name} добавлен в корзину`);
   };
 
@@ -66,7 +78,7 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
       <h2 className="text-xl font-bold text-foreground mb-6 text-center">
         С ЭТИМ ТАКЖЕ ПОКУПАЮТ
       </h2>
-      
+
       <div className="relative">
         <Carousel
           opts={{
@@ -76,7 +88,7 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
           className="w-full"
         >
           <CarouselContent className="-ml-2 md:-ml-4">
-            {recommendations.map((product) => (
+            {recommendations.map((product: any) => (
               <CarouselItem key={product.id} className="pl-2 md:pl-4 basis-1/2 md:basis-1/5">
                 <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300">
                   <Link to={`/product/${product.id}`} className="block">
@@ -88,19 +100,19 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
                       />
                     </div>
                   </Link>
-                  
+
                   <CardContent className="p-3 space-y-2">
                     <Link to={`/product/${product.id}`}>
                       <h3 className="font-medium text-sm text-foreground hover:text-primary transition-colors line-clamp-2">
                         {product.name}
                       </h3>
                     </Link>
-                    
+
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-bold text-foreground">
                         {product.price ? `${product.price.toLocaleString()} ₽` : 'Цена по запросу'}
                       </div>
-                      
+
                       <Button
                         size="sm"
                         variant="outline"
@@ -110,11 +122,13 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
                         }}
                         className="h-8 w-8 p-0"
                         disabled={product.availability_status !== 'in_stock'}
+                        aria-label="Добавить в корзину"
+                        title="Добавить в корзину"
                       >
                         <ShoppingBag className="w-3 h-3" />
                       </Button>
                     </div>
-                    
+
                     {product.category && (
                       <div className="text-xs text-muted-foreground">
                         {product.category.name}
@@ -125,7 +139,7 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
               </CarouselItem>
             ))}
           </CarouselContent>
-          
+
           <CarouselPrevious className="left-2" />
           <CarouselNext className="right-2" />
         </Carousel>
