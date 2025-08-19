@@ -1,3 +1,4 @@
+import YandexMetrikaListener from "./components/YandexMetrikaListener";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -33,29 +34,30 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Header />
-          <main className="min-h-screen">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/catalog" element={<Catalog />} />
-              <Route path="/favorites" element={<Favorites />} />
-              <Route path="/product/:id" element={<ProductPage />} />
-              <Route path="/cart" element={<CartPage />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/public-offer" element={<PublicOffer />} />
-              <Route path="/success" element={<PaymentSuccess />} />
-              <Route path="/payment-error" element={<PaymentError />} />
-              <Route path="*" element={<NotFound />} />
-              <Route path="/success" element={<Navigate to="/payment-success" replace />} />
-              <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
-            </Routes>
-          </main>
-          <Footer />
-          <WhatsAppFloat />
-        </BrowserRouter>
+  <YandexMetrikaListener />   {/* 👈 вставляем сюда */}
+  <Header />
+  <main className="min-h-screen">
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/catalog" element={<Catalog />} />
+      <Route path="/favorites" element={<Favorites />} />
+      <Route path="/product/:id" element={<ProductPage />} />
+      <Route path="/cart" element={<CartPage />} />
+      <Route path="/admin" element={<Admin />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/public-offer" element={<PublicOffer />} />
+      <Route path="/success" element={<PaymentSuccess />} />
+      <Route path="/payment-error" element={<PaymentError />} />
+      <Route path="*" element={<NotFound />} />
+      <Route path="/success" element={<Navigate to="/payment-success" replace />} />
+      <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
+    </Routes>
+  </main>
+  <Footer />
+  <WhatsAppFloat />
+</BrowserRouter>
         </FavoritesProvider>
       </CartProvider>
     </TooltipProvider>
