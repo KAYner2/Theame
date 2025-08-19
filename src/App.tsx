@@ -1,4 +1,5 @@
 import YandexMetrikaListener from "./components/YandexMetrikaListener";
+import SortableTest from "./components/SortableTest";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -53,6 +54,7 @@ const App = () => (
       <Route path="*" element={<NotFound />} />
       <Route path="/success" element={<Navigate to="/payment-success" replace />} />
       <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
+      <Route path="/test-sort" element={<SortableTest />} />
     </Routes>
   </main>
   <Footer />
