@@ -24,7 +24,7 @@ import {
 
 import { SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 
-import { useProducts } from '@/hooks/useProducts';
+import { useAllProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import type { Product } from '@/types/database';
 
@@ -40,12 +40,13 @@ function toFlower(product: Product): Flower {
     price: product.price || 0,
     image: product.image_url || '/placeholder.svg',
     description: product.description || '',
-    category: product.category?.name || 'Разное',
+    category: (product as any).category?.name || 'Разное',
     inStock: Boolean(product.is_active ?? true),
     quantity: 1,
     colors: product.colors || [],
     size: 'medium',
     occasion: [],
+    // Прочее можно добавить по мере необходимости
   };
 }
 
@@ -55,7 +56,7 @@ function getPriceBounds(flowers: Flower[]): [number, number] {
   const prices = flowers.map((f) => f.price ?? 0);
   const min = Math.min(...prices);
   const max = Math.max(...prices);
-  return [min, Math.max(max, min)]; // защитимся от одинаковых значений
+  return [min, Math.max(max, min)];
 }
 
 // -------------------------------------------------------------
@@ -75,17 +76,18 @@ export const FlowerCatalog = () => {
   // Диапазон цен (инициализируем после загрузки данных)
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
 
-  // popularity | price-asc | price-desc | newest
+  // popularity | price-asc | price-desc | name | newest
   const [sortBy, setSortBy] = useState<'popularity' | 'price-asc' | 'price-desc' | 'name' | 'newest'>('popularity');
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Данные
+  // Данные (ИСПОЛЬЗУЕМ useAllProducts)
   const {
     data: products = [],
     isLoading: productsLoading,
     error: productsError,
-  } = useProducts();
+  } = useAllProducts();
+
   const {
     data: categories = [],
     isLoading: categoriesLoading,
@@ -100,7 +102,6 @@ export const FlowerCatalog = () => {
       const exists = categories.some((c) => c.name === categoryFromUrl);
       if (exists) setSelectedCategory(categoryFromUrl);
     }
-
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [categoryFromUrl, categories]);
 
@@ -120,9 +121,7 @@ export const FlowerCatalog = () => {
   // -----------------------------------------------------------
   // Преобразуем продукты → цветы (для карточек)
   // -----------------------------------------------------------
-  const flowers = useMemo<Flower[]>(() => {
-    return products.map(toFlower);
-  }, [products]);
+  const flowers = useMemo<Flower[]>(() => products.map(toFlower), [products]);
 
   // -----------------------------------------------------------
   // Формируем справочники: цвета / составы
@@ -135,66 +134,54 @@ export const FlowerCatalog = () => {
 
   const availableCompositions = useMemo(() => {
     const comps = new Set<string>();
-    products.forEach((p) => {
-      (p.composition ?? []).forEach((c) => comps.add(c));
-    });
+    products.forEach((p) => (p.composition ?? []).forEach((c) => comps.add(c)));
     return Array.from(comps).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
   // -----------------------------------------------------------
-  // Инициализация диапазона цен по данным (однократно на изменение)
+  // Инициализация диапазона цен по данным
   // -----------------------------------------------------------
   const absolutePriceBounds = useMemo(() => getPriceBounds(flowers), [flowers]);
 
   useEffect(() => {
-    // как только данные появились или изменились — обновим priceRange
     setPriceRange(absolutePriceBounds);
-  }, [absolutePriceBounds[0], absolutePriceBounds[1]]); // завязываемся на сами числа
+  }, [absolutePriceBounds[0], absolutePriceBounds[1]]);
 
   // -----------------------------------------------------------
   // Фильтрация и сортировка
   // -----------------------------------------------------------
   const filteredFlowers = useMemo(() => {
-    // Предподготовим индексы для сортировки
     const productMap = new Map<string, Product>();
     products.forEach((p) => productMap.set(p.id, p));
 
     const [minPrice, maxPrice] = priceRange;
 
     const filtered = flowers.filter((flower) => {
-      // 1) Категория: если выбрана 'all', пропускаем всё, включая null категорию
+      // 1) Категория ('all' пропускает всё)
       const matchesCategory =
         selectedCategory === 'all' || flower.category === selectedCategory;
-
       if (!matchesCategory) return false;
 
-      // 2) Цвет: если выбран не 'all', а у товара пустой список — не режем
+      // 2) Цвет ('all' пропускает всё; пустой список цветов не режем)
       const fColors = flower.colors ?? [];
       const matchesColor =
         selectedColor === 'all' ||
         fColors.length === 0 ||
-        fColors.some((c) =>
-          c.toLowerCase().includes(selectedColor.toLowerCase())
-        );
-
+        fColors.some((c) => c.toLowerCase().includes(selectedColor.toLowerCase()));
       if (!matchesColor) return false;
 
-      // 3) Состав: аналогично цвету — не режем пустые
+      // 3) Состав ('all' пропускает всё; пустой состав не режем)
       const p = productMap.get(flower.id);
       const pComp = p?.composition ?? [];
       const matchesComposition =
         selectedComposition === 'all' ||
         pComp.length === 0 ||
-        pComp.some((comp) =>
-          comp.toLowerCase().includes(selectedComposition.toLowerCase())
-        );
-
+        pComp.some((comp) => comp.toLowerCase().includes(selectedComposition.toLowerCase()));
       if (!matchesComposition) return false;
 
-      // 4) Цена: inclusive (<= / >=), чтобы крайние цены не выпадали
+      // 4) Цена (включительно)
       const price = flower.price ?? 0;
       const matchesPrice = price >= minPrice && price <= maxPrice;
-
       if (!matchesPrice) return false;
 
       return true;
@@ -211,22 +198,25 @@ export const FlowerCatalog = () => {
       case 'name':
         filtered.sort((a, b) => a.name.localeCompare(b.name));
         break;
-      case 'newest':
+      case 'newest': {
+        // Интерпретируем "новизну" как больший sort_order (сверху)
         filtered.sort((a, b) => {
           const A = productMap.get(a.id)?.sort_order ?? 0;
           const B = productMap.get(b.id)?.sort_order ?? 0;
-          return B - A;
+          return B - A; // по убыванию sort_order
         });
         break;
+      }
       case 'popularity':
-      default:
-        // по умолчанию — тоже по sort_order (как "популярность")
+      default: {
+        // По умолчанию показываем как на витрине — по sort_order (меньший индекс выше)
         filtered.sort((a, b) => {
           const A = productMap.get(a.id)?.sort_order ?? 0;
           const B = productMap.get(b.id)?.sort_order ?? 0;
-          return B - A;
+          return A - B; // по возрастанию sort_order
         });
         break;
+      }
     }
 
     return filtered;
