@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Card, CardContent, CardFooter } from './ui/card';
 import { ShoppingCart } from 'lucide-react';
-import { useProducts } from '@/hooks/useProducts';
+import { useHomepageProducts } from '@/hooks/useProducts';
 import { useCart } from '@/context/CartContext';
 
 export function FeaturedProducts() {
   const [showAll, setShowAll] = useState(false);
-  const { data: allProducts = [], isLoading, error } = useProducts();
+  const { data: homepageProducts = [], isLoading, error } = useHomepageProducts();
   const { addToCart } = useCart();
 
   if (isLoading) {
@@ -41,12 +41,10 @@ export function FeaturedProducts() {
     );
   }
 
-  // Фильтруем продукты, которые должны отображаться на главной странице
-  const homepageProducts = allProducts.filter(product => product.show_on_homepage);
+  // показываем только первые 12, или все если showAll = true
   const displayedProducts = showAll ? homepageProducts : homepageProducts.slice(0, 12);
 
   const handleAddToCart = (product: any) => {
-    // Создаем объект, совместимый с типом Flower для корзины
     const cartItem = {
       id: product.id,
       name: product.name,
