@@ -13,7 +13,7 @@ export default function YandexMetrikaListener() {
   useEffect(() => {
     if (typeof window !== "undefined" && window.ym) {
       const url = location.pathname + location.search + location.hash;
-      window.ym(103783372, "hit", url, {
+      window.ym(103806735, "hit", url, {
         referer: document.referrer,
       });
     }
