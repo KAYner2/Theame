@@ -18,6 +18,20 @@ import { useAllRecommendations, useCreateRecommendation, useUpdateRecommendation
 import { Category, Product, Review, HeroSlide } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import SortableProductCard from "./SortableProductCard";
 
 export const AdminPanel = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -31,6 +45,30 @@ export const AdminPanel = () => {
   const { data: reviews = [], isLoading: reviewsLoading } = useAllReviews();
   const { data: heroSlides = [], isLoading: heroSlidesLoading } = useAllHeroSlides();
   const { data: recommendations = [], isLoading: recommendationsLoading } = useAllRecommendations();
+  const [orderedProducts, setOrderedProducts] = useState(products ?? []);
+
+React.useEffect(() => {
+  setOrderedProducts(
+    [...(products ?? [])].sort(
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+    )
+  );
+}, [products]);
+
+const sensors = useSensors(
+  useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+);
+
+const handleDragEnd = (event: DragEndEvent) => {
+  const { active, over } = event;
+  if (!over || active.id === over.id) return;
+
+  const oldIndex = orderedProducts.findIndex((p) => p.id === active.id);
+  const newIndex = orderedProducts.findIndex((p) => p.id === over.id);
+  if (oldIndex === -1 || newIndex === -1) return;
+
+  setOrderedProducts(arrayMove(orderedProducts, oldIndex, newIndex));
+};
 
   // Mutations
   const createCategory = useCreateCategory();
@@ -862,61 +900,85 @@ export const AdminPanel = () => {
           </div>
 
           {productsLoading ? (
-            <p>Загрузка...</p>
-          ) : (
-            <div className="grid gap-4">
-              {products.map((product) => (
-                <Card key={product.id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center space-x-4">
-                      {product.image_url && (
-                        <img src={product.image_url} alt={product.name} className="w-12 h-12 object-cover rounded" />
+  <p>Загрузка...</p>
+) : (
+  <DndContext
+    sensors={sensors}
+    collisionDetection={closestCenter}
+    onDragEnd={handleDragEnd}
+  >
+    <SortableContext
+      items={orderedProducts.map((p) => p.id /* если id число: String(p.id) */)}
+      strategy={verticalListSortingStrategy}
+    >
+      <div className="grid gap-4">
+        {orderedProducts.map((product) => (
+          <SortableProductCard key={product.id} id={product.id /* число? => String(product.id) */}>
+            <Card>
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="flex items-center space-x-4">
+                  {product.image_url && (
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-12 h-12 object-cover rounded"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
+                  <div>
+                    <h3 className="font-semibold">{product.name}</h3>
+                    <p className="text-sm text-muted-foreground">{product.description}</p>
+                    <p className="text-sm font-medium">₽{product.price}</p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      {product.is_featured && (
+                        <Badge variant="default">
+                          <Star className="w-3 h-3 mr-1" />
+                          Рекомендуемый
+                        </Badge>
                       )}
-                      <div>
-                        <h3 className="font-semibold">{product.name}</h3>
-                        <p className="text-sm text-muted-foreground">{product.description}</p>
-                        <p className="text-sm font-medium">₽{product.price}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          {product.is_featured && (
-                            <Badge variant="default">
-                              <Star className="w-3 h-3 mr-1" />
-                              Рекомендуемый
-                            </Badge>
-                          )}
-                          <Badge variant={product.is_active ? "default" : "secondary"}>
-                            {product.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
-                            {product.is_active ? 'Активен' : 'Неактивен'}
-                          </Badge>
-                        </div>
-                      </div>
+                      <Badge variant={product.is_active ? "default" : "secondary"}>
+                        {product.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
+                        {product.is_active ? "Активен" : "Неактивен"}
+                      </Badge>
                     </div>
-                    <div className="flex space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setEditingItem(product)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
-                          <DialogHeader>
-                            <DialogTitle>Редактировать товар</DialogTitle>
-                          </DialogHeader>
-                          <ProductForm product={product} />
-                        </DialogContent>
-                      </Dialog>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => deleteProduct.mutate(product.id)}
+                  </div>
+                </div>
+
+                <div className="flex space-x-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingItem(product)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Edit className="h-4 w-4" />
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+                      <DialogHeader>
+                        <DialogTitle>Редактировать товар</DialogTitle>
+                      </DialogHeader>
+                      <ProductForm product={product} />
+                    </DialogContent>
+                  </Dialog>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => deleteProduct.mutate(product.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </SortableProductCard>
+        ))}
+      </div>
+    </SortableContext>
+  </DndContext>
+)}
         </TabsContent>
 
         <TabsContent value="reviews" className="space-y-4">
