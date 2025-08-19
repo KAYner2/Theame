@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
@@ -40,6 +41,7 @@ export const AdminPanel = () => {
   const { toast } = useToast();
 
   // Queries
+  const queryClient = useQueryClient();
   const { data: categories = [], isLoading: categoriesLoading } = useAllCategories();
   const { data: products = [], isLoading: productsLoading } = useAllProducts();
   const { data: reviews = [], isLoading: reviewsLoading } = useAllReviews();
@@ -63,11 +65,16 @@ const handleDragEnd = (event: DragEndEvent) => {
   const { active, over } = event;
   if (!over || active.id === over.id) return;
 
-  const oldIndex = orderedProducts.findIndex((p) => p.id === active.id);
-  const newIndex = orderedProducts.findIndex((p) => p.id === over.id);
+  const oldIndex = orderedProducts.findIndex((p) => String(p.id) === String(active.id));
+  const newIndex = orderedProducts.findIndex((p) => String(p.id) === String(over.id));
   if (oldIndex === -1 || newIndex === -1) return;
 
-  setOrderedProducts(arrayMove(orderedProducts, oldIndex, newIndex));
+  const newOrder = arrayMove(orderedProducts, oldIndex, newIndex);
+  setOrderedProducts(newOrder);
+
+  updateProductOrder.mutate(
+    newOrder.map((p, i) => ({ id: String(p.id), sort_order: i })) // можно с 1, если нужно
+  );
 };
 
   // Mutations
@@ -86,6 +93,31 @@ const handleDragEnd = (event: DragEndEvent) => {
   const createRecommendation = useCreateRecommendation();
   const updateRecommendation = useUpdateRecommendation();
   const deleteRecommendation = useDeleteRecommendation();
+  // --- DnD: сохранение порядка товаров (обновляем по одному) ---
+const updateProductOrder = useMutation({
+  mutationFn: async (newOrder: Array<{ id: string; sort_order: number }>) => {
+    const results = await Promise.all(
+      newOrder.map((row) =>
+        supabase
+          .from("products")
+          .update({ sort_order: row.sort_order })
+          .eq("id", row.id)
+      )
+    );
+
+    // если где-то была ошибка — бросаем её
+    const firstError = results.find((r) => r.error)?.error;
+    if (firstError) throw firstError;
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+    toast({ title: "Порядок сохранён" });
+  },
+  onError: () => {
+    toast({ variant: "destructive", title: "Не удалось сохранить порядок" });
+  },
+});
+// --- /DnD ---
 
   const uploadImage = async (file: File, bucket: string) => {
     const fileExt = file.name.split('.').pop();
@@ -908,12 +940,12 @@ const handleDragEnd = (event: DragEndEvent) => {
     onDragEnd={handleDragEnd}
   >
     <SortableContext
-      items={orderedProducts.map((p) => p.id /* если id число: String(p.id) */)}
-      strategy={verticalListSortingStrategy}
+  items={orderedProducts.map((p) => String(p.id))}
+  strategy={verticalListSortingStrategy}
     >
       <div className="grid gap-4">
         {orderedProducts.map((product) => (
-          <SortableProductCard key={product.id} id={product.id /* число? => String(product.id) */}>
+          <SortableProductCard key={product.id} id={String(product.id)}>
             <Card>
               <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center space-x-4">
