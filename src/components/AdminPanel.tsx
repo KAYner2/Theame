@@ -84,6 +84,7 @@ const updateProductOrder = useMutation({
   queryClient.invalidateQueries({ queryKey: ["products"] });
   queryClient.invalidateQueries({ queryKey: ["featured-products"] });
   queryClient.invalidateQueries({ queryKey: ["all-products"] });
+  queryClient.invalidateQueries({ queryKey: ["homepage-products"] });
   toast({ title: "Порядок сохранён" });
 },
   onError: (err: any) => {

@@ -5,11 +5,13 @@ import { useToast } from '@/hooks/use-toast';
 
 export const useProducts = () => {
   return useQuery({
-    queryKey: ['products'],
+    queryKey: ['homepage-products'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .eq('is_active', true)
+        .eq('show_on_homepage', true)
         .order('sort_order', { ascending: true });
 
       if (error) throw error;
