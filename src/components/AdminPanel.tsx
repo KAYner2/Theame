@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import type { AvailabilityStatus } from '@/types/database';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { useSetProductCategories } from '@/hooks/useProducts';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -77,6 +79,7 @@ const sensors = useSensors(
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
   const createProduct = useCreateProduct();
+  const setProductCategories = useSetProductCategories();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const queryClient = useQueryClient();
@@ -232,9 +235,9 @@ const updateProductOrder = useMutation({
       guarantee_info: product?.guarantee_info || '',
       delivery_info: product?.delivery_info || '',
       size_info: product?.size_info || '',
-      availability_status: product?.availability_status || 'in_stock',
+      availability_status: (product?.availability_status ?? 'in_stock') as AvailabilityStatus,
       price: product?.price || 0,
-      category_id: product?.category_id || '',
+      category_ids: product?.category_ids ?? (product?.category_id ? [product.category_id] : []),
       image_url: product?.image_url || '',
       gallery_urls: product?.gallery_urls || [],
       is_featured: product?.is_featured ?? false,
@@ -263,24 +266,41 @@ const updateProductOrder = useMutation({
           galleryUrls = [...galleryUrls, ...uploadedGalleryUrls].slice(0, 4); // Limit to 4 gallery images
         }
 
-        const data = { 
-          ...formData, 
-          composition: formData.composition.split(',').map(item => item.trim()).filter(item => item),
-          colors: formData.colors.split(',').map(item => item.trim()).filter(item => item),
-          image_url: imageUrl, 
-          gallery_urls: galleryUrls 
-        };
-        
-        if (product) {
-          await updateProduct.mutateAsync({ id: product.id, updates: data });
-        } else {
-          await createProduct.mutateAsync(data);
-        }
-        
-        setIsDialogOpen(false);
-        setEditingItem(null);
-        setImageFile(null);
-        setGalleryFiles([]);
+        // СБОР ПОЛЕЙ ТОВАРА (без категорий!)
+const data = { 
+  ...formData, 
+  composition: formData.composition.split(',').map(s => s.trim()).filter(Boolean),
+  colors: formData.colors.split(',').map(s => s.trim()).filter(Boolean),
+  image_url: imageUrl, 
+  gallery_urls: galleryUrls,
+};
+
+// категории нельзя отправлять в таблицу products — убираем поле из payload
+delete (data as any).category_ids;
+
+let savedProductId = product?.id as string | undefined;
+
+// 1) Сохраняем САМ ТОВАР
+if (product) {
+  await updateProduct.mutateAsync({ id: product.id, updates: data });
+  savedProductId = product.id;
+} else {
+  const created = await createProduct.mutateAsync(data as any);
+  savedProductId = created.id as string;
+}
+
+// 2) Сохраняем КАТЕГОРИИ через RPC
+await setProductCategories.mutateAsync({
+  productId: String(savedProductId!),
+  categoryIds: formData.category_ids,
+});
+
+// 3) Сбрасываем форму/диалог
+setIsDialogOpen(false);
+setEditingItem(null);
+setImageFile(null);
+setGalleryFiles([]);
+
       } catch (error) {
         console.error('Error saving product:', error);
       }
@@ -394,7 +414,15 @@ const updateProductOrder = useMutation({
           </div>
           <div>
             <Label htmlFor="availability_status">Статус наличия</Label>
-            <Select value={formData.availability_status} onValueChange={(value) => setFormData({ ...formData, availability_status: value })}>
+            <Select
+  value={formData.availability_status}
+  onValueChange={(value) =>
+    setFormData({
+      ...formData,
+      availability_status: value as AvailabilityStatus,  // ✅ привели к типу
+    })
+  }
+>
               <SelectTrigger>
                 <SelectValue placeholder="Выберите статус" />
               </SelectTrigger>
@@ -417,20 +445,29 @@ const updateProductOrder = useMutation({
             />
           </div>
           <div>
-            <Label htmlFor="category">Категория</Label>
-            <Select value={formData.category_id} onValueChange={(value) => setFormData({ ...formData, category_id: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите категорию" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+  <Label>Категории</Label>
+  <div className="mt-2 grid grid-cols-2 gap-2 max-h-48 overflow-auto border rounded p-2">
+    {categories.map((c) => {
+      const checked = formData.category_ids.includes(c.id);
+      return (
+        <label key={c.id} className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => {
+              setFormData((prev) => {
+                const set = new Set(prev.category_ids);
+                e.target.checked ? set.add(c.id) : set.delete(c.id);
+                return { ...prev, category_ids: Array.from(set) };
+              });
+            }}
+          />
+          <span>{c.name}</span>
+        </label>
+      );
+    })}
+  </div>
+</div>
           <div>
             <Label htmlFor="image">Основное изображение (отображается везде)</Label>
             <Input
