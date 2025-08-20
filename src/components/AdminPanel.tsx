@@ -420,7 +420,7 @@ setGalleryFiles([]);
     setFormData({
       ...formData,
       availability_status: value as AvailabilityStatus,  // ✅ привели к типу
-    })
+    }) 
   }
 >
               <SelectTrigger>
