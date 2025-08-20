@@ -4,8 +4,18 @@ import { Product, CreateProductDto } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 
 /**
- * Товары для главной (только активные, помеченные show_on_homepage),
- * сразу отсортированные по sort_order.
+ * Общая функция сортировки (страховка, если сервер вернёт без порядка).
+ */
+const sortProducts = (rows: Product[] = []) =>
+  [...rows].sort((a, b) => {
+    const sa = a.sort_order ?? 0;
+    const sb = b.sort_order ?? 0;
+    if (sa !== sb) return sa - sb;
+    return String(a.created_at ?? a.id).localeCompare(String(b.created_at ?? b.id));
+  });
+
+/**
+ * Товары для главной (только активные и show_on_homepage).
  */
 export const useHomepageProducts = () => {
   return useQuery({
@@ -16,16 +26,17 @@ export const useHomepageProducts = () => {
         .select('*')
         .eq('is_active', true)
         .eq('show_on_homepage', true)
-        .order('sort_order', { ascending: true });
-
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }); // добавили стабилизатор
       if (error) throw error;
       return data as Product[];
     },
+    select: sortProducts,
   });
 };
 
 /**
- * Избранные товары (например, для карусели/блоков).
+ * Избранные товары (например, для карусели).
  */
 export const useFeaturedProducts = () => {
   return useQuery({
@@ -36,17 +47,18 @@ export const useFeaturedProducts = () => {
         .select('*')
         .eq('is_active', true)
         .eq('is_featured', true)
-        .order('sort_order', { ascending: true });
-
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
       if (error) throw error;
       return data as Product[];
     },
+    select: sortProducts,
   });
 };
 
 /**
  * Полный список товаров для админки.
- * ВАЖНО: queryKey = ['products'], чтобы инвалидация из админки попадала сюда.
+ * ВАЖНО: queryKey = ['products']
  */
 export const useAllProducts = () => {
   return useQuery({
@@ -55,11 +67,14 @@ export const useAllProducts = () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .order('sort_order', { ascending: true });
-
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
       if (error) throw error;
       return data as Product[];
     },
+    select: sortProducts,
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -74,15 +89,12 @@ export const useCreateProduct = () => {
         .insert(product)
         .select()
         .single();
-
       if (error) throw error;
       return data as Product;
     },
     onSuccess: (created) => {
-      // Сбрасываем кэши списков
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-      // Если товар должен быть на главной — сразу обновим и её
       if (created?.show_on_homepage && created?.is_active) {
         queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
       }
@@ -106,19 +118,33 @@ export const useUpdateProduct = () => {
         .eq('id', id)
         .select()
         .single();
-
       if (error) throw error;
       return data as Product;
     },
-    onSuccess: (updated) => {
+    onMutate: async ({ id, updates }) => {
+      // Оптимистично обновляем список
+      await queryClient.cancelQueries({ queryKey: ['products'] });
+      const prev = queryClient.getQueryData<Product[]>(['products']);
+      if (prev) {
+        queryClient.setQueryData<Product[]>(
+          ['products'],
+          sortProducts(
+            prev.map((p) => (p.id === id ? { ...p, ...updates } as Product : p))
+          )
+        );
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(['products'], ctx.prev);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-      // Любое изменение порядка/флага показа — обновим главную
       queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
-      toast({ title: 'Успешно', description: 'Продукт обновлён' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
+    onSuccess: () => {
+      toast({ title: 'Успешно', description: 'Продукт обновлён' });
     },
   });
 };

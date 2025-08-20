@@ -4,12 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Category, CreateCategoryDto } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 
-// Нормализация строк
+// --- helpers ---
 const norm = (s: unknown) => (typeof s === 'string' ? s.trim() : s ?? null);
 
-// Безопасный маппинг строки БД → Category
 function mapDbToCategory(row: any): Category {
-  const obj = {
+  return {
     id: row.id,
     name: (norm(row.name) as string) || 'Без названия',
     description: (norm(row.description) as string) ?? null,
@@ -19,9 +18,19 @@ function mapDbToCategory(row: any): Category {
     parent_id: row.parent_id ?? null,
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
-  };
-  return obj as unknown as Category;
+  } as Category;
 }
+
+const sortCategories = (rows: Category[] = []) =>
+  [...rows].sort((a, b) => {
+    const sa = a.sort_order ?? 0;
+    const sb = b.sort_order ?? 0;
+    if (sa !== sb) return sa - sb;
+    // при равных sort_order стабилизируем по created_at, а затем по name
+    const d = String(a.created_at ?? '').localeCompare(String(b.created_at ?? ''));
+    if (d !== 0) return d;
+    return (a.name || '').localeCompare(b.name || '');
+  });
 
 // ==========================
 // READ
@@ -30,26 +39,18 @@ export const useCategories = () => {
   return useQuery({
     queryKey: ['categories', 'active-only'],
     queryFn: async () => {
-      // 1) основная попытка: фильтр по is_active + сортировка по sort_order
       const primary = await supabase
         .from('categories')
         .select('id, name, description, image_url, is_active, sort_order, created_at, updated_at')
         .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }); // стабилизация
 
       if (!primary.error) {
         const rows = Array.isArray(primary.data) ? primary.data : [];
-        const mapped = rows.map(mapDbToCategory);
-        // дополнительная сортировка по name при равном sort_order
-        mapped.sort((a, b) => {
-          const so = (a.sort_order ?? 0) - (b.sort_order ?? 0);
-          if (so !== 0) return so;
-          return (a.name || '').localeCompare(b.name || '');
-        });
-        return mapped;
+        return sortCategories(rows.map(mapDbToCategory));
       }
 
-      // 2) фолбэк: без is_active/без sort_order — чтобы не падать, если колонок нет
       console.warn('[useCategories] primary query failed:', primary.error?.message);
       const fallback = await supabase
         .from('categories')
@@ -60,9 +61,7 @@ export const useCategories = () => {
         console.error('[useCategories] fallback query failed:', fallback.error?.message);
         throw fallback.error;
       }
-
-      const rows = Array.isArray(fallback.data) ? fallback.data : [];
-      return rows.map(mapDbToCategory);
+      return sortCategories((fallback.data ?? []).map(mapDbToCategory));
     },
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -73,24 +72,17 @@ export const useAllCategories = () => {
   return useQuery({
     queryKey: ['categories', 'all'],
     queryFn: async () => {
-      // 1) основная попытка: сортировка по sort_order
       const primary = await supabase
         .from('categories')
         .select('id, name, description, image_url, is_active, sort_order, created_at, updated_at')
-        .order('sort_order', { ascending: true });
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }); // стабилизация
 
       if (!primary.error) {
         const rows = Array.isArray(primary.data) ? primary.data : [];
-        const mapped = rows.map(mapDbToCategory);
-        mapped.sort((a, b) => {
-          const so = (a.sort_order ?? 0) - (b.sort_order ?? 0);
-          if (so !== 0) return so;
-          return (a.name || '').localeCompare(b.name || '');
-        });
-        return mapped;
+        return sortCategories(rows.map(mapDbToCategory));
       }
 
-      // 2) фолбэк: сортировка по name
       console.warn('[useAllCategories] primary query failed:', primary.error?.message);
       const fallback = await supabase
         .from('categories')
@@ -101,9 +93,7 @@ export const useAllCategories = () => {
         console.error('[useAllCategories] fallback query failed:', fallback.error?.message);
         throw fallback.error;
       }
-
-      const rows = Array.isArray(fallback.data) ? fallback.data : [];
-      return rows.map(mapDbToCategory);
+      return sortCategories((fallback.data ?? []).map(mapDbToCategory));
     },
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -126,9 +116,9 @@ function normalizeCategoryInput<T extends Partial<CreateCategoryDto | Category>>
       copy[k] = v.length ? v : null;
     }
   });
-  if (copy.sort_order == null) copy.sort_order = 0;
+  // ВАЖНО: не подставляем 0 в sort_order — это сделаем при insert (max+1)
+  // if (copy.sort_order == null) copy.sort_order = 0;
   if (copy.is_active == null) copy.is_active = true;
-  // created_at/updated_at заполняет БД
   delete copy.created_at;
   delete copy.updated_at;
   return copy;
@@ -141,6 +131,18 @@ export const useCreateCategory = () => {
   return useMutation({
     mutationFn: async (category: CreateCategoryDto) => {
       const payload = normalizeCategoryInput(category);
+
+      // если sort_order не задан — ставим "в конец"
+      if (payload.sort_order == null) {
+        const { data: maxRow } = await supabase
+          .from('categories')
+          .select('sort_order')
+          .order('sort_order', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        payload.sort_order = (maxRow?.sort_order ?? -1) + 1;
+      }
+
       const { data, error } = await supabase
         .from('categories')
         .insert(payload)
@@ -178,13 +180,42 @@ export const useUpdateCategory = () => {
       if (error) throw error;
       return mapDbToCategory(data);
     },
-    onSuccess: () => {
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ['categories'] });
+      await queryClient.cancelQueries({ queryKey: ['categories', 'all'] });
+
+      const prevActive = queryClient.getQueryData<Category[]>(['categories', 'active-only']);
+      const prevAll = queryClient.getQueryData<Category[]>(['categories', 'all']);
+
+      if (prevActive) {
+        queryClient.setQueryData<Category[]>(
+          ['categories', 'active-only'],
+          sortCategories(
+            prevActive.map((c) => (String(c.id) === String(id) ? { ...c, ...updates } as Category : c))
+          )
+        );
+      }
+      if (prevAll) {
+        queryClient.setQueryData<Category[]>(
+          ['categories', 'all'],
+          sortCategories(
+            prevAll.map((c) => (String(c.id) === String(id) ? { ...c, ...updates } as Category : c))
+          )
+        );
+      }
+
+      return { prevActive, prevAll };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prevActive) queryClient.setQueryData(['categories', 'active-only'], ctx.prevActive);
+      if (ctx?.prevAll) queryClient.setQueryData(['categories', 'all'], ctx.prevAll);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       queryClient.invalidateQueries({ queryKey: ['categories', 'all'] });
-      toast({ title: 'Успешно', description: 'Категория обновлена' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
+    onSuccess: () => {
+      toast({ title: 'Успешно', description: 'Категория обновлена' });
     },
   });
 };
@@ -198,13 +229,38 @@ export const useDeleteCategory = () => {
       const { error } = await supabase.from('categories').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['categories'] });
+      await queryClient.cancelQueries({ queryKey: ['categories', 'all'] });
+
+      const prevActive = queryClient.getQueryData<Category[]>(['categories', 'active-only']);
+      const prevAll = queryClient.getQueryData<Category[]>(['categories', 'all']);
+
+      if (prevActive) {
+        queryClient.setQueryData<Category[]>(
+          ['categories', 'active-only'],
+          prevActive.filter((c) => String(c.id) !== String(id))
+        );
+      }
+      if (prevAll) {
+        queryClient.setQueryData<Category[]>(
+          ['categories', 'all'],
+          prevAll.filter((c) => String(c.id) !== String(id))
+        );
+      }
+
+      return { prevActive, prevAll };
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.prevActive) queryClient.setQueryData(['categories', 'active-only'], ctx.prevActive);
+      if (ctx?.prevAll) queryClient.setQueryData(['categories', 'all'], ctx.prevAll);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       queryClient.invalidateQueries({ queryKey: ['categories', 'all'] });
-      toast({ title: 'Успешно', description: 'Категория удалена' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
+    onSuccess: () => {
+      toast({ title: 'Успешно', description: 'Категория удалена' });
     },
   });
 };
