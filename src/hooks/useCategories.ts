@@ -20,7 +20,6 @@ function mapDbToCategory(row: any): Category {
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
   };
-  // TS ругается на несовпадение — приводим через unknown → Category
   return obj as unknown as Category;
 }
 
@@ -31,26 +30,39 @@ export const useCategories = () => {
   return useQuery({
     queryKey: ['categories', 'active-only'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // 1) основная попытка: фильтр по is_active + сортировка по sort_order
+      const primary = await supabase
         .from('categories')
-        // ВКЛЮЧИЛ created_at/updated_at, чтобы соответствовать твоему типу
         .select('id, name, description, image_url, is_active, sort_order, parent_id, created_at, updated_at')
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
 
-      if (error) throw error;
+      if (!primary.error) {
+        const rows = Array.isArray(primary.data) ? primary.data : [];
+        const mapped = rows.map(mapDbToCategory);
+        // дополнительная сортировка по name при равном sort_order
+        mapped.sort((a, b) => {
+          const so = (a.sort_order ?? 0) - (b.sort_order ?? 0);
+          if (so !== 0) return so;
+          return (a.name || '').localeCompare(b.name || '');
+        });
+        return mapped;
+      }
 
-      const rows = Array.isArray(data) ? data : [];
-      const mapped = rows.map(mapDbToCategory);
+      // 2) фолбэк: без is_active/без sort_order — чтобы не падать, если колонок нет
+      console.warn('[useCategories] primary query failed:', primary.error?.message);
+      const fallback = await supabase
+        .from('categories')
+        .select('id, name, description, image_url, is_active, sort_order, parent_id, created_at, updated_at')
+        .order('name', { ascending: true });
 
-      // Доп. сортировка по name при равном sort_order
-      mapped.sort((a, b) => {
-        const so = (a.sort_order ?? 0) - (b.sort_order ?? 0);
-        if (so !== 0) return so;
-        return (a.name || '').localeCompare(b.name || '');
-      });
+      if (fallback.error) {
+        console.error('[useCategories] fallback query failed:', fallback.error?.message);
+        throw fallback.error;
+      }
 
-      return mapped;
+      const rows = Array.isArray(fallback.data) ? fallback.data : [];
+      return rows.map(mapDbToCategory);
     },
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -61,23 +73,37 @@ export const useAllCategories = () => {
   return useQuery({
     queryKey: ['categories', 'all'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // 1) основная попытка: сортировка по sort_order
+      const primary = await supabase
         .from('categories')
         .select('id, name, description, image_url, is_active, sort_order, parent_id, created_at, updated_at')
         .order('sort_order', { ascending: true });
 
-      if (error) throw error;
+      if (!primary.error) {
+        const rows = Array.isArray(primary.data) ? primary.data : [];
+        const mapped = rows.map(mapDbToCategory);
+        mapped.sort((a, b) => {
+          const so = (a.sort_order ?? 0) - (b.sort_order ?? 0);
+          if (so !== 0) return so;
+          return (a.name || '').localeCompare(b.name || '');
+        });
+        return mapped;
+      }
 
-      const rows = Array.isArray(data) ? data : [];
-      const mapped = rows.map(mapDbToCategory);
+      // 2) фолбэк: сортировка по name
+      console.warn('[useAllCategories] primary query failed:', primary.error?.message);
+      const fallback = await supabase
+        .from('categories')
+        .select('id, name, description, image_url, is_active, sort_order, parent_id, created_at, updated_at')
+        .order('name', { ascending: true });
 
-      mapped.sort((a, b) => {
-        const so = (a.sort_order ?? 0) - (b.sort_order ?? 0);
-        if (so !== 0) return so;
-        return (a.name || '').localeCompare(b.name || '');
-      });
+      if (fallback.error) {
+        console.error('[useAllCategories] fallback query failed:', fallback.error?.message);
+        throw fallback.error;
+      }
 
-      return mapped;
+      const rows = Array.isArray(fallback.data) ? fallback.data : [];
+      return rows.map(mapDbToCategory);
     },
     staleTime: 60_000,
     refetchOnWindowFocus: false,

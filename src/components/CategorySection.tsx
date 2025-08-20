@@ -24,7 +24,9 @@ export function CategorySection() {
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-12">Коллекции</h2>
           <div className="text-center">
-            <p className="text-destructive">Ошибка загрузки категорий</p>
+            <p className="text-destructive">
+  Ошибка загрузки категорий{(error as any)?.message ? `: ${(error as any).message}` : ''}
+</p>
           </div>
         </div>
       </section>
