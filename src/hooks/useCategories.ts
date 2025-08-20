@@ -33,7 +33,7 @@ export const useCategories = () => {
       // 1) основная попытка: фильтр по is_active + сортировка по sort_order
       const primary = await supabase
         .from('categories')
-        .select('id, name, description, image_url, is_active, sort_order, parent_id, created_at, updated_at')
+        .select('id, name, description, image_url, is_active, sort_order, created_at, updated_at')
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
 
@@ -53,7 +53,7 @@ export const useCategories = () => {
       console.warn('[useCategories] primary query failed:', primary.error?.message);
       const fallback = await supabase
         .from('categories')
-        .select('id, name, description, image_url, is_active, sort_order, parent_id, created_at, updated_at')
+        .select('id, name, description, image_url, is_active, sort_order, created_at, updated_at')
         .order('name', { ascending: true });
 
       if (fallback.error) {
@@ -76,7 +76,7 @@ export const useAllCategories = () => {
       // 1) основная попытка: сортировка по sort_order
       const primary = await supabase
         .from('categories')
-        .select('id, name, description, image_url, is_active, sort_order, parent_id, created_at, updated_at')
+        .select('id, name, description, image_url, is_active, sort_order, created_at, updated_at')
         .order('sort_order', { ascending: true });
 
       if (!primary.error) {
@@ -94,7 +94,7 @@ export const useAllCategories = () => {
       console.warn('[useAllCategories] primary query failed:', primary.error?.message);
       const fallback = await supabase
         .from('categories')
-        .select('id, name, description, image_url, is_active, sort_order, parent_id, created_at, updated_at')
+        .select('id, name, description, image_url, is_active, sort_order, created_at, updated_at')
         .order('name', { ascending: true });
 
       if (fallback.error) {
@@ -144,7 +144,7 @@ export const useCreateCategory = () => {
       const { data, error } = await supabase
         .from('categories')
         .insert(payload)
-        .select('id, name, description, image_url, is_active, sort_order, parent_id, created_at, updated_at')
+        .select('id, name, description, image_url, is_active, sort_order, created_at, updated_at')
         .single();
 
       if (error) throw error;
@@ -172,7 +172,7 @@ export const useUpdateCategory = () => {
         .from('categories')
         .update(payload)
         .eq('id', id)
-        .select('id, name, description, image_url, is_active, sort_order, parent_id, created_at, updated_at')
+        .select('id, name, description, image_url, is_active, sort_order, created_at, updated_at')
         .single();
 
       if (error) throw error;
