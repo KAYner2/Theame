@@ -158,10 +158,13 @@ const categoryIdFromUrl = searchParams.get('category');
 
     const filtered = flowers.filter((flower) => {
       // 1) Категория ('all' пропускает всё)
-      const matchesCategory =
+// теперь проверяем массив category_ids
+const prod = productMap.get(flower.id);
+const matchesCategory =
   selectedCategoryId === 'all' ||
-  String(productMap.get(flower.id)?.category_id ?? '') === String(selectedCategoryId);
-      if (!matchesCategory) return false;
+  (Array.isArray(prod?.category_ids) &&
+   prod!.category_ids.includes(String(selectedCategoryId)));
+if (!matchesCategory) return false;
 
       // 2) Цвет ('all' пропускает всё; пустой список цветов не режем)
       const fColors = flower.colors ?? [];
