@@ -33,6 +33,31 @@ export const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState<'categories' | 'products' | 'reviews' | 'hero-slides' | 'recommendations'>('categories');
   const { toast } = useToast();
 
+  // --- для фикса скролла ---
+const scrollRef = React.useRef<HTMLDivElement | null>(null);
+const scrollPosRef = React.useRef<number>(0);
+
+const captureScroll = () => {
+  const el = scrollRef.current;
+  scrollPosRef.current = el ? el.scrollTop : window.scrollY || 0;
+};
+
+const restoreScroll = () => {
+  const el = scrollRef.current;
+  const y = scrollPosRef.current || 0;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (el) el.scrollTo(0, y);
+      else window.scrollTo(0, y);
+    });
+  });
+};
+
+React.useEffect(() => {
+  const id = setTimeout(restoreScroll, 0);
+  return () => clearTimeout(id);
+});
+
   // Queries
   const { data: categories = [], isLoading: categoriesLoading } = useAllCategories();
   const { data: products = [], isLoading: productsLoading } = useAllProducts();
@@ -854,7 +879,7 @@ export const AdminPanel = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background overflow-auto">
+    <div ref={scrollRef} className="min-h-screen bg-background overflow-auto">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-4">
@@ -950,16 +975,20 @@ export const AdminPanel = () => {
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold">Товары</h2>
               <Dialog
-                open={isDialogOpen && activeTab === 'products'}
-                onOpenChange={(open) => {
-                  setIsDialogOpen(open);
-                  if (!open) {
-                    requestAnimationFrame(() => {
-                      (document.activeElement as HTMLElement | null)?.blur?.();
-                    });
-                  }
-                }}
-              >
+  open={isDialogOpen && activeTab === 'products'}
+  onOpenChange={(open) => {
+    if (open) captureScroll();         // ⬅️ запомнили позицию скролла
+    setIsDialogOpen(open);
+    if (!open) {
+      requestAnimationFrame(() => {
+        (document.activeElement as HTMLElement | null)?.blur?.();
+      });
+      restoreScroll();                 // ⬅️ вернули позицию при закрытии
+    } else {
+      restoreScroll();                 // ⬅️ и на открытии тоже принудительно
+    }
+  }}
+>
                 <DialogTrigger asChild>
                   <Button type="button" onClick={() => openDialog()}>
                     <Plus className="mr-2 h-4 w-4" />
