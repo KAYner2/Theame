@@ -142,21 +142,25 @@ React.useEffect(() => {
   const deleteRecommendation = useDeleteRecommendation();
 
   const uploadImage = async (file: File, bucket: string) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file);
+  const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+  const unique = `${crypto.randomUUID()}-${Date.now()}.${ext}`;
 
-    if (error) throw error;
-    
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(fileName);
-    
-    return publicUrl;
-  };
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(unique, file, {
+      upsert: false,
+      cacheControl: '3600',
+      contentType: file.type || undefined,
+    });
+
+  if (error) throw error;
+
+  const { data: pub } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(unique);
+
+  return pub.publicUrl;
+};
 
   const CategoryForm = ({ category }: { category?: Category }) => {
     const [formData, setFormData] = useState({
