@@ -951,7 +951,11 @@ setGalleryFiles([]);
                   Добавить товар
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+              <DialogContent
+  className="max-w-3xl max-h-[90vh] overflow-hidden"
+  onOpenAutoFocus={(e) => e.preventDefault()}
+  onCloseAutoFocus={(e) => e.preventDefault()}
+>
                 <DialogHeader>
                   <DialogTitle>
                     {editingItem ? 'Редактировать' : 'Создать'} товар
@@ -1014,7 +1018,11 @@ setGalleryFiles([]);
   <Edit className="h-4 w-4" />
 </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+                    <DialogContent
+  className="max-w-3xl max-h-[90vh] overflow-hidden"
+  onOpenAutoFocus={(e) => e.preventDefault()}
+  onCloseAutoFocus={(e) => e.preventDefault()}
+>
                       <DialogHeader>
                         <DialogTitle>Редактировать товар</DialogTitle>
                       </DialogHeader>
