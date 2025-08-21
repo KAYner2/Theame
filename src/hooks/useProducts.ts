@@ -79,6 +79,7 @@ export const useCreateProduct = () => {
       return data as Product;
     },
     onSuccess: () => {
+      // создание меняет список — инвалидация ок
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
       queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
@@ -105,10 +106,19 @@ export const useUpdateProduct = () => {
       if (error) throw error;
       return data as Product;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-      queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
+    // ⬇️ вместо invalidate — точечно обновляем кэш списка админки,
+    // чтобы не было полного рефетча и «прыжка» скролла
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Product[] | undefined>(['products'], (prev) => {
+        if (!prev) return prev;
+        return prev.map((p) => (String(p.id) === String(updated.id) ? ({ ...p, ...updated } as Product) : p));
+      });
+
+      // Если эти выборки используются на витрине — можно их обновить/инвалидировать отдельно.
+      // Они не влияют на скролл админки.
+      // queryClient.invalidateQueries({ queryKey: ['featured-products'] });
+      // queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
+
       toast({ title: 'Успешно', description: 'Продукт обновлён' });
     },
     onError: (error: any) => {
@@ -127,6 +137,7 @@ export const useDeleteProduct = () => {
       if (error) throw error;
     },
     onSuccess: () => {
+      // удаление меняет список — инвалидация ок
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
       queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
@@ -155,12 +166,28 @@ export const useSetProductCategories = () => {
       if (error) throw error;
       return { productId, categoryIds };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-      queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
+
+    // ⬇️ мягко обновляем кэш ['products'] вместо invalidateQueries
+    onSuccess: ({ productId, categoryIds }) => {
+      queryClient.setQueryData<Product[] | undefined>(['products'], (prev) => {
+        if (!prev) return prev;
+        return prev.map((p) => {
+          if (String(p.id) !== String(productId)) return p;
+          const upd: any = { ...p };
+          // Обнови имя поля под свою вьюху. Часто это 'category_ids'.
+          if ('category_ids' in upd) upd.category_ids = Array.isArray(categoryIds) ? [...categoryIds] : [];
+          // Если во вьюхе есть другое поле (например, category_ids_json) — поправь строку выше.
+          return upd as Product;
+        });
+      });
+
+      // Эти выборки для витрины можно не трогать (они не в админке).
+      // queryClient.invalidateQueries({ queryKey: ['featured-products'] });
+      // queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
+
       toast({ title: 'Успешно', description: 'Категории обновлены' });
     },
+
     onError: (error: any) => {
       toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
     },
