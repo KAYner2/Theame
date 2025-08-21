@@ -1,81 +1,138 @@
-// pages/api/tinkoff-callback.js
-import crypto from 'crypto';
+// tinkoff-callback.js
+// Серверный обработчик вебхука Tinkoff для Vercel/Express.
+// Фиксы:
+// 1) Обрабатываем только Status === 'CONFIRMED'
+// 2) Быстро отвечаем 200 OK (чтобы Tinkoff не ретраил)
+// 3) (Опционально) проверяем подпись Token, если задан TINKOFF_TERMINAL_PASSWORD
+// 4) Идемпотентность по PaymentId (в пределах живого инстанса)
 
-function makeToken(fields, password) {
-  const clean = {};
-  for (const [k, v] of Object.entries(fields)) {
-    if (v !== undefined && v !== null && v !== '' && k !== 'Token') {
-      clean[k] = String(v);
-    }
-  }
-  clean.Password = password;
-  const str = Object.keys(clean).sort().map((k) => clean[k]).join('');
-  return crypto.createHash('sha256').update(str).digest('hex');
+/* eslint-disable no-console */
+const crypto = require('crypto');
+
+// ==== конфиг через env ====
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;         // обязателен
+const TG_CHAT_ID = process.env.TELEGRAM_CHAT_ID;         // обязателен
+const TINKOFF_PASSWORD = process.env.TINKOFF_TERMINAL_PASSWORD; // опционально, для проверки Token
+
+// простая идемпотентность (в рамках процесса)
+const processed = new Set();
+
+/**
+ * Вычисление Token Tinkoff:
+ * - Берём все поля body, кроме 'Token'
+ * - Добавляем поле Password = TINKOFF_TERMINAL_PASSWORD
+ * - Сортируем ключи по алфавиту
+ * - Конкатенируем значения в одну строку
+ * - SHA256 по строке, hex в верхнем регистре
+ */
+function computeTinkoffToken(body, password) {
+  const data = { ...body };
+  delete data.Token;
+  data.Password = password;
+
+  const keys = Object.keys(data).sort((a, b) => a.localeCompare(b));
+  const concatenated = keys.map((k) => (data[k] ?? '')).join('');
+  const hash = crypto.createHash('sha256').update(concatenated).digest('hex');
+  return hash.toUpperCase();
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
+async function sendTelegram(text) {
+  if (!TG_TOKEN || !TG_CHAT_ID) {
+    console.warn('⚠️ TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID не заданы — пропускаем отправку в TG');
+    return { ok: false, reason: 'no-telegram-env' };
   }
+  const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: TG_CHAT_ID,
+      text,
+      parse_mode: 'Markdown',
+      disable_web_page_preview: true,
+    }),
+  }).catch((e) => ({ ok: false, error: e?.message || 'fetch-error' }));
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-
-  console.log('📩 Получено уведомление от Tinkoff:', JSON.stringify(body, null, 2));
-
-  // Проверка токена безопасности
-  const password = process.env.TINKOFF_PASSWORD;
-  if (!password) {
-    console.error('❌ Переменная окружения TINKOFF_PASSWORD не задана!');
-    res.status(500).json({ error: 'Server misconfigured' });
-    return;
+  if (!res || !res.ok) {
+    const msg = `TG sendMessage failed: ${res?.status} ${res?.statusText}`;
+    console.error(msg);
+    return { ok: false, reason: msg };
   }
+  return { ok: true };
+}
 
-  const validToken = makeToken(body, password);
-  if (body.Token !== validToken) {
-    console.warn('❌ Неверный токен уведомления от Tinkoff!');
-    res.status(403).json({ error: 'Invalid token' });
-    return;
-  }
-
-  // Настройки Telegram
-  const chatId = 624995887; // твой chat_id
-  const botToken = process.env.TG_BOT_TOKEN;
-  if (!botToken) {
-    console.error('❌ Переменная окружения TG_BOT_TOKEN не задана!');
-    res.status(500).json({ error: 'Bot token not set' });
-    return;
-  }
-
-  // Формируем сообщение
-  const amount = body.Amount ? (body.Amount / 100).toFixed(2) : 'не указано';
-  const customer = body.CustomerKey || 'неизвестно';
-  const orderId = body.OrderId || 'без ID';
-  const status = body.Status || 'без статуса';
-
-  const message = `💳 *Новая оплата*
-👤 Покупатель: ${customer}
-📦 Order ID: ${orderId}
-💰 Сумма: ${amount} ₽
-📜 Статус: ${status}
-🕒 ${new Date().toLocaleString('ru-RU')}`;
-
+// Универсальный обработчик (Express / Vercel)
+module.exports = async function tinkoffCallback(req, res) {
   try {
-    const resp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: 'Markdown'
-      })
-    });
+    if (req.method && req.method.toUpperCase() !== 'POST') {
+      return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
+    }
 
-    const tgResp = await resp.json();
-    console.log('📤 Результат отправки в Telegram:', tgResp);
-  } catch (err) {
-    console.error('Ошибка отправки в Telegram:', err);
+    // В Vercel/Express body уже распарсен (если стоит парсер json).
+    // На всякий случай попробуем fallback.
+    const body = req.body && Object.keys(req.body).length ? req.body : await (async () => {
+      try {
+        return JSON.parse(req.rawBody?.toString?.() || '{}');
+      } catch {
+        return {};
+      }
+    })();
+
+    // ЛОГ для диагностики (убери в проде)
+    console.log('⚡ Tinkoff webhook:', JSON.stringify(body));
+
+    // Всегда отвечаем 200 как можно быстрее — иначе Tinkoff будет ретраить
+    // Но шлём реальный ответ после валидаций ниже
+    // (оставляем единственный res.json в конце каждого return)
+
+    // --- (опционально) проверка подписи Token ---
+    if (TINKOFF_PASSWORD && body && typeof body === 'object') {
+      const expected = computeTinkoffToken(body, TINKOFF_PASSWORD);
+      const got = (body.Token || '').toString().toUpperCase();
+      if (!got || got !== expected) {
+        console.warn('❌ Неверный Token от Tinkoff. Ожидали:', expected, 'Получили:', got);
+        // Отвечаем 200, но игнорируем (чтобы Tinkoff не ретраил и мы не спамили TG)
+        return res.status(200).json({ ok: true, ignored: true, reason: 'bad-token' });
+      }
+    }
+
+    const status = body?.Status || '';
+    const paymentId = body?.PaymentId || body?.OrderId || '';
+
+    // --- идемпотентность по PaymentId (или OrderId) ---
+    if (paymentId && processed.has(paymentId)) {
+      console.log('↩️ Уже обработан ранее:', paymentId);
+      return res.status(200).json({ ok: true, duplicate: true });
+    }
+
+    // --- фильтруем статусы: интересует только CONFIRMED ---
+    if (status !== 'CONFIRMED') {
+      console.log(`⏭️ Игнорируем статус: ${status}`);
+      return res.status(200).json({ ok: true, ignored: true, status });
+    }
+
+    // Собираем данные для TG
+    const amountRub = (Number(body?.Amount) || 0) / 100; // у Tinkoff сумма обычно в копейках
+    const customer = body?.CustomerKey || body?.Phone || body?.Email || 'не указано';
+    const orderId = body?.OrderId || '—';
+
+    const text =
+      `💳 *Оплата подтверждена*\n` +
+      `📦 Заказ: *${orderId}*\n` +
+      `👤 Покупатель: ${customer}\n` +
+      `💰 Сумма: *${amountRub.toFixed(2)} ₽*\n` +
+      `🆔 PaymentId: ${body?.PaymentId || '—'}\n` +
+      `🕒 ${new Date().toLocaleString('ru-RU')}`;
+
+    // Отправляем в Telegram (не падаем, если TG недоступен)
+    await sendTelegram(text);
+
+    if (paymentId) processed.add(paymentId);
+
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error('tinkoff-callback error:', e);
+    // Даже при ошибке отвечаем 200, чтобы Tinkoff не долбил ретраями
+    return res.status(200).json({ ok: true, error: 'internal-handled' });
   }
-
-  res.status(200).json({ ok: true });
-}
+};
