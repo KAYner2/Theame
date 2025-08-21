@@ -38,37 +38,37 @@ export const AdminPanel = () => {
   const { data: products = [], isLoading: productsLoading } = useAllProducts();
   const [orderedProducts, setOrderedProducts] = useState<Product[]>([]);
   React.useEffect(() => {
-  setOrderedProducts(products ?? []);
-}, [products]);
+    setOrderedProducts(products ?? []);
+  }, [products]);
 
-const sensors = useSensors(
-  // Мышь: начать dnd только если протащили ≥12px (чуть больше, чтобы клики не срабатывали)
-  useSensor(MouseSensor, {
-    activationConstraint: { distance: 12 },
-  }),
-  // Тач: начать dnd только если подержали палец ≥200мс и сдвиг ≤8px
-  useSensor(TouchSensor, {
-    activationConstraint: { delay: 200, tolerance: 8 },
-  })
-);
+  const sensors = useSensors(
+    // Мышь: начать dnd только если протащили ≥12px (чуть больше, чтобы клики не срабатывали)
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 12 },
+    }),
+    // Тач: начать dnd только если подержали палец ≥200мс и сдвиг ≤8px
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 8 },
+    })
+  );
 
   const handleDragEnd = (event: DragEndEvent) => {
-  const { active, over } = event;
-  if (!over || active.id === over.id) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  const oldIndex = orderedProducts.findIndex((p) => String(p.id) === String(active.id));
-  const newIndex = orderedProducts.findIndex((p) => String(p.id) === String(over.id));
-  if (oldIndex === -1 || newIndex === -1) return;
+    const oldIndex = orderedProducts.findIndex((p) => String(p.id) === String(active.id));
+    const newIndex = orderedProducts.findIndex((p) => String(p.id) === String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
 
-  // локально переставляем
-  const newOrderArr = arrayMove(orderedProducts, oldIndex, newIndex);
-  setOrderedProducts(newOrderArr);
+    // локально переставляем
+    const newOrderArr = arrayMove(orderedProducts, oldIndex, newIndex);
+    setOrderedProducts(newOrderArr);
 
-  // сохраняем порядок в базе
-  updateProductOrder.mutate(
-    newOrderArr.map((p, i) => ({ id: String(p.id), sort_order: i }))
-  );
-};
+    // сохраняем порядок в базе
+    updateProductOrder.mutate(
+      newOrderArr.map((p, i) => ({ id: String(p.id), sort_order: i }))
+    );
+  };
 
   const { data: reviews = [], isLoading: reviewsLoading } = useAllReviews();
   const { data: heroSlides = [], isLoading: heroSlidesLoading } = useAllHeroSlides();
@@ -84,28 +84,28 @@ const sensors = useSensors(
   const deleteProduct = useDeleteProduct();
   const queryClient = useQueryClient();
 
-const updateProductOrder = useMutation({
-  mutationFn: async (newOrder: Array<{ id: string; sort_order: number }>) => {
-    const results = await Promise.all(
-      newOrder.map((row) =>
-        supabase.from("products").update({ sort_order: row.sort_order }).eq("id", row.id)
-      )
-    );
-    const firstError = results.find((r: any) => r.error)?.error;
-    if (firstError) throw firstError;
-  },
-  onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: ["products"] });
-  queryClient.invalidateQueries({ queryKey: ["featured-products"] });
-  queryClient.invalidateQueries({ queryKey: ["all-products"] });
-  queryClient.invalidateQueries({ queryKey: ["homepage-products"] });
-  toast({ title: "Порядок сохранён" });
-},
-  onError: (err: any) => {
-    console.error(err);
-    toast({ variant: "destructive", title: "Не удалось сохранить порядок" });
-  },
-});
+  const updateProductOrder = useMutation({
+    mutationFn: async (newOrder: Array<{ id: string; sort_order: number }>) => {
+      const results = await Promise.all(
+        newOrder.map((row) =>
+          supabase.from("products").update({ sort_order: row.sort_order }).eq("id", row.id)
+        )
+      );
+      const firstError = results.find((r: any) => r.error)?.error;
+      if (firstError) throw firstError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["featured-products"] });
+      queryClient.invalidateQueries({ queryKey: ["all-products"] });
+      queryClient.invalidateQueries({ queryKey: ["homepage-products"] });
+      toast({ title: "Порядок сохранён" });
+    },
+    onError: (err: any) => {
+      console.error(err);
+      toast({ variant: "destructive", title: "Не удалось сохранить порядок" });
+    },
+  });
   const createReview = useCreateReview();
   const updateReview = useUpdateReview();
   const deleteReview = useDeleteReview();
@@ -267,39 +267,44 @@ const updateProductOrder = useMutation({
         }
 
         // СБОР ПОЛЕЙ ТОВАРА (без категорий!)
-const data = { 
-  ...formData, 
-  composition: formData.composition.split(',').map(s => s.trim()).filter(Boolean),
-  colors: formData.colors.split(',').map(s => s.trim()).filter(Boolean),
-  image_url: imageUrl, 
-  gallery_urls: galleryUrls,
-};
+        const data = { 
+          ...formData, 
+          composition: formData.composition.split(',').map(s => s.trim()).filter(Boolean),
+          colors: formData.colors.split(',').map(s => s.trim()).filter(Boolean),
+          image_url: imageUrl, 
+          gallery_urls: galleryUrls,
+        };
 
-// категории нельзя отправлять в таблицу products — убираем поле из payload
-delete (data as any).category_ids;
+        // категории нельзя отправлять в таблицу products — убираем поле из payload
+        delete (data as any).category_ids;
 
-let savedProductId = product?.id as string | undefined;
+        let savedProductId = product?.id as string | undefined;
 
-// 1) Сохраняем САМ ТОВАР
-if (product) {
-  await updateProduct.mutateAsync({ id: product.id, updates: data });
-  savedProductId = product.id;
-} else {
-  const created = await createProduct.mutateAsync(data as any);
-  savedProductId = created.id as string;
-}
+        // 1) Сохраняем САМ ТОВАР
+        if (product) {
+          await updateProduct.mutateAsync({ id: product.id, updates: data });
+          savedProductId = product.id;
+        } else {
+          const created = await createProduct.mutateAsync(data as any);
+          savedProductId = created.id as string;
+        }
 
-// 2) Сохраняем КАТЕГОРИИ через RPC
-await setProductCategories.mutateAsync({
-  productId: String(savedProductId!),
-  categoryIds: formData.category_ids,
-});
+        // 2) Сохраняем КАТЕГОРИИ через RPC
+        await setProductCategories.mutateAsync({
+          productId: String(savedProductId!),
+          categoryIds: formData.category_ids,
+        });
 
-// 3) Сбрасываем форму/диалог
-setIsDialogOpen(false);
-setEditingItem(null);
-setImageFile(null);
-setGalleryFiles([]);
+        // 3) Сбрасываем форму/диалог
+        setIsDialogOpen(false);
+        setEditingItem(null);
+        setImageFile(null);
+        setGalleryFiles([]);
+
+        // 3.1) Снимаем фокус (фикс: тост/диалог не возвращают фокус к триггеру => нет скролла вверх)
+        requestAnimationFrame(() => {
+          (document.activeElement as HTMLElement | null)?.blur?.();
+        });
 
       } catch (error) {
         console.error('Error saving product:', error);
@@ -415,14 +420,14 @@ setGalleryFiles([]);
           <div>
             <Label htmlFor="availability_status">Статус наличия</Label>
             <Select
-  value={formData.availability_status}
-  onValueChange={(value) =>
-    setFormData({
-      ...formData,
-      availability_status: value as AvailabilityStatus,  // ✅ привели к типу
-    }) 
-  }
->
+              value={formData.availability_status}
+              onValueChange={(value) =>
+                setFormData({
+                  ...formData,
+                  availability_status: value as AvailabilityStatus,
+                }) 
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Выберите статус" />
               </SelectTrigger>
@@ -445,29 +450,29 @@ setGalleryFiles([]);
             />
           </div>
           <div>
-  <Label>Категории</Label>
-  <div className="mt-2 grid grid-cols-2 gap-2 max-h-48 overflow-auto border rounded p-2">
-    {categories.map((c) => {
-      const checked = formData.category_ids.includes(c.id);
-      return (
-        <label key={c.id} className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={(e) => {
-              setFormData((prev) => {
-                const set = new Set(prev.category_ids);
-                e.target.checked ? set.add(c.id) : set.delete(c.id);
-                return { ...prev, category_ids: Array.from(set) };
-              });
-            }}
-          />
-          <span>{c.name}</span>
-        </label>
-      );
-    })}
-  </div>
-</div>
+            <Label>Категории</Label>
+            <div className="mt-2 grid grid-cols-2 gap-2 max-h-48 overflow-auto border rounded p-2">
+              {categories.map((c) => {
+                const checked = formData.category_ids.includes(c.id);
+                return (
+                  <label key={c.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        setFormData((prev) => {
+                          const set = new Set(prev.category_ids);
+                          e.target.checked ? set.add(c.id) : set.delete(c.id);
+                          return { ...prev, category_ids: Array.from(set) };
+                        });
+                      }}
+                    />
+                    <span>{c.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
           <div>
             <Label htmlFor="image">Основное изображение (отображается везде)</Label>
             <Input
@@ -860,448 +865,468 @@ setGalleryFiles([]);
           </p>
         </div>
 
-      <Tabs defaultValue="categories" value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="categories">Категории</TabsTrigger>
-          <TabsTrigger value="products">Товары</TabsTrigger>
-          <TabsTrigger value="reviews">Отзывы</TabsTrigger>
-          <TabsTrigger value="hero-slides">Hero слайды</TabsTrigger>
-          <TabsTrigger value="recommendations">Рекомендации</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="categories" value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="categories">Категории</TabsTrigger>
+            <TabsTrigger value="products">Товары</TabsTrigger>
+            <TabsTrigger value="reviews">Отзывы</TabsTrigger>
+            <TabsTrigger value="hero-slides">Hero слайды</TabsTrigger>
+            <TabsTrigger value="recommendations">Рекомендации</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="categories" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold">Категории</h2>
-            <Dialog open={isDialogOpen && activeTab === 'categories'} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => openDialog()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Добавить категорию
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingItem ? 'Редактировать' : 'Создать'} категорию
-                  </DialogTitle>
-                </DialogHeader>
-                <CategoryForm category={editingItem} />
-              </DialogContent>
-            </Dialog>
-          </div>
+          <TabsContent value="categories" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold">Категории</h2>
+              <Dialog open={isDialogOpen && activeTab === 'categories'} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => openDialog()}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Добавить категорию
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingItem ? 'Редактировать' : 'Создать'} категорию
+                    </DialogTitle>
+                  </DialogHeader>
+                  <CategoryForm category={editingItem} />
+                </DialogContent>
+              </Dialog>
+            </div>
 
-          {categoriesLoading ? (
-            <p>Загрузка...</p>
-          ) : (
-            <div className="grid gap-4">
-              {categories.map((category) => (
-                <Card key={category.id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center space-x-4">
-                      {category.image_url && (
-                        <img src={category.image_url} alt={category.name} className="w-12 h-12 object-cover rounded" />
-                      )}
-                      <div>
-                        <h3 className="font-semibold">{category.name}</h3>
-                        <p className="text-sm text-muted-foreground">{category.description}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant={category.is_active ? "default" : "secondary"}>
-                            {category.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
-                            {category.is_active ? 'Активна' : 'Неактивна'}
-                          </Badge>
+            {categoriesLoading ? (
+              <p>Загрузка...</p>
+            ) : (
+              <div className="grid gap-4">
+                {categories.map((category) => (
+                  <Card key={category.id}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div className="flex items-center space-x-4">
+                        {category.image_url && (
+                          <img src={category.image_url} alt={category.name} className="w-12 h-12 object-cover rounded" />
+                        )}
+                        <div>
+                          <h3 className="font-semibold">{category.name}</h3>
+                          <p className="text-sm text-muted-foreground">{category.description}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant={category.is_active ? "default" : "secondary"}>
+                              {category.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
+                              {category.is_active ? 'Активна' : 'Неактивна'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setEditingItem(category)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Редактировать категорию</DialogTitle>
-                          </DialogHeader>
-                          <CategoryForm category={category} />
-                        </DialogContent>
-                      </Dialog>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => deleteCategory.mutate(category.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="flex space-x-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => setEditingItem(category)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Редактировать категорию</DialogTitle>
+                            </DialogHeader>
+                            <CategoryForm category={category} />
+                          </DialogContent>
+                        </Dialog>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => deleteCategory.mutate(category.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="products" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold">Товары</h2>
+              <Dialog
+                open={isDialogOpen && activeTab === 'products'}
+                onOpenChange={(open) => {
+                  setIsDialogOpen(open);
+                  if (!open) {
+                    requestAnimationFrame(() => {
+                      (document.activeElement as HTMLElement | null)?.blur?.();
+                    });
+                  }
+                }}
+              >
+                <DialogTrigger asChild>
+                  <Button type="button" onClick={() => openDialog()}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Добавить товар
+                  </Button>
+                </DialogTrigger>
+                <DialogContent
+                  className="max-w-3xl max-h-[90vh] overflow-hidden"
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                >
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingItem ? 'Редактировать' : 'Создать'} товар
+                    </DialogTitle>
+                  </DialogHeader>
+                  <ProductForm product={editingItem} />
+                </DialogContent>
+              </Dialog>
             </div>
-          )}
-        </TabsContent>
 
-        <TabsContent value="products" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold">Товары</h2>
-            <Dialog open={isDialogOpen && activeTab === 'products'} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => openDialog()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Добавить товар
-                </Button>
-              </DialogTrigger>
-              <DialogContent
-  className="max-w-3xl max-h-[90vh] overflow-hidden"
-  onOpenAutoFocus={(e) => e.preventDefault()}
-  onCloseAutoFocus={(e) => e.preventDefault()}
->
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingItem ? 'Редактировать' : 'Создать'} товар
-                  </DialogTitle>
-                </DialogHeader>
-                <ProductForm product={editingItem} />
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {productsLoading ? (
-  <p>Загрузка...</p>
-) : (
-  <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-    <SortableContext
-      items={orderedProducts.map((p) => String(p.id))}
-      strategy={verticalListSortingStrategy}
-    >
-      <div className="grid gap-4">
-        {orderedProducts.map((product) => (
-          <SortableProductCard key={product.id} id={String(product.id)}>
-            <Card>
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex items-center space-x-4">
-                  {product.image_url && (
-  <img
-    src={product.image_url}
-    alt={product.name}
-    className="w-12 h-12 object-cover rounded"
-    draggable={false}
-  />
-)}
-                  <div>
-                    <h3 className="font-semibold">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground">{product.description}</p>
-                    <p className="text-sm font-medium">₽{product.price}</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      {product.is_featured && (
-                        <Badge variant="default">
-                          <Star className="w-3 h-3 mr-1" />
-                          Рекомендуемый
-                        </Badge>
-                      )}
-                      <Badge variant={product.is_active ? "default" : "secondary"}>
-                        {product.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
-                        {product.is_active ? 'Активен' : 'Неактивен'}
-                      </Badge>
-                    </div>
+            {productsLoading ? (
+              <p>Загрузка...</p>
+            ) : (
+              <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                <SortableContext
+                  items={orderedProducts.map((p) => String(p.id))}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="grid gap-4">
+                    {orderedProducts.map((product) => (
+                      <SortableProductCard key={product.id} id={String(product.id)}>
+                        <Card>
+                          <CardContent className="flex items-center justify-between p-4">
+                            <div className="flex items-center space-x-4">
+                              {product.image_url && (
+                                <img
+                                  src={product.image_url}
+                                  alt={product.name}
+                                  className="w-12 h-12 object-cover rounded"
+                                  draggable={false}
+                                />
+                              )}
+                              <div>
+                                <h3 className="font-semibold">{product.name}</h3>
+                                <p className="text-sm text-muted-foreground">{product.description}</p>
+                                <p className="text-sm font-medium">₽{product.price}</p>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  {product.is_featured && (
+                                    <Badge variant="default">
+                                      <Star className="w-3 h-3 mr-1" />
+                                      Рекомендуемый
+                                    </Badge>
+                                  )}
+                                  <Badge variant={product.is_active ? "default" : "secondary"}>
+                                    {product.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
+                                    {product.is_active ? 'Активен' : 'Неактивен'}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Dialog
+                                onOpenChange={(open) => {
+                                  if (!open) {
+                                    requestAnimationFrame(() => {
+                                      (document.activeElement as HTMLElement | null)?.blur?.();
+                                    });
+                                  }
+                                }}
+                              >
+                                <DialogTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onClick={() => setEditingItem(product)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent
+                                  className="max-w-3xl max-h-[90vh] overflow-hidden"
+                                  onOpenAutoFocus={(e) => e.preventDefault()}
+                                  onCloseAutoFocus={(e) => e.preventDefault()}
+                                >
+                                  <DialogHeader>
+                                    <DialogTitle>Редактировать товар</DialogTitle>
+                                  </DialogHeader>
+                                  <ProductForm product={product} />
+                                </DialogContent>
+                              </Dialog>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={() => deleteProduct.mutate(product.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </SortableProductCard>
+                    ))}
                   </div>
-                </div>
-                <div className="flex space-x-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-  variant="outline"
-  size="sm"
-  onPointerDown={(e) => e.stopPropagation()}
-  onClick={() => setEditingItem(product)}
->
-  <Edit className="h-4 w-4" />
-</Button>
-                    </DialogTrigger>
-                    <DialogContent
-  className="max-w-3xl max-h-[90vh] overflow-hidden"
-  onOpenAutoFocus={(e) => e.preventDefault()}
-  onCloseAutoFocus={(e) => e.preventDefault()}
->
-                      <DialogHeader>
-                        <DialogTitle>Редактировать товар</DialogTitle>
-                      </DialogHeader>
-                      <ProductForm product={product} />
-                    </DialogContent>
-                  </Dialog>
-                  <Button
-  variant="outline"
-  size="sm"
-  onPointerDown={(e) => e.stopPropagation()}
-  onClick={() => deleteProduct.mutate(product.id)}
->
-  <Trash2 className="h-4 w-4" />
-</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </SortableProductCard>
-        ))}
-      </div>
-    </SortableContext>
-  </DndContext>
-)}
+                </SortableContext>
+              </DndContext>
+            )}
 
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="reviews" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold">Отзывы</h2>
-            <Dialog open={isDialogOpen && activeTab === 'reviews'} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => openDialog()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Добавить отзыв
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingItem ? 'Редактировать' : 'Создать'} отзыв
-                  </DialogTitle>
-                </DialogHeader>
-                <ReviewForm review={editingItem} />
-              </DialogContent>
-            </Dialog>
-          </div>
+          <TabsContent value="reviews" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold">Отзывы</h2>
+              <Dialog open={isDialogOpen && activeTab === 'reviews'} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => openDialog()}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Добавить отзыв
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingItem ? 'Редактировать' : 'Создать'} отзыв
+                    </DialogTitle>
+                  </DialogHeader>
+                  <ReviewForm review={editingItem} />
+                </DialogContent>
+              </Dialog>
+            </div>
 
-          {reviewsLoading ? (
-            <p>Загрузка...</p>
-          ) : (
-            <div className="grid gap-4">
-              {reviews.map((review) => (
-                <Card key={review.id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center space-x-4">
-                      {review.client_avatar_url && (
-                        <img src={review.client_avatar_url} alt={review.client_name} className="w-12 h-12 object-cover rounded-full" />
-                      )}
-                      <div>
-                        <h3 className="font-semibold">{review.client_name}</h3>
-                        <div className="flex items-center">
-                          {Array.from({ length: review.rating }, (_, i) => (
-                            <Star key={i} className="w-4 h-4 fill-current text-yellow-400" />
-                          ))}
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">{review.comment}</p>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <Badge variant={review.is_approved ? "default" : "destructive"}>
-                            {review.is_approved ? 'Одобрен' : 'Ожидает модерации'}
-                          </Badge>
-                          <Badge variant={review.is_active ? "default" : "secondary"}>
-                            {review.is_active ? 'Активен' : 'Неактивен'}
-                          </Badge>
+            {reviewsLoading ? (
+              <p>Загрузка...</p>
+            ) : (
+              <div className="grid gap-4">
+                {reviews.map((review) => (
+                  <Card key={review.id}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div className="flex items-center space-x-4">
+                        {review.client_avatar_url && (
+                          <img src={review.client_avatar_url} alt={review.client_name} className="w-12 h-12 object-cover rounded-full" />
+                        )}
+                        <div>
+                          <h3 className="font-semibold">{review.client_name}</h3>
+                          <div className="flex items-center">
+                            {Array.from({ length: review.rating }, (_, i) => (
+                              <Star key={i} className="w-4 h-4 fill-current text-yellow-400" />
+                            ))}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">{review.comment}</p>
+                          <div className="flex items-center space-x-2 mt-2">
+                            <Badge variant={review.is_approved ? "default" : "destructive"}>
+                              {review.is_approved ? 'Одобрен' : 'Ожидает модерации'}
+                            </Badge>
+                            <Badge variant={review.is_active ? "default" : "secondary"}>
+                              {review.is_active ? 'Активен' : 'Неактивен'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setEditingItem(review)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Редактировать отзыв</DialogTitle>
-                          </DialogHeader>
-                          <ReviewForm review={review} />
-                        </DialogContent>
-                      </Dialog>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => deleteReview.mutate(review.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="flex space-x-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => setEditingItem(review)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Редактировать отзыв</DialogTitle>
+                            </DialogHeader>
+                            <ReviewForm review={review} />
+                          </DialogContent>
+                        </Dialog>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => deleteReview.mutate(review.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="hero-slides" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold">Hero слайды</h2>
+              <Dialog open={isDialogOpen && activeTab === 'hero-slides'} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => openDialog()}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Добавить слайд
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingItem ? 'Редактировать' : 'Создать'} слайд
+                    </DialogTitle>
+                  </DialogHeader>
+                  <HeroSlideForm heroSlide={editingItem} />
+                </DialogContent>
+              </Dialog>
             </div>
-          )}
-        </TabsContent>
 
-        <TabsContent value="hero-slides" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold">Hero слайды</h2>
-            <Dialog open={isDialogOpen && activeTab === 'hero-slides'} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => openDialog()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Добавить слайд
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingItem ? 'Редактировать' : 'Создать'} слайд
-                  </DialogTitle>
-                </DialogHeader>
-                <HeroSlideForm heroSlide={editingItem} />
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {heroSlidesLoading ? (
-            <p>Загрузка...</p>
-          ) : (
-            <div className="grid gap-4">
-              {heroSlides.map((slide) => (
-                <Card key={slide.id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center space-x-4">
-                      {slide.image_url && (
-                        <img src={slide.image_url} alt={slide.title || 'Hero slide'} className="w-20 h-12 object-cover rounded" />
-                      )}
-                      <div>
-                        <h3 className="font-semibold">{slide.title || 'Без заголовка'}</h3>
-                        <p className="text-sm text-muted-foreground">{slide.subtitle}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="outline">Порядок: {slide.sort_order}</Badge>
-                          <Badge variant={slide.is_active ? "default" : "secondary"}>
-                            {slide.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
-                            {slide.is_active ? 'Активен' : 'Неактивен'}
-                          </Badge>
+            {heroSlidesLoading ? (
+              <p>Загрузка...</p>
+            ) : (
+              <div className="grid gap-4">
+                {heroSlides.map((slide) => (
+                  <Card key={slide.id}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div className="flex items-center space-x-4">
+                        {slide.image_url && (
+                          <img src={slide.image_url} alt={slide.title || 'Hero slide'} className="w-20 h-12 object-cover rounded" />
+                        )}
+                        <div>
+                          <h3 className="font-semibold">{slide.title || 'Без заголовка'}</h3>
+                          <p className="text-sm text-muted-foreground">{slide.subtitle}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant="outline">Порядок: {slide.sort_order}</Badge>
+                            <Badge variant={slide.is_active ? "default" : "secondary"}>
+                              {slide.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
+                              {slide.is_active ? 'Активен' : 'Неактивен'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setEditingItem(slide)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Редактировать слайд</DialogTitle>
-                          </DialogHeader>
-                          <HeroSlideForm heroSlide={slide} />
-                        </DialogContent>
-                      </Dialog>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => deleteHeroSlide.mutate(slide.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="flex space-x-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => setEditingItem(slide)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Редактировать слайд</DialogTitle>
+                            </DialogHeader>
+                            <HeroSlideForm heroSlide={slide} />
+                          </DialogContent>
+                        </Dialog>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => deleteHeroSlide.mutate(slide.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="recommendations" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold">Рекомендации товаров</h2>
+              <Dialog open={isDialogOpen && activeTab === 'recommendations'} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => openDialog()}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Добавить рекомендацию
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingItem ? 'Редактировать' : 'Создать'} рекомендацию
+                    </DialogTitle>
+                  </DialogHeader>
+                  <RecommendationForm recommendation={editingItem} />
+                </DialogContent>
+              </Dialog>
             </div>
-          )}
-        </TabsContent>
 
-        <TabsContent value="recommendations" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold">Рекомендации товаров</h2>
-            <Dialog open={isDialogOpen && activeTab === 'recommendations'} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => openDialog()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Добавить рекомендацию
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingItem ? 'Редактировать' : 'Создать'} рекомендацию
-                  </DialogTitle>
-                </DialogHeader>
-                <RecommendationForm recommendation={editingItem} />
-              </DialogContent>
-            </Dialog>
-          </div>
+            <div className="bg-muted/50 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold mb-2">Логика рекомендаций по умолчанию:</h3>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• <strong>Все цветочные категории:</strong> показывают только НЕ-цветочные товары (вазы, сладости, игрушки, подарки)</li>
+                <li>• <strong>Вазы:</strong> показывают все цветочные категории</li>
+                <li>• <strong>Игрушки:</strong> показывают все категории кроме игрушек</li>
+                <li>• <strong>Сладости:</strong> показывают все цветочные категории</li>
+                <li>• <strong>Остальные:</strong> показывают случайные категории</li>
+              </ul>
+              <p className="text-xs text-muted-foreground mt-2">
+                Цветочные категории: букеты, цветы, пионы, авторские букеты, моно букеты, корзины, подсолнухи, корпоративные подарки, гортензии, розы, тюльпаны, лилии и др.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Настройки ниже переопределяют логику по умолчанию
+              </p>
+            </div>
 
-          <div className="bg-muted/50 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold mb-2">Логика рекомендаций по умолчанию:</h3>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• <strong>Все цветочные категории:</strong> показывают только НЕ-цветочные товары (вазы, сладости, игрушки, подарки)</li>
-              <li>• <strong>Вазы:</strong> показывают все цветочные категории</li>
-              <li>• <strong>Игрушки:</strong> показывают все категории кроме игрушек</li>
-              <li>• <strong>Сладости:</strong> показывают все цветочные категории</li>
-              <li>• <strong>Остальные:</strong> показывают случайные категории</li>
-            </ul>
-            <p className="text-xs text-muted-foreground mt-2">
-              Цветочные категории: букеты, цветы, пионы, авторские букеты, моно букеты, корзины, подсолнухи, корпоративные подарки, гортензии, розы, тюльпаны, лилии и др.
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Настройки ниже переопределяют логику по умолчанию
-            </p>
-          </div>
-
-          {recommendationsLoading ? (
-            <p>Загрузка...</p>
-          ) : (
-            <div className="grid gap-4">
-              {recommendations.map((recommendation: any) => (
-                <Card key={recommendation.id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center space-x-4">
-                      <div>
-                        <h3 className="font-semibold">
-                          {recommendation.source_category?.name} → {recommendation.target_category?.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          При просмотре товаров из категории "{recommendation.source_category?.name}" 
-                          показывать товары из категории "{recommendation.target_category?.name}"
-                        </p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="outline">Порядок: {recommendation.sort_order}</Badge>
-                          <Badge variant={recommendation.is_active ? "default" : "secondary"}>
-                            {recommendation.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
-                            {recommendation.is_active ? 'Активна' : 'Неактивна'}
-                          </Badge>
+            {recommendationsLoading ? (
+              <p>Загрузка...</p>
+            ) : (
+              <div className="grid gap-4">
+                {recommendations.map((recommendation: any) => (
+                  <Card key={recommendation.id}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div className="flex items-center space-x-4">
+                        <div>
+                          <h3 className="font-semibold">
+                            {recommendation.source_category?.name} → {recommendation.target_category?.name}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            При просмотре товаров из категории "{recommendation.source_category?.name}" 
+                            показывать товары из категории "{recommendation.target_category?.name}"
+                          </p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant="outline">Порядок: {recommendation.sort_order}</Badge>
+                            <Badge variant={recommendation.is_active ? "default" : "secondary"}>
+                              {recommendation.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
+                              {recommendation.is_active ? 'Активна' : 'Неактивна'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setEditingItem(recommendation)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Редактировать рекомендацию</DialogTitle>
-                          </DialogHeader>
-                          <RecommendationForm recommendation={recommendation} />
-                        </DialogContent>
-                      </Dialog>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => deleteRecommendation.mutate(recommendation.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {recommendations.length === 0 && (
-                <Card>
-                  <CardContent className="text-center p-8">
-                    <p className="text-muted-foreground">
-                      Пока нет настроенных рекомендаций. Используется логика по умолчанию.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                      <div className="flex space-x-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => setEditingItem(recommendation)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Редактировать рекомендацию</DialogTitle>
+                            </DialogHeader>
+                            <RecommendationForm recommendation={recommendation} />
+                          </DialogContent>
+                        </Dialog>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => deleteRecommendation.mutate(recommendation.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {recommendations.length === 0 && (
+                  <Card>
+                    <CardContent className="text-center p-8">
+                      <p className="text-muted-foreground">
+                        Пока нет настроенных рекомендаций. Используется логика по умолчанию.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
