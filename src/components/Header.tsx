@@ -13,7 +13,10 @@ import {
 import {
   ShoppingCart,
   Menu,
-  Heart
+  Heart,
+  Instagram,
+  Send,
+  MessageCircle
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useFavorites } from '../context/FavoritesContext';
@@ -106,8 +109,41 @@ export const Header = () => {
 
           {/* Действия */}
           <div className="flex items-center space-x-2">
+            {/* Соцсети слева от лайка и корзины (показываем на md+) */}
+            <div className="hidden md:flex items-center gap-2 mr-2">
+              <Button variant="outline" size="icon" asChild aria-label="Instagram">
+                <a
+                  href="https://www.instagram.com/theame.flowers"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Instagram className="w-4 h-4" />
+                </a>
+              </Button>
+
+              <Button variant="outline" size="icon" asChild aria-label="Telegram">
+                <a
+                  href="https://t.me/the_ame_flowers"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Send className="w-4 h-4" />
+                </a>
+              </Button>
+
+              <Button variant="outline" size="icon" asChild aria-label="WhatsApp">
+                <a
+                  href="https://wa.me/message/XQDDWGSEL35LP1"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                </a>
+              </Button>
+            </div>
+
             <Button variant="ghost" className="hidden sm:flex relative h-11 w-11 p-0" asChild>
-              <Link to="/favorites">
+              <Link to="/favorites" aria-label="Избранное">
                 <Heart className="w-5 h-5" />
                 {favoritesState.itemCount > 0 && (
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 text-xs p-0 flex items-center justify-center">
@@ -118,7 +154,7 @@ export const Header = () => {
             </Button>
 
             <Button variant="ghost" className="relative h-11 w-11 p-0" asChild>
-              <Link to="/cart">
+              <Link to="/cart" aria-label="Корзина">
                 <ShoppingCart className="w-5 h-5" />
                 {state.itemCount > 0 && (
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 text-xs p-0 flex items-center justify-center">
@@ -131,14 +167,19 @@ export const Header = () => {
             {/* Мобильное меню */}
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" className="md:hidden h-11 w-11 p-0" onClick={() => setIsMenuOpen(true)}>
+                <Button
+                  variant="ghost"
+                  className="md:hidden h-11 w-11 p-0"
+                  onClick={() => setIsMenuOpen(true)}
+                  aria-label="Открыть меню"
+                >
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                 {/* Обёртка с обработчиками тач-свайпа (вправо = закрыть) */}
                 <div
-                  className="h-full touch-pan-y" // позволяем вертикальный скролл, но отслеживаем горизонтальный свайп
+                  className="h-full touch-pan-y"
                   onTouchStart={onTouchStart}
                   onTouchMove={onTouchMove}
                   onTouchEnd={onTouchEnd}
