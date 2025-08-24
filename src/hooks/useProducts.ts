@@ -5,18 +5,18 @@ import { Product, CreateProductDto } from '@/types/database';
 import { Flower } from '@/types/flower';
 import { useToast } from '@/hooks/use-toast';
 
-/** утилита маппинга строки из view products_with_categories -> Flower для карточек */
+/** mapper: row из view -> Flower для карточек/лент */
 function mapDbRowToFlower(p: any): Flower {
   return {
     id: p.id,
     name: p.name,
     price: p.price ?? 0,
-    image: p.image_url,
+    image: p.image_url || '/placeholder.svg',
     description: p.description ?? '',
     category: p.category?.name ?? 'Разное',
     categoryId: p.category?.id ?? null,
-    categorySlug: p.category?.slug ?? null, // важно для ЧПУ
-    slug: p.slug ?? null,                   // важно для ЧПУ
+    categorySlug: p.category?.slug ?? null,
+    slug: p.slug ?? null,
     inStock: Boolean(p.is_active),
     quantity: 1,
     colors: Array.isArray(p.colors) ? p.colors : [],
@@ -25,58 +25,51 @@ function mapDbRowToFlower(p: any): Flower {
   };
 }
 
-/**
- * Товары для главной (только активные, помеченные show_on_homepage)
- * Возвращаем Flower[] (готово для <FlowerCard />)
- */
+/** Товары для главной (лента). Возвращаем Flower[] */
 export const useHomepageProducts = () => {
   return useQuery({
-    queryKey: ['homepage-products'],
+    queryKey: ['homepage-products'], // ← удалили "key"
     queryFn: async (): Promise<Flower[]> => {
       const { data, error } = await (supabase as any)
-        .from('products_with_categories') // читаем из view (p.* + category json)
+        .from('products_with_categories')
         .select('*')
         .eq('is_active', true)
         .eq('show_on_homepage', true)
         .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: true }); // стабильный порядок
+        .order('created_at', { ascending: true });
+
       if (error) throw error;
       return (data ?? []).map(mapDbRowToFlower);
     },
   });
 };
 
-/**
- * Избранные товары (например, для карусели/блоков).
- * Возвращаем Flower[] (готово для <FlowerCard />)
- */
+/** Избранные (витрина). Возвращаем Flower[] */
 export const useFeaturedProducts = () => {
   return useQuery({
     queryKey: ['featured-products'],
     queryFn: async (): Promise<Flower[]> => {
       const { data, error } = await (supabase as any)
-        .from('products_with_categories') // читаем из view
+        .from('products_with_categories')
         .select('*')
         .eq('is_active', true)
         .eq('is_featured', true)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
+
       if (error) throw error;
       return (data ?? []).map(mapDbRowToFlower);
     },
   });
 };
 
-/**
- * Полный список товаров для админки.
- * Оставляем Product[] без маппинга (админка получает «сырые» поля).
- */
+/** Полный список для админки — оставляем Product[] без маппинга */
 export const useAllProducts = () => {
   return useQuery({
     queryKey: ['products'],
     queryFn: async (): Promise<Product[]> => {
       const { data, error } = await (supabase as any)
-        .from('products_with_categories') // читаем из view
+        .from('products_with_categories')
         .select('*')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
@@ -95,7 +88,7 @@ export const useCreateProduct = () => {
   return useMutation({
     mutationFn: async (product: CreateProductDto) => {
       const { data, error } = await supabase
-        .from('products') // пишем в базовую таблицу
+        .from('products')
         .insert(product)
         .select()
         .single();
@@ -121,7 +114,7 @@ export const useUpdateProduct = () => {
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Product> }) => {
       const { data, error } = await supabase
-        .from('products') // обновляем базовую таблицу
+        .from('products')
         .update(updates)
         .eq('id', id)
         .select()
@@ -130,16 +123,10 @@ export const useUpdateProduct = () => {
       return data as Product;
     },
     onSuccess: (updated) => {
-      // мягко обновляем кэш списка админки
       queryClient.setQueryData<Product[] | undefined>(['products'], (prev) => {
         if (!prev) return prev;
         return prev.map((p) => (String(p.id) === String(updated.id) ? ({ ...p, ...updated } as Product) : p));
       });
-
-      // витринные выборки можно инвалидировать отдельно при необходимости
-      // queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-      // queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
-
       toast({ title: 'Успешно', description: 'Продукт обновлён' });
     },
     onError: (error: any) => {
@@ -169,9 +156,7 @@ export const useDeleteProduct = () => {
   });
 };
 
-/**
- * Установка категорий у товара (через RPC set_product_categories).
- */
+/** RPC: установка категорий */
 export const useSetProductCategories = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -185,9 +170,7 @@ export const useSetProductCategories = () => {
       if (error) throw error;
       return { productId, categoryIds };
     },
-
     onSuccess: ({ productId, categoryIds }) => {
-      // мягко обновляем кэш списка админки
       queryClient.setQueryData<Product[] | undefined>(['products'], (prev) => {
         if (!prev) return prev;
         return prev.map((p) => {
@@ -197,10 +180,8 @@ export const useSetProductCategories = () => {
           return upd as Product;
         });
       });
-
       toast({ title: 'Успешно', description: 'Категории обновлены' });
     },
-
     onError: (error: any) => {
       toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
     },
