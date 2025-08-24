@@ -2,35 +2,58 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Product, CreateProductDto } from '@/types/database';
+import { Flower } from '@/types/flower';
 import { useToast } from '@/hooks/use-toast';
+
+/** утилита маппинга строки из view products_with_categories -> Flower для карточек */
+function mapDbRowToFlower(p: any): Flower {
+  return {
+    id: p.id,
+    name: p.name,
+    price: p.price ?? 0,
+    image: p.image_url,
+    description: p.description ?? '',
+    category: p.category?.name ?? 'Разное',
+    categoryId: p.category?.id ?? null,
+    categorySlug: p.category?.slug ?? null, // важно для ЧПУ
+    slug: p.slug ?? null,                   // важно для ЧПУ
+    inStock: Boolean(p.is_active),
+    quantity: 1,
+    colors: Array.isArray(p.colors) ? p.colors : [],
+    size: 'medium',
+    occasion: [],
+  };
+}
 
 /**
  * Товары для главной (только активные, помеченные show_on_homepage)
+ * Возвращаем Flower[] (готово для <FlowerCard />)
  */
 export const useHomepageProducts = () => {
   return useQuery({
     queryKey: ['homepage-products'],
-    queryFn: async () => {
+    queryFn: async (): Promise<Flower[]> => {
       const { data, error } = await (supabase as any)
-        .from('products_with_categories') // читаем из view
+        .from('products_with_categories') // читаем из view (p.* + category json)
         .select('*')
         .eq('is_active', true)
         .eq('show_on_homepage', true)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true }); // стабильный порядок
       if (error) throw error;
-      return data as Product[];
+      return (data ?? []).map(mapDbRowToFlower);
     },
   });
 };
 
 /**
  * Избранные товары (например, для карусели/блоков).
+ * Возвращаем Flower[] (готово для <FlowerCard />)
  */
 export const useFeaturedProducts = () => {
   return useQuery({
     queryKey: ['featured-products'],
-    queryFn: async () => {
+    queryFn: async (): Promise<Flower[]> => {
       const { data, error } = await (supabase as any)
         .from('products_with_categories') // читаем из view
         .select('*')
@@ -39,18 +62,19 @@ export const useFeaturedProducts = () => {
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data as Product[];
+      return (data ?? []).map(mapDbRowToFlower);
     },
   });
 };
 
 /**
  * Полный список товаров для админки.
+ * Оставляем Product[] без маппинга (админка получает «сырые» поля).
  */
 export const useAllProducts = () => {
   return useQuery({
     queryKey: ['products'],
-    queryFn: async () => {
+    queryFn: async (): Promise<Product[]> => {
       const { data, error } = await (supabase as any)
         .from('products_with_categories') // читаем из view
         .select('*')
@@ -79,7 +103,6 @@ export const useCreateProduct = () => {
       return data as Product;
     },
     onSuccess: () => {
-      // создание меняет список — инвалидация ок
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
       queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
@@ -106,16 +129,14 @@ export const useUpdateProduct = () => {
       if (error) throw error;
       return data as Product;
     },
-    // ⬇️ вместо invalidate — точечно обновляем кэш списка админки,
-    // чтобы не было полного рефетча и «прыжка» скролла
     onSuccess: (updated) => {
+      // мягко обновляем кэш списка админки
       queryClient.setQueryData<Product[] | undefined>(['products'], (prev) => {
         if (!prev) return prev;
         return prev.map((p) => (String(p.id) === String(updated.id) ? ({ ...p, ...updated } as Product) : p));
       });
 
-      // Если эти выборки используются на витрине — можно их обновить/инвалидировать отдельно.
-      // Они не влияют на скролл админки.
+      // витринные выборки можно инвалидировать отдельно при необходимости
       // queryClient.invalidateQueries({ queryKey: ['featured-products'] });
       // queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
 
@@ -137,7 +158,6 @@ export const useDeleteProduct = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      // удаление меняет список — инвалидация ок
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
       queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
@@ -151,7 +171,6 @@ export const useDeleteProduct = () => {
 
 /**
  * Установка категорий у товара (через RPC set_product_categories).
- * Примечание: каст к any убирает TS-ошибку, если RPC ещё не описан в типе Database.
  */
 export const useSetProductCategories = () => {
   const queryClient = useQueryClient();
@@ -167,23 +186,17 @@ export const useSetProductCategories = () => {
       return { productId, categoryIds };
     },
 
-    // ⬇️ мягко обновляем кэш ['products'] вместо invalidateQueries
     onSuccess: ({ productId, categoryIds }) => {
+      // мягко обновляем кэш списка админки
       queryClient.setQueryData<Product[] | undefined>(['products'], (prev) => {
         if (!prev) return prev;
         return prev.map((p) => {
           if (String(p.id) !== String(productId)) return p;
           const upd: any = { ...p };
-          // Обнови имя поля под свою вьюху. Часто это 'category_ids'.
           if ('category_ids' in upd) upd.category_ids = Array.isArray(categoryIds) ? [...categoryIds] : [];
-          // Если во вьюхе есть другое поле (например, category_ids_json) — поправь строку выше.
           return upd as Product;
         });
       });
-
-      // Эти выборки для витрины можно не трогать (они не в админке).
-      // queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-      // queryClient.invalidateQueries({ queryKey: ['homepage-products'] });
 
       toast({ title: 'Успешно', description: 'Категории обновлены' });
     },

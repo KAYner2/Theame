@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Flower } from '../types/flower';
 import { Button } from './ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -17,7 +17,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
   const { addToCart } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
   const { toast } = useToast();
-  
+
   const isInFavorites = isFavorite(flower.id);
 
   const handleAddToCart = () => {
@@ -44,19 +44,20 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
     }
     onToggleFavorite?.(flower);
   };
+
+  // 👇 если есть оба слага — строим ЧПУ; иначе — fallback на /product/:id
+  const productUrl =
+    flower.categorySlug && flower.slug
+      ? `/catalog/${flower.categorySlug}/${flower.slug}`
+      : `/product/${flower.id}`;
+
   return (
     <div className="group relative">
-      <Link
-  to={
-    (flower as any).category?.slug && (flower as any).slug
-      ? `/catalog/${(flower as any).category.slug}/${(flower as any).slug}`
-      : `/product/${flower.id}` // fallback, если slug ещё не задан
-  }
->
+      <Link to={productUrl}>
         <Card className="overflow-hidden bg-primary-soft/30 border border-primary/10 hover:shadow-soft transition-all duration-300 hover:scale-[1.02] rounded-2xl h-full flex flex-col">
           <div className="relative aspect-square overflow-hidden rounded-t-2xl">
-            <img 
-              src={flower.image} 
+            <img
+              src={flower.image}
               alt={flower.name}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
@@ -68,12 +69,12 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
               </div>
             )}
           </div>
-          
+
           <div className="p-4 flex-1 flex flex-col">
             <h3 className="font-medium text-foreground text-sm mb-4 line-clamp-2 leading-relaxed uppercase flex-1">
               {flower.name}
             </h3>
-            
+
             {/* Bottom section with price and actions */}
             <div className="flex items-center justify-between mt-auto">
               <div className="flex items-center gap-2">
@@ -92,7 +93,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
                   <ShoppingCart className="w-4 h-4" />
                 </button>
               </div>
-              
+
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -100,8 +101,8 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
                   handleToggleFavorite();
                 }}
                 className={`p-1.5 rounded-full transition-all duration-200 ${
-                  isInFavorites 
-                    ? 'bg-destructive text-destructive-foreground' 
+                  isInFavorites
+                    ? 'bg-destructive text-destructive-foreground'
                     : 'bg-muted hover:bg-destructive hover:text-destructive-foreground'
                 }`}
               >
