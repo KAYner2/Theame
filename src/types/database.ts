@@ -27,10 +27,13 @@ export interface Product {
   description?: string | null;
   detailed_description?: string | null;
   care_instructions?: string | null;
+
   /** Состав как массив удобен на фронте */
   composition?: string[] | null;
+
   /** Цвета как массив */
   colors?: string[] | null;
+
   gift_info?: string | null;
   guarantee_info?: string | null;
   delivery_info?: string | null;
@@ -54,12 +57,14 @@ export interface Product {
 
   /** Основное изображение */
   image_url?: string | null;
+
   /** До 4 изображений галереи */
   gallery_urls?: string[] | null;
 
   is_featured: boolean;
   is_active: boolean;
   show_on_homepage: boolean;
+
   /** Порядок сортировки (меньше — выше) */
   sort_order: number;
 
@@ -68,6 +73,10 @@ export interface Product {
 
   /** Опционально: если где-то делаешь join категории */
   category?: Category | null;
+
+  /** Новые поля для пометки возможности замены */
+  show_substitution_note?: boolean;
+  substitution_note_text?: string | null;
 }
 
 /** Отзыв клиента */
@@ -122,6 +131,10 @@ export interface CreateProductDto {
   is_active?: boolean;
   show_on_homepage?: boolean;
   sort_order?: number;
+
+  /** Новые поля сразу добавим и сюда */
+  show_substitution_note?: boolean;
+  substitution_note_text?: string | null;
 }
 
 /** DTO для создания отзыва */
@@ -154,10 +167,4 @@ export interface CreateHeroSlideDto {
   image_url: string;
   sort_order?: number;
   is_active?: boolean;
-}
-
-export interface Product {
-  // ...
-  show_substitution_note?: boolean;
-  substitution_note_text?: string | null;
 }
