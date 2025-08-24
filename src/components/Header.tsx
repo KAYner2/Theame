@@ -107,7 +107,7 @@ export const Header = () => {
           </nav>
 
           {/* Действия (все иконки в одном флексе с одинаковыми отступами) */}
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-1.5 md:gap-2">
             {/* Соцсети — те же прозрачные кнопки, без обводки и без hover-фона */}
             <Button
               variant="ghost"
