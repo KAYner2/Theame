@@ -155,3 +155,9 @@ export interface CreateHeroSlideDto {
   sort_order?: number;
   is_active?: boolean;
 }
+
+export interface Product {
+  // ...
+  show_substitution_note?: boolean;
+  substitution_note_text?: string | null;
+}

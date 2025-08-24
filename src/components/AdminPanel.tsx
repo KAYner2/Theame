@@ -275,6 +275,8 @@ React.useEffect(() => {
       is_active: product?.is_active ?? true,
       show_on_homepage: product?.show_on_homepage ?? true,
       sort_order: product?.sort_order || 0,
+      show_substitution_note: product?.show_substitution_note ?? false,
+      substitution_note_text: product?.substitution_note_text || '',
     });
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
@@ -408,6 +410,33 @@ React.useEffect(() => {
               rows={2}
             />
           </div>
+          <div className="flex items-center space-x-2">
+  <Switch
+    id="show_substitution_note"
+    checked={formData.show_substitution_note}
+    onCheckedChange={(checked) =>
+      setFormData({ ...formData, show_substitution_note: checked })
+    }
+  />
+  <Label htmlFor="show_substitution_note">
+    Показывать строку о возможной замене компонентов
+  </Label>
+</div>
+
+{formData.show_substitution_note && (
+  <div>
+    <Label htmlFor="substitution_note_text">Текст строки (необязательно)</Label>
+    <Textarea
+      id="substitution_note_text"
+      value={formData.substitution_note_text}
+      onChange={(e) =>
+        setFormData({ ...formData, substitution_note_text: e.target.value })
+      }
+      placeholder="До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!"
+      rows={2}
+    />
+  </div>
+)}
           <div>
             <Label htmlFor="colors">Цвета (через запятую)</Label>
             <Textarea

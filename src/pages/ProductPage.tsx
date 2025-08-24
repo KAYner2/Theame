@@ -281,19 +281,26 @@ export default function ProductPage() {
             </div>
 
             {/* Composition */}
-            {product.composition && product.composition.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-semibold text-foreground">СОСТАВ</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {product.composition.map((flower, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                      <span className="text-muted-foreground">{flower}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+{product.composition && product.composition.length > 0 && (
+  <div className="space-y-3">
+    <h3 className="font-semibold text-foreground">СОСТАВ</h3>
+    <div className="grid grid-cols-2 gap-2">
+      {product.composition.map((flower, index) => (
+        <div key={index} className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-primary rounded-full"></div>
+          <span className="text-muted-foreground">{flower}</span>
+        </div>
+      ))}
+    </div>
+
+    {product.show_substitution_note && (
+      <p className="mt-2 text-sm text-green-700">
+        {(product.substitution_note_text && product.substitution_note_text.trim())
+          || 'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
+      </p>
+    )}
+  </div>
+)}
 
             {/* Collapsible Info Sections */}
             <Accordion type="single" collapsible className="w-full">
