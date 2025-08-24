@@ -168,3 +168,18 @@ export interface CreateHeroSlideDto {
   sort_order?: number;
   is_active?: boolean;
 }
+
+export interface Category {
+  id: string;
+  name: string;
+  slug?: string | null;       // 👈 добавить
+  // ...
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  slug?: string | null;       // 👈 добавить
+  category?: Category | null; // уже есть у тебя
+  // ...
+}

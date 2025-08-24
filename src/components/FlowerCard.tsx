@@ -46,7 +46,13 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
   };
   return (
     <div className="group relative">
-      <Link to={`/product/${flower.id}`}>
+      <Link
+  to={
+    (flower as any).category?.slug && (flower as any).slug
+      ? `/catalog/${(flower as any).category.slug}/${(flower as any).slug}`
+      : `/product/${flower.id}` // fallback, если slug ещё не задан
+  }
+>
         <Card className="overflow-hidden bg-primary-soft/30 border border-primary/10 hover:shadow-soft transition-all duration-300 hover:scale-[1.02] rounded-2xl h-full flex flex-col">
           <div className="relative aspect-square overflow-hidden rounded-t-2xl">
             <img 

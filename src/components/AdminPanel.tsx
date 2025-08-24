@@ -26,6 +26,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DndContext, useSensors, useSensor, MouseSensor, TouchSensor } from "@dnd-kit/core";
+import { slugify } from "@/utils/slugify";
 
 export const AdminPanel = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -184,7 +185,12 @@ React.useEffect(() => {
           imageUrl = await uploadImage(imageFile, 'categories');
         }
 
-        const data = { ...formData, image_url: imageUrl };
+        const data = { 
+  ...formData, 
+  image_url: imageUrl,
+  // 👇 добавляем slug: если есть старый slug — берём его, если нет — генерим из имени
+  slug: (category as any)?.slug || slugify(formData.name),
+};
         
         if (category) {
           await updateCategory.mutateAsync({ id: category.id, updates: data });
@@ -301,12 +307,19 @@ React.useEffect(() => {
 
         // СБОР ПОЛЕЙ ТОВАРА (без категорий!)
         const data = { 
-          ...formData, 
-          composition: formData.composition.split(',').map(s => s.trim()).filter(Boolean),
-          colors: formData.colors.split(',').map(s => s.trim()).filter(Boolean),
-          image_url: imageUrl, 
-          gallery_urls: galleryUrls,
-        };
+  ...formData,
+  composition: formData.composition.split(',').map(s => s.trim()).filter(Boolean),
+  colors: formData.colors.split(',').map(s => s.trim()).filter(Boolean),
+  image_url: imageUrl,
+  gallery_urls: galleryUrls,
+
+  // 👇 генерим slug из имени, если пусто
+  slug: (product as any)?.slug || slugify(formData.name),
+
+  // 👇 на всякий случай явно прокидываем новые поля
+  show_substitution_note: formData.show_substitution_note,
+  substitution_note_text: formData.substitution_note_text,
+};
 
         // категории нельзя отправлять в таблицу products — убираем поле из payload
         delete (data as any).category_ids;

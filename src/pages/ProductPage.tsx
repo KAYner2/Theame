@@ -10,11 +10,35 @@ import { useCart } from '@/context/CartContext';
 import { toast } from '@/hooks/use-toast';
 import { ProductRecommendations } from '@/components/ProductRecommendations';
 import { useFavorites } from '@/context/FavoritesContext';
+import { useProductBySlug } from '@/hooks/useProductBySlug';
 
 export default function ProductPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, categorySlug, productSlug } = useParams<{
+    id?: string;
+    categorySlug?: string;
+    productSlug?: string;
+  }>();
   const navigate = useNavigate();
-  const { data: product, isLoading, error } = useProduct(id!);
+
+  // Мы на ЧПУ, если есть оба slug
+  const bySlug = Boolean(categorySlug && productSlug);
+
+  // грузим по slug ИЛИ по id
+  const {
+    data: productBySlug,
+    isLoading: loadingBySlug,
+    error: errorBySlug
+  } = useProductBySlug(categorySlug || "", productSlug || "");
+
+  const {
+    data: productById,
+    isLoading: loadingById,
+    error: errorById
+  } = useProduct(id || "");
+
+  const product = bySlug ? productBySlug : productById;
+  const isLoading = bySlug ? loadingBySlug : loadingById;
+  const error = bySlug ? errorBySlug : errorById;
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
