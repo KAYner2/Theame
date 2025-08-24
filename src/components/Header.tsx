@@ -67,7 +67,6 @@ export const Header = () => {
     const dx = t.clientX - touchStartRef.current.x;
     const dy = t.clientY - touchStartRef.current.y;
 
-    // Свайп ВПРАВО: достаточная длина и горизонталь доминирует над вертикалью
     const THRESHOLD = 60; // px
     if (dx > THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
       setIsMenuOpen(false);
@@ -107,42 +106,60 @@ export const Header = () => {
             <NavLink to="/contact">Контакты</NavLink>
           </nav>
 
-          {/* Действия */}
-          <div className="flex items-center space-x-2">
-            {/* Соцсети слева от лайка и корзины (показываем на md+) */}
-            <div className="hidden md:flex items-center gap-2 mr-2">
-              <Button variant="outline" size="icon" asChild aria-label="Instagram">
-                <a
-                  href="https://www.instagram.com/theame.flowers"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Instagram className="w-4 h-4" />
-                </a>
-              </Button>
+          {/* Действия (все иконки в одном флексе с одинаковыми отступами) */}
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Соцсети — те же прозрачные кнопки, без обводки и без hover-фона */}
+            <Button
+              variant="ghost"
+              className="hidden md:inline-flex h-11 w-11 p-0 hover:bg-transparent focus-visible:ring-0"
+              asChild
+              aria-label="Instagram"
+            >
+              <a
+                href="https://www.instagram.com/theame.flowers"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Instagram className="w-5 h-5" />
+              </a>
+            </Button>
 
-              <Button variant="outline" size="icon" asChild aria-label="Telegram">
-                <a
-                  href="https://t.me/the_ame_flowers"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Send className="w-4 h-4" />
-                </a>
-              </Button>
+            <Button
+              variant="ghost"
+              className="hidden md:inline-flex h-11 w-11 p-0 hover:bg-transparent focus-visible:ring-0"
+              asChild
+              aria-label="Telegram"
+            >
+              <a
+                href="https://t.me/the_ame_flowers"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Send className="w-5 h-5" />
+              </a>
+            </Button>
 
-              <Button variant="outline" size="icon" asChild aria-label="WhatsApp">
-                <a
-                  href="https://wa.me/message/XQDDWGSEL35LP1"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                </a>
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              className="hidden md:inline-flex h-11 w-11 p-0 hover:bg-transparent focus-visible:ring-0"
+              asChild
+              aria-label="WhatsApp"
+            >
+              <a
+                href="https://wa.me/message/XQDDWGSEL35LP1"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MessageCircle className="w-5 h-5" />
+              </a>
+            </Button>
 
-            <Button variant="ghost" className="hidden sm:flex relative h-11 w-11 p-0" asChild>
+            {/* Избранное */}
+            <Button
+              variant="ghost"
+              className="relative h-11 w-11 p-0 hover:bg-transparent focus-visible:ring-0"
+              asChild
+            >
               <Link to="/favorites" aria-label="Избранное">
                 <Heart className="w-5 h-5" />
                 {favoritesState.itemCount > 0 && (
@@ -153,7 +170,12 @@ export const Header = () => {
               </Link>
             </Button>
 
-            <Button variant="ghost" className="relative h-11 w-11 p-0" asChild>
+            {/* Корзина */}
+            <Button
+              variant="ghost"
+              className="relative h-11 w-11 p-0 hover:bg-transparent focus-visible:ring-0"
+              asChild
+            >
               <Link to="/cart" aria-label="Корзина">
                 <ShoppingCart className="w-5 h-5" />
                 {state.itemCount > 0 && (
@@ -169,7 +191,7 @@ export const Header = () => {
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="md:hidden h-11 w-11 p-0"
+                  className="md:hidden h-11 w-11 p-0 hover:bg-transparent focus-visible:ring-0"
                   onClick={() => setIsMenuOpen(true)}
                   aria-label="Открыть меню"
                 >
@@ -187,20 +209,34 @@ export const Header = () => {
                   <SheetHeader>
                     <SheetTitle className="flex flex-col">
                       <span className="text-xl font-bold">The Áme</span>
-                      <span className="text-sm text-muted-foreground font-light">цветы Х чувства</span>
+                      <span className="text-sm text-muted-foreground font-light">
+                        цветы Х чувства
+                      </span>
                     </SheetTitle>
                   </SheetHeader>
 
                   <nav className="flex flex-col space-y-3 mt-6">
-                    <NavLink to="/" className="w-full text-left h-12 flex items-center" onClick={() => setIsMenuOpen(false)}>
+                    <NavLink
+                      to="/"
+                      className="w-full text-left h-12 flex items-center"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
                       Главная
                     </NavLink>
 
-                    <NavLink to="/catalog" className="w-full text-left h-12 flex items-center" onClick={() => setIsMenuOpen(false)}>
+                    <NavLink
+                      to="/catalog"
+                      className="w-full text-left h-12 flex items-center"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
                       Каталог
                     </NavLink>
 
-                    <NavLink to="/favorites" className="w-full text-left h-12 flex items-center" onClick={() => setIsMenuOpen(false)}>
+                    <NavLink
+                      to="/favorites"
+                      className="w-full text-left h-12 flex items-center"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
                       <span className="flex items-center gap-2">
                         Избранное
                         {favoritesState.itemCount > 0 && (
@@ -211,11 +247,19 @@ export const Header = () => {
                       </span>
                     </NavLink>
 
-                    <NavLink to="/about" className="w-full text-left h-12 flex items-center" onClick={() => setIsMenuOpen(false)}>
+                    <NavLink
+                      to="/about"
+                      className="w-full text-left h-12 flex items-center"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
                       О нас
                     </NavLink>
 
-                    <NavLink to="/contact" className="w-full text-left h-12 flex items-center" onClick={() => setIsMenuOpen(false)}>
+                    <NavLink
+                      to="/contact"
+                      className="w-full text-left h-12 flex items-center"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
                       Контакты
                     </NavLink>
                   </nav>
