@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { supabase } from "../integrations/supabase/client";
 import { AddressAutocomplete } from "./AddressAutocomplete";
 import { TinkoffPaymentButton } from "./TinkoffPaymentButton";
+import { startOfDay, startOfToday } from "date-fns";
 
 const checkoutSchema = z.object({
   // Заказчик
@@ -274,12 +275,12 @@ const receipt = {
         customer_name: data.customerName,
         customer_phone: getCleanPhoneNumber(data.customerPhone),
         delivery_type: data.deliveryType,
-        delivery_date: data.deliveryDate ? data.deliveryDate.toISOString().split('T')[0] : null,
+        delivery_date: data.deliveryDate ? format(data.deliveryDate, "yyyy-MM-dd") : null,
         delivery_time: data.deliveryTime,
-        district: data.address,
+        district: data.district,
         recipient_name: data.recipientName,
         recipient_phone: data.recipientPhone ? getCleanPhoneNumber(data.recipientPhone) : null,
-        recipient_address: data.deliveryType === 'delivery' ? selectedDistrict : null,
+        recipient_address: data.deliveryType === 'delivery' ? data.address ?? null : null,
         card_wishes: data.cardWishes,
         payment_method: data.paymentMethod,
         order_comment: data.orderComment,
@@ -604,13 +605,13 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
                           <Calendar
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={(date) => setValue("deliveryDate", date)}
-                            disabled={(date) => date < new Date()}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
+  mode="single"
+  selected={selectedDate}
+  onSelect={(date) => setValue("deliveryDate", date)}
+  disabled={(d) => startOfDay(d) < startOfToday()}
+  initialFocus
+  className="pointer-events-auto"
+/>
                         </PopoverContent>
                       </Popover>
                     </div>
