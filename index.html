@@ -4,40 +4,70 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>The Ame</title>
+    <!-- Title & Description -->
+    <title>The Ame — премиальные букеты в Сочи</title>
     <meta name="description" content="Онлайн-магазин авторских букетов с особенным смыслом." />
     <meta name="author" content="The Ame" />
+    <meta name="application-name" content="The Ame" />
+    <meta property="og:site_name" content="The Ame" />
 
-    <!-- Favicon базовые -->
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="icon" href="/favicon.png" type="image/png">
+    <!-- Favicons -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
-<!-- Apple Touch Icon -->
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#ffffff" />
 
-<!-- Web App Manifest -->
-<link rel="manifest" href="/site.webmanifest">
-
-<!-- Цвет браузерной темы (для Android) -->
-<meta name="theme-color" content="#ffffff">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Forum&display=swap" rel="stylesheet">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Forum&display=swap" rel="stylesheet" />
 
     <!-- Open Graph -->
-    <meta property="og:title" content="The Ame — Цветы и чувства" />
-    <meta property="og:description" content="Онлайн-магазин авторских букетов с особенным смыслом." />
     <meta property="og:type" content="website" />
+    <meta property="og:title" content="The Ame — премиальные букеты в Сочи" />
+    <meta property="og:description" content="Онлайн-магазин авторских букетов с особенным смыслом." />
+    <meta property="og:url" content="https://theame.ru/" />
     <meta property="og:image" content="https://theame.ru/og-image.jpg" />
-    <meta property="og:url" content="https://theame.ru" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="The Ame — Цветы и чувства" />
+    <meta name="twitter:title" content="The Ame — премиальные букеты в Сочи" />
     <meta name="twitter:description" content="Онлайн-магазин авторских букетов с особенным смыслом." />
     <meta name="twitter:image" content="https://theame.ru/og-image.jpg" />
+
+    <!-- Structured Data (Organization + WebSite) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "The Ame",
+      "url": "https://theame.ru/",
+      "logo": "https://theame.ru/android-chrome-512x512.png",
+      "sameAs": [
+        "https://instagram.com/yourbrand",
+        "https://vk.com/yourbrand"
+      ]
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "The Ame",
+      "alternateName": ["TheAme"],
+      "url": "https://theame.ru/",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://theame.ru/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
 
     <!-- Yandex.Metrika counter -->
     <script type="text/javascript">
@@ -63,7 +93,7 @@
   </head>
 
   <body>
-    <!-- Yandex.Metrika noscript (нужно держать в body, иначе Vite падает) -->
+    <!-- Yandex.Metrika noscript -->
     <noscript>
       <div>
         <img src="https://mc.yandex.ru/watch/103806735" style="position:absolute; left:-9999px;" alt=""/>
