@@ -58,15 +58,15 @@ export function WelcomeBonusModal() {
 
       // 2) Отправляем привет в WhatsApp через наш API-роут
       try {
-        await fetch('/api/green/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phone: cleanPhone,         // 7999...
-            name: name.trim(),         // нужно для персонализации сообщения
-            // text: `Здравствуйте, ${name.trim()}! Спасибо, что подписались на рассылку 🌸` // можно переопределить
-          }),
-        });
+        await fetch('/api/whatsapp-send-welcome', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    phone: cleanPhone,
+    name: name.trim(),
+    // promoCode: 'WELCOME200' // при желании
+  }),
+});
       } catch (waErr) {
         // Не блокируем UX, просто логируем
         console.error('WhatsApp send error:', waErr);
