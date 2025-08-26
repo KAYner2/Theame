@@ -25,6 +25,14 @@ import { AddressAutocomplete } from "./AddressAutocomplete";
 import { TinkoffPaymentButton } from "./TinkoffPaymentButton";
 import { startOfDay, startOfToday } from "date-fns";
 
+type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json }
+  | Json[];
+
 const checkoutSchema = z.object({
   // Заказчик
   customerName: z.string().min(1, "Имя заказчика обязательно"),
@@ -267,28 +275,37 @@ const receipt = {
     
     setIsSubmitting(true);
     
+    const itemsJson: Json = state.items.map((i) => ({
+  id: i.id,
+  name: i.name,
+  price: i.price,
+  cartQuantity: i.cartQuantity,
+  image: i.image,
+  // если в CartItem есть ещё простые поля — добавь их сюда
+})) as Json; 
     try {
       // Создаем объект заказа
       const orderData = {
-        items: JSON.stringify(state.items),
-        total_amount: finalTotal,
-        customer_name: data.customerName,
-        customer_phone: getCleanPhoneNumber(data.customerPhone),
-        delivery_type: data.deliveryType,
-        delivery_date: data.deliveryDate ? format(data.deliveryDate, "yyyy-MM-dd") : null,
-        delivery_time: data.deliveryTime,
-        district: data.district,
-        recipient_name: data.recipientName,
-        recipient_phone: data.recipientPhone ? getCleanPhoneNumber(data.recipientPhone) : null,
-        recipient_address: data.deliveryType === 'delivery' ? data.address ?? null : null,
-        card_wishes: data.cardWishes,
-        payment_method: data.paymentMethod,
-        order_comment: data.orderComment,
-        promo_code: appliedDiscount?.code || null,
-        discount_amount: discountAmount,
-        status: 'pending',
-        order_status: 'new'
-      };
+  items: itemsJson,  // ⬅️ важно: без JSON.stringify
+
+  total_amount: finalTotal,
+  customer_name: data.customerName,
+  customer_phone: getCleanPhoneNumber(data.customerPhone),
+  delivery_type: data.deliveryType,
+  delivery_date: data.deliveryDate ? format(data.deliveryDate, "yyyy-MM-dd") : null,
+  delivery_time: data.deliveryTime,
+  district: data.district,
+  recipient_name: data.recipientName,
+  recipient_phone: data.recipientPhone ? getCleanPhoneNumber(data.recipientPhone) : null,
+  recipient_address: data.deliveryType === "delivery" ? data.address ?? null : null,
+  card_wishes: data.cardWishes,
+  payment_method: data.paymentMethod,
+  order_comment: data.orderComment,
+  promo_code: appliedDiscount?.code || null,
+  discount_amount: discountAmount,
+  status: "pending",
+  order_status: "new"
+};
 
       console.log("Объект заказа для отправки:", orderData);
 
@@ -296,7 +313,7 @@ const receipt = {
       console.log("Отправляем заказ в Supabase...");
       const { data: savedOrder, error: orderError } = await supabase
         .from('orders')
-        .insert(orderData)
+        .insert([orderData])   // ← массив строк на вставку
         .select()
         .single();
 
