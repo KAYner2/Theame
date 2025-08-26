@@ -33,6 +33,21 @@ type Json =
   | { [key: string]: Json }
   | Json[];
 
+  // ======== PROMO: типы для правил из БД ========
+type DiscountRule = {
+  min_total: number;
+  max_total?: number;
+  type: 'fixed' | 'percent';
+  amount: number;
+};
+
+type AppliedDiscount = {
+  code: string;
+  type: 'fixed' | 'percent';
+  amount: number;          // используется для «простых» промиков без rules
+  rules?: DiscountRule[];  // если из БД пришли тировые правила
+};
+
 const checkoutSchema = z.object({
   // Заказчик
   customerName: z.string().min(1, "Имя заказчика обязательно"),
@@ -99,11 +114,7 @@ export const CheckoutForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savedOrderId, setSavedOrderId] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState<{
-    code: string;
-    amount: number;
-    type: 'fixed' | 'percent';
-  } | null>(null);
+  const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState<string>("");
   
@@ -155,15 +166,32 @@ export const CheckoutForm = () => {
     setValue(field, formatted);
   };
 
-  const calculateDiscount = (total: number, discount: typeof appliedDiscount) => {
-    if (!discount) return 0;
-    
-    if (discount.type === 'fixed') {
-      return Math.min(discount.amount, total);
-    } else {
-      return Math.floor(total * (discount.amount / 100));
-    }
-  };
+  const calculateDiscount = (total: number, discount: AppliedDiscount | null) => {
+  if (!discount) return 0;
+
+  // Приводит discount_rules к массиву правил (могут прийти массивом, строкой JSON или быть null)
+
+
+  // 1) Если промокод содержит rules из БД — ищем подходящее правило по сумме total
+  if (discount.rules && discount.rules.length > 0) {
+    const matched = discount.rules
+      .filter(r => total >= r.min_total && (r.max_total == null || total <= r.max_total))
+      .sort((a, b) => a.min_total - b.min_total)
+      .pop();
+
+    if (!matched) return 0;
+
+    return matched.type === 'fixed'
+      ? Math.min(matched.amount, total)
+      : Math.floor(total * (matched.amount / 100));
+  }
+
+  // 2) Обычные промо (без rules): фикс/процент
+  if (discount.type === 'fixed') {
+    return Math.min(discount.amount, total);
+  }
+  return Math.floor(total * (discount.amount / 100));
+};
 
   const discountAmount = appliedDiscount ? calculateDiscount(state.total, appliedDiscount) : 0;
   const subtotalWithDelivery = state.total + deliveryPrice;
@@ -209,58 +237,121 @@ const receipt = {
   Items: receiptItems
 };
 
-  const handlePromoCode = async () => {
-    if (!promoCode.trim()) {
-      toast.error("Введите промокод");
+function normalizeRules(raw: unknown): DiscountRule[] | undefined {
+  if (!raw) return undefined;
+
+  if (Array.isArray(raw)) return raw as DiscountRule[];
+
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as DiscountRule[]) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (typeof raw === 'object' && raw !== null) {
+    const maybeArray = raw as any;
+    return Array.isArray(maybeArray) ? (maybeArray as DiscountRule[]) : undefined;
+  }
+
+  return undefined;
+}
+
+const handlePromoCode = async () => {
+  if (!promoCode.trim()) {
+    toast.error("Введите промокод");
+    return;
+  }
+
+  setIsApplyingPromo(true);
+
+  try {
+    const code = promoCode.toUpperCase();
+
+    // Тип строки из БД
+    type PromoRow = {
+      code: string;
+      is_active: boolean;
+      expires_at: string | null;
+      usage_limit: number | null;
+      used_count: number | null;
+      discount_type: 'fixed' | 'percent' | string | null;
+      discount_amount: number | null;
+      discount_rules?: unknown; // может быть jsonb или текст
+    };
+
+    // Берём нужные поля (включая discount_rules) и используем maybeSingle<PromoRow>()
+    const response = await supabase
+      .from('promo_codes')
+      .select('code, is_active, expires_at, usage_limit, used_count, discount_type, discount_amount, discount_rules')
+      .eq('code', code)
+      .eq('is_active', true)
+      .maybeSingle<PromoRow>();
+
+    // Если упала БД-ошибка (например, колонки нет)
+    if (response.error) {
+      if (response.error.message?.includes("discount_rules")) {
+        toast.error("В БД нет колонки discount_rules. Добавь её в public.promo_codes (jsonb).");
+      } else {
+        toast.error("Промокод не найден или недействителен");
+      }
       return;
     }
 
-    setIsApplyingPromo(true);
-    
-    try {
-      const { data: promoData, error } = await supabase
-        .from('promo_codes')
-        .select('*')
-        .eq('code', promoCode.toUpperCase())
-        .eq('is_active', true)
-        .single();
-
-      if (error || !promoData) {
-        toast.error("Промокод не найден или недействителен");
-        return;
-      }
-
-      // Проверяем срок действия
-      if (promoData.expires_at && new Date(promoData.expires_at) < new Date()) {
-        toast.error("Промокод истёк");
-        return;
-      }
-
-      // Проверяем лимит использований
-      if (promoData.usage_limit && promoData.used_count >= promoData.usage_limit) {
-        toast.error("Промокод больше недоступен");
-        return;
-      }
-
-      // Применяем промокод
-      setAppliedDiscount({
-        code: promoData.code,
-        amount: promoData.discount_amount,
-        type: promoData.discount_type as 'fixed' | 'percent'
-      });
-
-      const discountText = promoData.discount_type === 'fixed' 
-        ? `${promoData.discount_amount} ₽`
-        : `${promoData.discount_amount}%`;
-      
-      toast.success(`Промокод применён! Скидка: ${discountText}`);
-      
-    } catch (error) {
-      toast.error("Ошибка при применении промокода");
-    } finally {
-      setIsApplyingPromo(false);
+    // Если промокод не найден
+    if (!response.data) {
+      toast.error("Промокод не найден или недействителен");
+      return;
     }
-  };
+
+    const promoData = response.data;
+
+    if (promoData.expires_at && new Date(promoData.expires_at) < new Date()) {
+      toast.error("Промокод истёк");
+      return;
+    }
+
+    if (promoData.usage_limit != null && promoData.used_count != null && promoData.used_count >= promoData.usage_limit) {
+      toast.error("Промокод больше недоступен");
+      return;
+    }
+
+    const rules = normalizeRules(promoData.discount_rules);
+
+    // Собираем объект для расчёта
+    const discountFromDb: AppliedDiscount = {
+      code: promoData.code,
+      type: (promoData.discount_type ?? 'fixed') as 'fixed' | 'percent',
+      amount: Number(promoData.discount_amount ?? 0),
+      rules
+    };
+
+    // Предпросмотр скидки на текущую сумму корзины
+    const preview = calculateDiscount(state.total, discountFromDb);
+    if (preview <= 0) {
+      // Например, твои пороги 2500/3500 — если меньше, покажем подсказку
+      toast.error("Промокод применим при большей сумме корзины");
+      return;
+    }
+
+    setAppliedDiscount(discountFromDb);
+
+    const discountText = rules
+      ? `${preview} ₽` // для тировых — фактическая скидка по текущей сумме
+      : (discountFromDb.type === 'fixed'
+          ? `${discountFromDb.amount} ₽`
+          : `${discountFromDb.amount}%`);
+
+    toast.success(`Промокод применён! Скидка: ${discountText}`);
+  } catch (error) {
+    toast.error("Ошибка при применении промокода");
+  } finally {
+    setIsApplyingPromo(false);
+  }
+};
+
 
   const removePromoCode = () => {
     setAppliedDiscount(null);
