@@ -24,9 +24,8 @@ export function WelcomeBonusModal() {
   useEffect(() => {
     const hasSeenModal = sessionStorage.getItem('hasSeenWelcomeModal');
     if (!hasSeenModal) {
-      setTimeout(() => {
-        setIsOpen(true);
-      }, 1000);
+      const t = setTimeout(() => setIsOpen(true), 1000);
+      return () => clearTimeout(t);
     }
   }, []);
 
@@ -46,13 +45,32 @@ export function WelcomeBonusModal() {
     }
 
     setIsSubmitting(true);
+    const cleanPhone = getCleanPhoneNumber(phone);
+
     try {
+      // 1) Сохраняем клиента в БД
       const { error } = await supabase.from('new_clients').insert({
         name: name.trim(),
-        phone: getCleanPhoneNumber(phone),
+        phone: cleanPhone,
         bonus_amount: 200,
       });
       if (error) throw error;
+
+      // 2) Отправляем привет в WhatsApp через наш API-роут
+      try {
+        await fetch('/api/green/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: cleanPhone,         // 7999...
+            name: name.trim(),         // нужно для персонализации сообщения
+            // text: `Здравствуйте, ${name.trim()}! Спасибо, что подписались на рассылку 🌸` // можно переопределить
+          }),
+        });
+      } catch (waErr) {
+        // Не блокируем UX, просто логируем
+        console.error('WhatsApp send error:', waErr);
+      }
 
       toast({
         title: 'Поздравляем!',
@@ -61,8 +79,8 @@ export function WelcomeBonusModal() {
       });
 
       handleClose();
-    } catch (error) {
-      console.error('Error saving client:', error);
+    } catch (err) {
+      console.error('Error saving client:', err);
       toast({
         title: 'Ошибка',
         description: 'Произошла ошибка при регистрации. Попробуйте еще раз.',
@@ -76,7 +94,7 @@ export function WelcomeBonusModal() {
   const FormContent = useMemo(
     () => (
       <div
-        id="welcome-bonus-form"                // 🔥 Метрика сможет увидеть форму
+        id="welcome-bonus-form"
         data-ym-selector="welcome-bonus-form"
         className={isMobile ? 'p-6' : 'p-8 pt-12'}
       >
@@ -121,13 +139,16 @@ export function WelcomeBonusModal() {
               onCheckedChange={(c) => setAgreeToTerms(c === true)}
               className="mt-1"
             />
-            <label htmlFor="terms" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+            <label
+              htmlFor="terms"
+              className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
+            >
               Я согласен(а) с обработкой персональных данных
             </label>
           </div>
 
           <Button
-            id="welcome-bonus-submit"           // 🔥 Метрика сможет отследить клик
+            id="welcome-bonus-submit"
             data-ym-selector="welcome-bonus-submit"
             onClick={handleSubmit}
             disabled={isSubmitting}
@@ -145,7 +166,7 @@ export function WelcomeBonusModal() {
     return (
       <Drawer open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DrawerContent
-          id="welcome-bonus-modal"            // 🔥 Метрика сможет увидеть модалку
+          id="welcome-bonus-modal"
           data-ym-selector="welcome-bonus-modal"
           className="max-h-[90vh]"
         >
