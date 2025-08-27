@@ -64,9 +64,9 @@ function getPriceBounds(flowers: Flower[]): [number, number] {
 // -------------------------------------------------------------
 
 export const FlowerCatalog = () => {
-  // URL-параметры: теперь ?category=<slug>
+  // URL-параметры: теперь ?category=<slug> ИЛИ ?category=<id>
   const [searchParams, setSearchParams] = useSearchParams();
-  const categorySlugFromUrl = searchParams.get('category') ?? '';
+  const categoryParam = searchParams.get('category') ?? '';
 
   // Состояния фильтров/сортировки
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | 'all'>('all');
@@ -77,7 +77,8 @@ export const FlowerCatalog = () => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
 
   // popularity | price-asc | price-desc | name | newest
-  const [sortBy, setSortBy] = useState<'popularity' | 'price-asc' | 'price-desc' | 'name' | 'newest'>('popularity');
+  const [sortBy, setSortBy] =
+    useState<'popularity' | 'price-asc' | 'price-desc' | 'name' | 'newest'>('popularity');
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -95,29 +96,33 @@ export const FlowerCatalog = () => {
   } = useCategories();
 
   // -----------------------------------------------------------
-  // Подхват категории из URL по slug → выставляем selectedCategoryId (id)
+  // Подхват категории из URL (slug ИЛИ id) → выставляем selectedCategoryId (id)
   // -----------------------------------------------------------
   useEffect(() => {
     if (!categories.length) return;
 
-    if (!categorySlugFromUrl) {
+    if (!categoryParam) {
       // нет параметра — показываем "все"
       setSelectedCategoryId('all');
       return;
     }
 
-    const found = categories.find((c) => slugify(c.name) === categorySlugFromUrl);
+    const isNumeric = /^\d+$/.test(categoryParam);
+    const found = isNumeric
+      ? categories.find((c) => String(c.id) === categoryParam)
+      : categories.find((c) => slugify(c.name) === categoryParam);
+
     if (found) {
       setSelectedCategoryId(String(found.id));
     } else {
-      // неизвестный slug — сбрасываем на "все" и чистим URL
+      // неизвестный categoryParam — сбрасываем на "все" и чистим URL
       setSelectedCategoryId('all');
       setSearchParams((prev) => {
         prev.delete('category');
         return prev;
       });
     }
-  }, [categorySlugFromUrl, categories, setSearchParams]);
+  }, [categoryParam, categories, setSearchParams]);
 
   // -----------------------------------------------------------
   // Преобразуем продукты → цветы (для карточек)
@@ -152,18 +157,19 @@ export const FlowerCatalog = () => {
   // Фильтрация и сортировка
   // -----------------------------------------------------------
   const filteredFlowers = useMemo(() => {
+    // Важно: ключ — строковый id, чтобы не было рассинхрона number/string
     const productMap = new Map<string, Product>();
-    products.forEach((p) => productMap.set(p.id, p));
+    products.forEach((p) => productMap.set(String(p.id), p));
 
     const [minPrice, maxPrice] = priceRange;
 
     const filtered = flowers.filter((flower) => {
-      // 1) Категория ('all' пропускает всё). У продуктов ожидается массив category_ids (строк).
-      const prod = productMap.get(flower.id);
+      // 1) Категория
+      const prod = productMap.get(String(flower.id));
+      const catIds = Array.isArray(prod?.category_ids) ? prod!.category_ids.map(String) : [];
+
       const matchesCategory =
-        selectedCategoryId === 'all' ||
-        (Array.isArray(prod?.category_ids) &&
-          prod!.category_ids.includes(String(selectedCategoryId)));
+        selectedCategoryId === 'all' || catIds.includes(String(selectedCategoryId));
       if (!matchesCategory) return false;
 
       // 2) Цвет ('all' пропускает всё; пустой список цветов не режем)
@@ -175,8 +181,7 @@ export const FlowerCatalog = () => {
       if (!matchesColor) return false;
 
       // 3) Состав ('all' пропускает всё; пустой состав не режем)
-      const p = productMap.get(flower.id);
-      const pComp = p?.composition ?? [];
+      const pComp = (prod?.composition ?? []) as string[];
       const matchesComposition =
         selectedComposition === 'all' ||
         pComp.length === 0 ||
@@ -204,8 +209,8 @@ export const FlowerCatalog = () => {
         break;
       case 'newest': {
         filtered.sort((a, b) => {
-          const A = productMap.get(a.id)?.sort_order ?? 0;
-          const B = productMap.get(b.id)?.sort_order ?? 0;
+          const A = (products.find((p) => String(p.id) === String(a.id))?.sort_order) ?? 0;
+          const B = (products.find((p) => String(p.id) === String(b.id))?.sort_order) ?? 0;
           return B - A; // по убыванию sort_order
         });
         break;
@@ -213,8 +218,8 @@ export const FlowerCatalog = () => {
       case 'popularity':
       default: {
         filtered.sort((a, b) => {
-          const A = productMap.get(a.id)?.sort_order ?? 0;
-          const B = productMap.get(b.id)?.sort_order ?? 0;
+          const A = (products.find((p) => String(p.id) === String(a.id))?.sort_order) ?? 0;
+          const B = (products.find((p) => String(p.id) === String(b.id))?.sort_order) ?? 0;
           return A - B; // по возрастанию sort_order
         });
         break;
@@ -249,8 +254,8 @@ export const FlowerCatalog = () => {
           <h1 className="mb-4 text-4xl font-bold text-foreground">
             Каталог цветов и букетов
           </h1>
+          <p className="text-lg text-muted-foreground">Загрузка каталога...</p>
         </div>
-        <p className="text-lg text-muted-foreground text-center">Загрузка каталога...</p>
       </div>
     );
   }
@@ -262,8 +267,8 @@ export const FlowerCatalog = () => {
           <h1 className="mb-4 text-4xl font-bold text-foreground">
             Каталог цветов и букетов
           </h1>
+          <p className="text-destructive">Ошибка загрузки каталога</p>
         </div>
-        <p className="text-destructive text-center">Ошибка загрузки каталога</p>
       </div>
     );
   }
