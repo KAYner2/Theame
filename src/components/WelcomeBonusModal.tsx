@@ -21,8 +21,8 @@ export function WelcomeBonusModal() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const hasSeen = sessionStorage.getItem('hasSeenWelcomeModal');
-    if (!hasSeen) {
+    const hasSeenModal = sessionStorage.getItem('hasSeenWelcomeModal');
+    if (!hasSeenModal) {
       const t = setTimeout(() => setIsOpen(true), 1000);
       return () => clearTimeout(t);
     }
@@ -60,13 +60,14 @@ export function WelcomeBonusModal() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: cleanPhone, name: name.trim() }),
         });
-      } catch (e) {
-        console.error('WhatsApp send error:', e);
+      } catch (waErr) {
+        console.error('WhatsApp send error:', waErr);
       }
 
       toast({
         title: 'Поздравляем!',
-        description: 'Ваши 300 приветственных бонусов зачислены!',
+        description:
+          'Ваши 300 приветственных бонусов зачислены! Мы свяжемся с вами в ближайшее время.',
       });
       handleClose();
     } catch (err) {
@@ -115,6 +116,7 @@ export function WelcomeBonusModal() {
 
           <div>
             <Label htmlFor="phone">Номер телефона</Label>
+            {/* Только поддерживаемые пропсы */}
             <PhoneInput
               id="phone"
               placeholder="+7 (999) 123-45-67"
@@ -163,7 +165,10 @@ export function WelcomeBonusModal() {
           isMobile
             ? 'w-screen h-[100dvh] max-w-none rounded-none p-0 overflow-y-auto'
             : 'max-w-2xl w-[90vw] max-h-[80vh] mx-auto bg-white border shadow-lg overflow-y-auto'
-        } [&_[aria-label='Close']]:hidden sm:[&_[aria-label='Close']]:inline-flex`}
+        }
+        /* скрыть встроенный маленький крестик (absolute right-4 top-4) только на мобилке */
+        [&>button.absolute.right-4.top-4]:hidden sm:[&>button.absolute.right-4.top-4]:inline-flex
+        `}
         /* на мобиле — закрытие только большим крестиком */
         onInteractOutside={(e) => { if (isMobile) e.preventDefault(); }}
         onEscapeKeyDown={(e) => { if (isMobile) e.preventDefault(); }}
@@ -172,17 +177,19 @@ export function WelcomeBonusModal() {
           <DialogTitle>Приветственный бонус</DialogTitle>
         </DialogHeader>
 
-        {/* большой крестик — только на мобильных */}
+        {/* Большой крестик — только на мобильных */}
         {isMobile && (
-          <Button
-            type="button"
-            aria-label="Закрыть"
-            onClick={handleClose}
-            variant="ghost"
-            className="absolute right-2 top-2 h-12 w-12 rounded-full hover:bg-muted"
-          >
-            <X className="w-7 h-7" />
-          </Button>
+          <div className="pointer-events-auto">
+            <Button
+              type="button"
+              aria-label="Закрыть"
+              onClick={handleClose}
+              variant="ghost"
+              className="absolute right-2 top-2 h-12 w-12 rounded-full hover:bg-muted"
+            >
+              <X className="w-7 h-7" />
+            </Button>
+          </div>
         )}
 
         {FormContent}
