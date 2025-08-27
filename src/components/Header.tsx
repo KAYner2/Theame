@@ -151,7 +151,7 @@ export const Header = () => {
     rel="noopener noreferrer"
   >
     <svg
-      className="w-5 h-5 text-[#25D366]" // фирменный зеленый цвет
+      className="w-5 h-5"
       viewBox="0 0 24 24"
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
