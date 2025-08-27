@@ -21,8 +21,8 @@ export function WelcomeBonusModal() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const hasSeenModal = sessionStorage.getItem('hasSeenWelcomeModal');
-    if (!hasSeenModal) {
+    const hasSeen = sessionStorage.getItem('hasSeenWelcomeModal');
+    if (!hasSeen) {
       const t = setTimeout(() => setIsOpen(true), 1000);
       return () => clearTimeout(t);
     }
@@ -50,7 +50,7 @@ export function WelcomeBonusModal() {
       const { error } = await supabase.from('new_clients').insert({
         name: name.trim(),
         phone: cleanPhone,
-        bonus_amount: 200,
+        bonus_amount: 300,
       });
       if (error) throw error;
 
@@ -60,21 +60,20 @@ export function WelcomeBonusModal() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: cleanPhone, name: name.trim() }),
         });
-      } catch (waErr) {
-        console.error('WhatsApp send error:', waErr);
+      } catch (e) {
+        console.error('WhatsApp send error:', e);
       }
 
       toast({
         title: 'Поздравляем!',
-        description:
-          'Ваши 200 приветственных бонусов зачислены! Мы свяжемся с вами в ближайшее время.',
+        description: 'Ваши 300 приветственных бонусов зачислены!',
       });
       handleClose();
     } catch (err) {
       console.error('Error saving client:', err);
       toast({
         title: 'Ошибка',
-        description: 'Произошла ошибка при регистрации. Попробуйте еще раз.',
+        description: 'Произошла ошибка при регистрации. Попробуйте ещё раз.',
         variant: 'destructive',
       });
     } finally {
@@ -116,7 +115,6 @@ export function WelcomeBonusModal() {
 
           <div>
             <Label htmlFor="phone">Номер телефона</Label>
-            {/* PhoneInput — только поддерживаемые пропсы */}
             <PhoneInput
               id="phone"
               placeholder="+7 (999) 123-45-67"
@@ -163,11 +161,10 @@ export function WelcomeBonusModal() {
         data-ym-selector="welcome-bonus-modal"
         className={`${
           isMobile
-            // ВАЖНО: без inset-0! Оставляем базовое центрирование shadcn.
-            // Просто растягиваем окно на весь вьюпорт.
             ? 'w-screen h-[100dvh] max-w-none rounded-none p-0 overflow-y-auto'
             : 'max-w-2xl w-[90vw] max-h-[80vh] mx-auto bg-white border shadow-lg overflow-y-auto'
-        }`}
+        } [&_[aria-label='Close']]:hidden sm:[&_[aria-label='Close']]:inline-flex`}
+        /* на мобиле — закрытие только большим крестиком */
         onInteractOutside={(e) => { if (isMobile) e.preventDefault(); }}
         onEscapeKeyDown={(e) => { if (isMobile) e.preventDefault(); }}
       >
@@ -175,7 +172,7 @@ export function WelcomeBonusModal() {
           <DialogTitle>Приветственный бонус</DialogTitle>
         </DialogHeader>
 
-        {/* Большой крестик только на мобильных */}
+        {/* большой крестик — только на мобильных */}
         {isMobile && (
           <Button
             type="button"
