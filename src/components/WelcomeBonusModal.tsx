@@ -20,7 +20,7 @@ export function WelcomeBonusModal() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
-  // Показываем один раз за сессию
+  // показываем один раз за сессию
   useEffect(() => {
     const hasSeenModal = sessionStorage.getItem('hasSeenWelcomeModal');
     if (!hasSeenModal) {
@@ -48,7 +48,7 @@ export function WelcomeBonusModal() {
     const cleanPhone = getCleanPhoneNumber(phone);
 
     try {
-      // 1) Сохраняем клиента в БД
+      // 1) сохраняем клиента
       const { error } = await supabase.from('new_clients').insert({
         name: name.trim(),
         phone: cleanPhone,
@@ -56,18 +56,14 @@ export function WelcomeBonusModal() {
       });
       if (error) throw error;
 
-      // 2) Отправляем привет в WhatsApp через наш API-роут
+      // 2) отправляем привет в WhatsApp
       try {
         await fetch('/api/whatsapp-send-welcome', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phone: cleanPhone,
-            name: name.trim(),
-          }),
+          body: JSON.stringify({ phone: cleanPhone, name: name.trim() }),
         });
       } catch (waErr) {
-        // Не блокируем UX, просто логируем
         console.error('WhatsApp send error:', waErr);
       }
 
@@ -124,7 +120,7 @@ export function WelcomeBonusModal() {
 
           <div>
             <Label htmlFor="phone">Номер телефона</Label>
-            {/* ВАЖНО: не передаем в PhoneInput несуществующие пропсы (inputMode/autoComplete) */}
+            {/* Важно: не передаём в PhoneInput неподдерживаемые пропсы */}
             <PhoneInput
               id="phone"
               placeholder="+7 (999) 123-45-67"
@@ -164,7 +160,6 @@ export function WelcomeBonusModal() {
     [isMobile, name, phone, agreeToTerms, isSubmitting, handleSubmit],
   );
 
-  // И на мобилке, и на десктопе используем Dialog (без свайпа)
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
@@ -175,21 +170,26 @@ export function WelcomeBonusModal() {
             ? 'fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none p-0'
             : 'max-w-2xl w-[90vw] max-h-[80vh] mx-auto bg-white border shadow-lg overflow-y-auto'
         }`}
+        // на мобиле — закрытие только крестиком
+        onInteractOutside={(e) => { if (isMobile) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => { if (isMobile) e.preventDefault(); }}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Приветственный бонус</DialogTitle>
         </DialogHeader>
 
-        {/* Большой крестик, чтобы легко попасть пальцем */}
-        <Button
-          type="button"
-          aria-label="Закрыть"
-          onClick={handleClose}
-          variant="ghost"
-          className="absolute right-2 top-2 h-12 w-12 rounded-full hover:bg-muted"
-        >
-          <X className="w-7 h-7" />
-        </Button>
+        {/* Большой крестик только на мобильных */}
+        {isMobile && (
+          <Button
+            type="button"
+            aria-label="Закрыть"
+            onClick={handleClose}
+            variant="ghost"
+            className="absolute right-2 top-2 h-12 w-12 rounded-full hover:bg-muted"
+          >
+            <X className="w-7 h-7" />
+          </Button>
+        )}
 
         {FormContent}
       </DialogContent>
