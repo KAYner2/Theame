@@ -20,7 +20,6 @@ export function WelcomeBonusModal() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
-  // показываем один раз за сессию
   useEffect(() => {
     const hasSeenModal = sessionStorage.getItem('hasSeenWelcomeModal');
     if (!hasSeenModal) {
@@ -48,15 +47,13 @@ export function WelcomeBonusModal() {
     const cleanPhone = getCleanPhoneNumber(phone);
 
     try {
-      // 1) сохраняем клиента
       const { error } = await supabase.from('new_clients').insert({
         name: name.trim(),
         phone: cleanPhone,
-        bonus_amount: 300,
+        bonus_amount: 200,
       });
       if (error) throw error;
 
-      // 2) отправляем привет в WhatsApp
       try {
         await fetch('/api/whatsapp-send-welcome', {
           method: 'POST',
@@ -70,9 +67,8 @@ export function WelcomeBonusModal() {
       toast({
         title: 'Поздравляем!',
         description:
-          'Ваши 300 приветственных бонусов зачислены! Мы свяжемся с вами в ближайшее время.',
+          'Ваши 200 приветственных бонусов зачислены! Мы свяжемся с вами в ближайшее время.',
       });
-
       handleClose();
     } catch (err) {
       console.error('Error saving client:', err);
@@ -120,7 +116,7 @@ export function WelcomeBonusModal() {
 
           <div>
             <Label htmlFor="phone">Номер телефона</Label>
-            {/* Важно: не передаём в PhoneInput неподдерживаемые пропсы */}
+            {/* PhoneInput — только поддерживаемые пропсы */}
             <PhoneInput
               id="phone"
               placeholder="+7 (999) 123-45-67"
@@ -167,10 +163,11 @@ export function WelcomeBonusModal() {
         data-ym-selector="welcome-bonus-modal"
         className={`${
           isMobile
-            ? 'fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none p-0'
+            // ВАЖНО: без inset-0! Оставляем базовое центрирование shadcn.
+            // Просто растягиваем окно на весь вьюпорт.
+            ? 'w-screen h-[100dvh] max-w-none rounded-none p-0 overflow-y-auto'
             : 'max-w-2xl w-[90vw] max-h-[80vh] mx-auto bg-white border shadow-lg overflow-y-auto'
         }`}
-        // на мобиле — закрытие только крестиком
         onInteractOutside={(e) => { if (isMobile) e.preventDefault(); }}
         onEscapeKeyDown={(e) => { if (isMobile) e.preventDefault(); }}
       >
