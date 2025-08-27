@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from './ui/drawer';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -8,7 +7,7 @@ import { Checkbox } from './ui/checkbox';
 import { PhoneInput } from './PhoneInput';
 import { validatePhoneNumber, getCleanPhoneNumber } from '@/lib/phone';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Gift } from 'lucide-react';
+import { Gift, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -21,6 +20,7 @@ export function WelcomeBonusModal() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
+  // Показываем один раз за сессию
   useEffect(() => {
     const hasSeenModal = sessionStorage.getItem('hasSeenWelcomeModal');
     if (!hasSeenModal) {
@@ -52,21 +52,20 @@ export function WelcomeBonusModal() {
       const { error } = await supabase.from('new_clients').insert({
         name: name.trim(),
         phone: cleanPhone,
-        bonus_amount: 200,
+        bonus_amount: 300,
       });
       if (error) throw error;
 
       // 2) Отправляем привет в WhatsApp через наш API-роут
       try {
         await fetch('/api/whatsapp-send-welcome', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    phone: cleanPhone,
-    name: name.trim(),
-    // promoCode: 'WELCOME200' // при желании
-  }),
-});
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: cleanPhone,
+            name: name.trim(),
+          }),
+        });
       } catch (waErr) {
         // Не блокируем UX, просто логируем
         console.error('WhatsApp send error:', waErr);
@@ -75,7 +74,7 @@ export function WelcomeBonusModal() {
       toast({
         title: 'Поздравляем!',
         description:
-          'Ваши 200 приветственных бонусов зачислены! Мы свяжемся с вами в ближайшее время.',
+          'Ваши 300 приветственных бонусов зачислены! Мы свяжемся с вами в ближайшее время.',
       });
 
       handleClose();
@@ -96,7 +95,7 @@ export function WelcomeBonusModal() {
       <div
         id="welcome-bonus-form"
         data-ym-selector="welcome-bonus-form"
-        className={isMobile ? 'p-6' : 'p-8 pt-12'}
+        className={isMobile ? 'p-6 pt-12' : 'p-8 pt-12'}
       >
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
@@ -118,11 +117,14 @@ export function WelcomeBonusModal() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="mt-1 h-11"
+              autoComplete="name"
+              inputMode="text"
             />
           </div>
 
           <div>
             <Label htmlFor="phone">Номер телефона</Label>
+            {/* ВАЖНО: не передаем в PhoneInput несуществующие пропсы (inputMode/autoComplete) */}
             <PhoneInput
               id="phone"
               placeholder="+7 (999) 123-45-67"
@@ -162,33 +164,33 @@ export function WelcomeBonusModal() {
     [isMobile, name, phone, agreeToTerms, isSubmitting, handleSubmit],
   );
 
-  if (isMobile) {
-    return (
-      <Drawer open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-        <DrawerContent
-          id="welcome-bonus-modal"
-          data-ym-selector="welcome-bonus-modal"
-          className="max-h-[90vh]"
-        >
-          <DrawerHeader className="sr-only">
-            <DrawerTitle>Приветственный бонус</DrawerTitle>
-          </DrawerHeader>
-          {FormContent}
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
+  // И на мобилке, и на десктопе используем Dialog (без свайпа)
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
         id="welcome-bonus-modal"
         data-ym-selector="welcome-bonus-modal"
-        className="max-w-2xl w-[90vw] max-h-[80vh] mx-auto bg-white border shadow-lg overflow-y-auto"
+        className={`${
+          isMobile
+            ? 'fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none p-0'
+            : 'max-w-2xl w-[90vw] max-h-[80vh] mx-auto bg-white border shadow-lg overflow-y-auto'
+        }`}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Приветственный бонус</DialogTitle>
         </DialogHeader>
+
+        {/* Большой крестик, чтобы легко попасть пальцем */}
+        <Button
+          type="button"
+          aria-label="Закрыть"
+          onClick={handleClose}
+          variant="ghost"
+          className="absolute right-2 top-2 h-12 w-12 rounded-full hover:bg-muted"
+        >
+          <X className="w-7 h-7" />
+        </Button>
+
         {FormContent}
       </DialogContent>
     </Dialog>
