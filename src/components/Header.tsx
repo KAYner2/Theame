@@ -140,19 +140,26 @@ export const Header = () => {
             </Button>
 
             <Button
-              variant="ghost"
-              className="hidden md:inline-flex h-11 w-11 p-0 hover:bg-transparent focus-visible:ring-0"
-              asChild
-              aria-label="WhatsApp"
-            >
-              <a
-                href="https://wa.me/message/XQDDWGSEL35LP1"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <MessageCircle className="w-5 h-5" />
-              </a>
-            </Button>
+  variant="ghost"
+  className="hidden md:inline-flex h-11 w-11 p-0 hover:bg-transparent focus-visible:ring-0"
+  asChild
+  aria-label="WhatsApp"
+>
+  <a
+    href="https://wa.me/message/XQDDWGSEL35LP1"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 448 512"
+      className="w-5 h-5 text-green-500"
+      fill="currentColor"
+    >
+      <path d="M380.9 97.1C339 ... Z" /> 
+    </svg>
+  </a>
+</Button>
 
             {/* Избранное */}
             <Button
