@@ -163,15 +163,21 @@ export function WelcomeBonusModal() {
         data-ym-selector="welcome-bonus-modal"
         className={`${
           isMobile
-            ? 'w-screen h-[100dvh] max-w-none rounded-none p-0 overflow-y-auto'
-            : 'max-w-2xl w-[90vw] max-h-[80vh] mx-auto bg-white border shadow-lg overflow-y-auto'
+            ? // Мобилка — полноэкранно
+              'w-screen h-[100dvh] max-w-none rounded-none p-0 overflow-y-auto'
+            : // Десктоп — ЖЁСТКО по центру экрана
+              'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-2xl w-[90vw] max-h-[80vh] bg-white border shadow-lg overflow-y-auto'
         }
         /* скрыть встроенный маленький крестик (absolute right-4 top-4) только на мобилке */
         [&>button.absolute.right-4.top-4]:hidden sm:[&>button.absolute.right-4.top-4]:inline-flex
         `}
         /* на мобиле — закрытие только большим крестиком */
-        onInteractOutside={(e) => { if (isMobile) e.preventDefault(); }}
-        onEscapeKeyDown={(e) => { if (isMobile) e.preventDefault(); }}
+        onInteractOutside={(e) => {
+          if (isMobile) e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (isMobile) e.preventDefault();
+        }}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Приветственный бонус</DialogTitle>
