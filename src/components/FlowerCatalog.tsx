@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { slugify } from '@/utils/slugify';
 
 import { FlowerCard } from './FlowerCard';
 import { Flower } from '../types/flower';
@@ -46,7 +47,6 @@ function toFlower(product: Product): Flower {
     colors: product.colors || [],
     size: 'medium',
     occasion: [],
-    // Прочее можно добавить по мере необходимости
   };
 }
 
@@ -64,9 +64,9 @@ function getPriceBounds(flowers: Flower[]): [number, number] {
 // -------------------------------------------------------------
 
 export const FlowerCatalog = () => {
-  // URL-параметры (теперь ?category=<categoryId>)
-const [searchParams] = useSearchParams();
-const categoryIdFromUrl = searchParams.get('category');
+  // URL-параметры: теперь ?category=<slug>
+  const [searchParams, setSearchParams] = useSearchParams();
+  const categorySlugFromUrl = searchParams.get('category') ?? '';
 
   // Состояния фильтров/сортировки
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | 'all'>('all');
@@ -81,7 +81,7 @@ const categoryIdFromUrl = searchParams.get('category');
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Данные (ИСПОЛЬЗУЕМ useAllProducts)
+  // Данные
   const {
     data: products = [],
     isLoading: productsLoading,
@@ -95,28 +95,29 @@ const categoryIdFromUrl = searchParams.get('category');
   } = useCategories();
 
   // -----------------------------------------------------------
-  // Подхват категории из URL, плавный скролл при загрузке
+  // Подхват категории из URL по slug → выставляем selectedCategoryId (id)
   // -----------------------------------------------------------
   useEffect(() => {
-  if (categoryIdFromUrl && categories.length > 0) {
-    const exists = categories.some((c) => String(c.id) === String(categoryIdFromUrl));
-    if (exists) setSelectedCategoryId(categoryIdFromUrl);
-  }
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}, [categoryIdFromUrl, categories]);
+    if (!categories.length) return;
 
-  // Сброс category параметра из URL если пользователь вручную сменил категорию
-  useEffect(() => {
-  if (
-    categoryIdFromUrl &&
-    selectedCategoryId !== categoryIdFromUrl &&
-    selectedCategoryId !== 'all'
-  ) {
-    const url = new URL(window.location.href);
-    url.searchParams.delete('category');
-    window.history.replaceState({}, '', url.pathname);
-  }
-}, [selectedCategoryId, categoryIdFromUrl]);
+    if (!categorySlugFromUrl) {
+      // нет параметра — показываем "все"
+      setSelectedCategoryId('all');
+      return;
+    }
+
+    const found = categories.find((c) => slugify(c.name) === categorySlugFromUrl);
+    if (found) {
+      setSelectedCategoryId(String(found.id));
+    } else {
+      // неизвестный slug — сбрасываем на "все" и чистим URL
+      setSelectedCategoryId('all');
+      setSearchParams((prev) => {
+        prev.delete('category');
+        return prev;
+      });
+    }
+  }, [categorySlugFromUrl, categories, setSearchParams]);
 
   // -----------------------------------------------------------
   // Преобразуем продукты → цветы (для карточек)
@@ -157,14 +158,13 @@ const categoryIdFromUrl = searchParams.get('category');
     const [minPrice, maxPrice] = priceRange;
 
     const filtered = flowers.filter((flower) => {
-      // 1) Категория ('all' пропускает всё)
-// теперь проверяем массив category_ids
-const prod = productMap.get(flower.id);
-const matchesCategory =
-  selectedCategoryId === 'all' ||
-  (Array.isArray(prod?.category_ids) &&
-   prod!.category_ids.includes(String(selectedCategoryId)));
-if (!matchesCategory) return false;
+      // 1) Категория ('all' пропускает всё). У продуктов ожидается массив category_ids (строк).
+      const prod = productMap.get(flower.id);
+      const matchesCategory =
+        selectedCategoryId === 'all' ||
+        (Array.isArray(prod?.category_ids) &&
+          prod!.category_ids.includes(String(selectedCategoryId)));
+      if (!matchesCategory) return false;
 
       // 2) Цвет ('all' пропускает всё; пустой список цветов не режем)
       const fColors = flower.colors ?? [];
@@ -203,7 +203,6 @@ if (!matchesCategory) return false;
         filtered.sort((a, b) => a.name.localeCompare(b.name));
         break;
       case 'newest': {
-        // Интерпретируем "новизну" как больший sort_order (сверху)
         filtered.sort((a, b) => {
           const A = productMap.get(a.id)?.sort_order ?? 0;
           const B = productMap.get(b.id)?.sort_order ?? 0;
@@ -213,7 +212,6 @@ if (!matchesCategory) return false;
       }
       case 'popularity':
       default: {
-        // По умолчанию показываем как на витрине — по sort_order (меньший индекс выше)
         filtered.sort((a, b) => {
           const A = productMap.get(a.id)?.sort_order ?? 0;
           const B = productMap.get(b.id)?.sort_order ?? 0;
@@ -251,8 +249,8 @@ if (!matchesCategory) return false;
           <h1 className="mb-4 text-4xl font-bold text-foreground">
             Каталог цветов и букетов
           </h1>
-          <p className="text-lg text-muted-foreground">Загрузка каталога...</p>
         </div>
+        <p className="text-lg text-muted-foreground text-center">Загрузка каталога...</p>
       </div>
     );
   }
@@ -264,8 +262,8 @@ if (!matchesCategory) return false;
           <h1 className="mb-4 text-4xl font-bold text-foreground">
             Каталог цветов и букетов
           </h1>
-          <p className="text-destructive">Ошибка загрузки каталога</p>
         </div>
+        <p className="text-destructive text-center">Ошибка загрузки каталога</p>
       </div>
     );
   }
@@ -299,21 +297,39 @@ if (!matchesCategory) return false;
                 Категория
               </DropdownMenuLabel>
               <Select
-  value={selectedCategoryId}
-  onValueChange={(v) => setSelectedCategoryId(v as any)}
->
-  <SelectTrigger>
-    <SelectValue placeholder="Выберите категорию" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="all">Все категории</SelectItem>
-    {categories.map((category) => (
-      <SelectItem key={category.id} value={String(category.id)}>
-        {category.name}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
+                value={selectedCategoryId}
+                onValueChange={(id) => {
+                  setSelectedCategoryId(id as any);
+
+                  // Обновляем URL: ?category=<slug> или убираем параметр, если "all"
+                  if (id === 'all') {
+                    setSearchParams((prev) => {
+                      prev.delete('category');
+                      return prev;
+                    });
+                  } else {
+                    const cat = categories.find((c) => String(c.id) === id);
+                    if (cat) {
+                      setSearchParams((prev) => {
+                        prev.set('category', slugify(cat.name));
+                        return prev;
+                      });
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите категорию" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все категории</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={String(category.id)}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <DropdownMenuSeparator className="my-4" />
@@ -409,6 +425,10 @@ if (!matchesCategory) return false;
                     setSelectedColor('all');
                     setSelectedComposition('all');
                     setPriceRange(absolutePriceBounds);
+                    setSearchParams((prev) => {
+                      prev.delete('category');
+                      return prev;
+                    });
                   }}
                 >
                   Сбросить
@@ -470,6 +490,10 @@ if (!matchesCategory) return false;
               setSelectedComposition('all');
               setPriceRange(absolutePriceBounds);
               setSortBy('popularity');
+              setSearchParams((prev) => {
+                prev.delete('category');
+                return prev;
+              });
             }}
           >
             Сбросить фильтры
