@@ -293,7 +293,7 @@ React.useEffect(() => {
       description: product?.description || '',
       detailed_description: product?.detailed_description || '',
       care_instructions: product?.care_instructions || '',
-      composition: product?.composition?.join(', ') || '',
+      composition: (product?.composition_raw ?? (product?.composition?.join(', ') ?? '')),
       colors: product?.colors?.join(', ') || '',
       gift_info: product?.gift_info || '',
       guarantee_info: product?.guarantee_info || '',
@@ -336,10 +336,13 @@ React.useEffect(() => {
 const data = {
   ...formData,
 
-  // ✅ нормализуем состав (убираем "3шт", "x5" и дубли)
+  // 🔥 сырой ввод для страницы товара (с "шт")
+  composition_raw: formData.composition,
+
+  // ✅ нормализованный массив для фильтров/поиска (без "шт", "x5", и дублей)
   composition: normalizeComposition(formData.composition),
 
-  // ✅ цвета — просто разбиваем и чистим пробелы, первая буква заглавная
+  // ✅ цвета — просто разбиваем и делаем первую букву заглавной
   colors: splitItems(formData.colors).map(capitalizeFirst),
 
   image_url: imageUrl,

@@ -31,6 +31,8 @@ export interface Product {
   /** Состав как массив удобен на фронте */
   composition?: string[] | null;
 
+  composition_raw?: string | null;
+
   /** Цвета как массив */
   colors?: string[] | null;
 

@@ -15,6 +15,9 @@ import { useFavorites } from '@/context/FavoritesContext';
 import { toast } from '@/hooks/use-toast';
 import { ProductRecommendations } from '@/components/ProductRecommendations';
 
+/* 🔥 добавили парсер количеств */
+import { parseCompositionRaw, parseFromArray } from '@/utils/parseComposition';
+
 export default function ProductPage() {
   const { id, categorySlug, productSlug } = useParams<{
     id?: string;
@@ -136,6 +139,12 @@ export default function ProductPage() {
 
   const nextImage = () => setSelectedImageIndex((prev) => (prev + 1) % availableImages.length);
   const prevImage = () => setSelectedImageIndex((prev) => (prev - 1 + availableImages.length) % availableImages.length);
+
+  /* ✅ готовим состав к показу: берём composition_raw с фоллбеком на массив */
+  const compositionItems =
+    product.composition_raw
+      ? parseCompositionRaw(product.composition_raw)
+      : parseFromArray(product.composition);
 
   return (
     <div className="min-h-screen bg-background">
@@ -281,15 +290,17 @@ export default function ProductPage() {
               </div>
             </div>
 
-            {/* Состав + примечание о замене */}
-            {product.composition && product.composition.length > 0 && (
+            {/* 🔥 Состав + примечание о замене (с количеством "шт") */}
+            {compositionItems.length > 0 && (
               <div className="space-y-3">
                 <h3 className="font-semibold text-foreground">СОСТАВ</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {product.composition.map((flower, index) => (
-                    <div key={index} className="flex items-center gap-2">
+                  {compositionItems.map((item) => (
+                    <div key={item.name} className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-primary rounded-full" />
-                      <span className="text-muted-foreground">{flower}</span>
+                      <span className="text-muted-foreground">
+                        {item.name}{typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
+                      </span>
                     </div>
                   ))}
                 </div>
