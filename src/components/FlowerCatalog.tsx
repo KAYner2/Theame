@@ -62,7 +62,6 @@ const uniqueNormalized = (values: string[]) => {
   return Array.from(map.values());
 };
 
-/** Безопасное преобразование Product → Flower (для карточек) */
 function toFlower(product: Product): Flower {
   return {
     id: product.id,
@@ -70,13 +69,16 @@ function toFlower(product: Product): Flower {
     price: product.price || 0,
     image: product.image_url || '/placeholder.svg',
     description: product.description || '',
-    category: (product as any).category?.name || 'Разное',
-    inStock: Boolean(product.is_active ?? true),
+    category: product.category?.name || 'Разное',
+    inStock: Boolean(product.is_active),
     quantity: 1,
-    // цвета обычно уже норм в useProducts, но подстрахуемся
-    colors: uniqueNormalized(splitItems(product.colors as any)),
+    colors: product.colors || [],
     size: 'medium',
     occasion: [],
+
+    // 🔥 добавляем эти поля для ЧПУ
+    slug: product.slug ?? null,
+    categorySlug: product.category?.slug ?? null,
   };
 }
 
