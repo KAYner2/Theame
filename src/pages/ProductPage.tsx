@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronLeft, ChevronRight, Heart, Minus, Plus, ShoppingBag } from 'lucide-react';
-
+import { slugify } from '@/utils/slugify';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { toast } from '@/hooks/use-toast';
@@ -148,27 +148,39 @@ export default function ProductPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Хлебные крошки */}
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-foreground transition-colors">
-            ГЛАВНАЯ
-          </Link>
-          <span>›</span>
-          <Link to="/catalog" className="hover:text-foreground transition-colors">
-            КАТАЛОГ ТОВАРОВ
-          </Link>
-          <span>›</span>
-          <Link
-            to={`/catalog?category=${encodeURIComponent(product.category?.name || '')}`}
-            className="hover:text-foreground transition-colors"
-          >
-            {(product.category?.name || 'ЦВЕТЫ').toUpperCase()}
-          </Link>
-          <span>›</span>
-          <span className="text-foreground font-medium">{product.name.toUpperCase()}</span>
-        </div>
+      {/* Хлебные крошки (на слагах) */}
+<div className="container mx-auto px-4 py-4">
+  {(() => {
+    const catName = product.category?.name || 'Цветы';
+    const catSlug =
+      product.category?.slug || (catName ? slugify(catName) : '');
+    const prodSlug =
+      (product as any)?.slug || slugify(product.name);
+
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Link to="/" className="hover:text-foreground transition-colors">
+          ГЛАВНАЯ
+        </Link>
+        <span>›</span>
+        <Link to="/catalog" className="hover:text-foreground transition-colors">
+          КАТАЛОГ ТОВАРОВ
+        </Link>
+        <span>›</span>
+        <Link
+          to={catSlug ? `/catalog?category=${encodeURIComponent(catSlug)}` : '/catalog'}
+          className="hover:text-foreground transition-colors"
+        >
+          {catName.toUpperCase()}
+        </Link>
+        <span>›</span>
+        <span className="text-foreground font-medium">
+          {product.name.toUpperCase()}
+        </span>
       </div>
+    );
+  })()}
+</div>
 
       <div className="container mx-auto px-4 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

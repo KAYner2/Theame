@@ -1,45 +1,31 @@
+// src/hooks/useProductBySlug.ts
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { Product, Category } from '@/types/database';
+import type { Product } from '@/types/database';
 
 export const useProductBySlug = (categorySlug: string, productSlug: string) => {
   return useQuery({
     queryKey: ['product-by-slug', categorySlug, productSlug],
     enabled: Boolean(categorySlug && productSlug),
     queryFn: async (): Promise<Product | null> => {
-      // 1) сам товар по slug (без join)
-      const { data: prod, error: e1 } = await (supabase as any)
-        .from('products')
+      // Берём из ВЬЮХИ — тут уже есть category (jsonb), category_ids и composition_raw
+      const { data, error } = await (supabase as any)
+        .from('products_with_categories')
         .select('*')
         .eq('slug', productSlug)
+        .eq('is_active', true)
         .maybeSingle();
 
-      if (e1) throw e1;
-      if (!prod) return null;
+      if (error) throw error;
+      if (!data) return null;
 
-      // 2) тянем категорию и проверяем slug
-      let category: Category | null = null;
-      if (prod.category_id) {
-        const { data: cat, error: e2 } = await (supabase as any)
-          .from('categories')
-          .select('id, name, description, image_url, sort_order, is_active, created_at, updated_at, slug')
-          .eq('id', prod.category_id)
-          .maybeSingle();
-        if (e2) throw e2;
-        category = cat ?? null;
-      }
-
-      // если передали categorySlug и он не совпал — считаем, что это не тот товар
-      if (categorySlug && category && category.slug && category.slug !== categorySlug) {
+      // Если пришёл categorySlug — сверяем с полем category.slug (если оно есть)
+      const catSlug = data.category?.slug || null;
+      if (categorySlug && catSlug && catSlug !== categorySlug) {
         return null;
       }
 
-      const result: Product = {
-        ...prod,
-        category: category,
-      };
-
-      return result;
+      return data as Product;
     },
   });
 };
