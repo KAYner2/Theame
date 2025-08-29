@@ -348,7 +348,7 @@ const data = {
   image_url: imageUrl,
   gallery_urls: galleryUrls,
 
-  slug: (product as any)?.slug || slugify(formData.name),
+  slug: slugify(formData.name),
 
   show_substitution_note: formData.show_substitution_note,
   substitution_note_text: formData.substitution_note_text,
