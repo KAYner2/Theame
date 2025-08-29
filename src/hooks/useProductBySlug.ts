@@ -1,29 +1,45 @@
-// src/hooks/useProductBySlug.ts
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import type { Product } from "@/types/database";
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import type { Product, Category } from '@/types/database';
 
-/**
- * Грузит товар по слагам категории и товара.
- * Основано на view `products_with_categories`, где есть:
- *  - поле `slug` у товара
- *  - json поле `category` с ключом `slug`
- */
-export function useProductBySlug(categorySlug?: string, productSlug?: string) {
+export const useProductBySlug = (categorySlug: string, productSlug: string) => {
   return useQuery({
-    queryKey: ["product-by-slug", categorySlug, productSlug],
+    queryKey: ['product-by-slug', categorySlug, productSlug],
     enabled: Boolean(categorySlug && productSlug),
     queryFn: async (): Promise<Product | null> => {
-      const { data, error } = await (supabase as any)
-        .from("products_with_categories")
-        .select("*")
-        .eq("slug", productSlug)                         // slug товара
-        .filter("category->>slug", "eq", categorySlug)   // slug категории из JSON
-        .eq("is_active", true)
+      // 1) сам товар по slug (без join)
+      const { data: prod, error: e1 } = await (supabase as any)
+        .from('products')
+        .select('*')
+        .eq('slug', productSlug)
         .maybeSingle();
 
-      if (error) throw error;
-      return data as Product | null;
+      if (e1) throw e1;
+      if (!prod) return null;
+
+      // 2) тянем категорию и проверяем slug
+      let category: Category | null = null;
+      if (prod.category_id) {
+        const { data: cat, error: e2 } = await (supabase as any)
+          .from('categories')
+          .select('id, name, description, image_url, sort_order, is_active, created_at, updated_at, slug')
+          .eq('id', prod.category_id)
+          .maybeSingle();
+        if (e2) throw e2;
+        category = cat ?? null;
+      }
+
+      // если передали categorySlug и он не совпал — считаем, что это не тот товар
+      if (categorySlug && category && category.slug && category.slug !== categorySlug) {
+        return null;
+      }
+
+      const result: Product = {
+        ...prod,
+        category: category,
+      };
+
+      return result;
     },
   });
-}
+};
