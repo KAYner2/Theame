@@ -29,11 +29,40 @@ import { useAllProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import type { Product } from '@/types/database';
 
-// -------------------------------------------------------------
-// Вспомогательные функции
-// -------------------------------------------------------------
+/* ---------------- helpers: нормализация/дедуп ---------------- */
 
-/** Безопасное преобразование Product → Flower */
+const splitItems = (arr?: string[]) =>
+  (arr || []).map((s) => (s || '').trim()).filter(Boolean);
+
+const capitalizeFirst = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+/** Нормализуем возможные «Розы 3шт», «x5», «( )», точки и т.п. */
+const normalizeFlower = (raw: string) =>
+  capitalizeFirst(
+    raw
+      .toLowerCase()
+      .replace(/\b\d+\s*(шт|штук)\.?/gi, '')
+      .replace(/\b[хx]\s*\d+\b/gi, '')
+      .replace(/\b\d+\b/g, '')
+      .replace(/[()]/g, ' ')
+      .replace(/[.]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+
+/** Приводим массив к Set по кейсу (регистронезависимо) и возвращаем в красивом виде */
+const uniqueNormalized = (values: string[]) => {
+  const map = new Map<string, string>();
+  for (const v of values) {
+    const norm = normalizeFlower(v);
+    if (!norm) continue;
+    const key = norm.toLowerCase();
+    if (!map.has(key)) map.set(key, norm);
+  }
+  return Array.from(map.values());
+};
+
+/** Безопасное преобразование Product → Flower (для карточек) */
 function toFlower(product: Product): Flower {
   return {
     id: product.id,
@@ -44,7 +73,8 @@ function toFlower(product: Product): Flower {
     category: (product as any).category?.name || 'Разное',
     inStock: Boolean(product.is_active ?? true),
     quantity: 1,
-    colors: product.colors || [],
+    // цвета обычно уже норм в useProducts, но подстрахуемся
+    colors: uniqueNormalized(splitItems(product.colors as any)),
     size: 'medium',
     occasion: [],
   };
@@ -59,12 +89,10 @@ function getPriceBounds(flowers: Flower[]): [number, number] {
   return [min, Math.max(max, min)];
 }
 
-// -------------------------------------------------------------
-// Основной компонент каталога
-// -------------------------------------------------------------
+/* ---------------- основной компонент каталога ---------------- */
 
 export const FlowerCatalog = () => {
-  // URL-параметры: теперь ?category=<slug> ИЛИ ?category=<id>
+  // URL-параметры: ?category=<slug> ИЛИ ?category=<id>
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category') ?? '';
 
@@ -95,14 +123,11 @@ export const FlowerCatalog = () => {
     error: categoriesError,
   } = useCategories();
 
-  // -----------------------------------------------------------
   // Подхват категории из URL (slug ИЛИ id) → выставляем selectedCategoryId (id)
-  // -----------------------------------------------------------
   useEffect(() => {
     if (!categories.length) return;
 
     if (!categoryParam) {
-      // нет параметра — показываем "все"
       setSelectedCategoryId('all');
       return;
     }
@@ -115,7 +140,6 @@ export const FlowerCatalog = () => {
     if (found) {
       setSelectedCategoryId(String(found.id));
     } else {
-      // неизвестный categoryParam — сбрасываем на "все" и чистим URL
       setSelectedCategoryId('all');
       setSearchParams((prev) => {
         prev.delete('category');
@@ -124,74 +148,61 @@ export const FlowerCatalog = () => {
     }
   }, [categoryParam, categories, setSearchParams]);
 
-  // -----------------------------------------------------------
   // Преобразуем продукты → цветы (для карточек)
-  // -----------------------------------------------------------
   const flowers = useMemo<Flower[]>(() => products.map(toFlower), [products]);
 
-  // -----------------------------------------------------------
-  // Формируем справочники: цвета / составы
-  // -----------------------------------------------------------
+  // Формируем справочники: цвета / составы (оба — уникальные и нормализованные)
   const availableColors = useMemo(() => {
-    const colors = new Set<string>();
-    flowers.forEach((f) => (f.colors ?? []).forEach((c) => colors.add(c)));
-    return Array.from(colors).sort((a, b) => a.localeCompare(b));
+    const all = flowers.flatMap((f) => f.colors ?? []);
+    return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
   }, [flowers]);
 
   const availableCompositions = useMemo(() => {
-    const comps = new Set<string>();
-    products.forEach((p) => (p.composition ?? []).forEach((c) => comps.add(c)));
-    return Array.from(comps).sort((a, b) => a.localeCompare(b));
+    const all = products.flatMap((p) => (p.composition ?? []) as string[]);
+    return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
-  // -----------------------------------------------------------
   // Инициализация диапазона цен по данным
-  // -----------------------------------------------------------
   const absolutePriceBounds = useMemo(() => getPriceBounds(flowers), [flowers]);
 
   useEffect(() => {
     setPriceRange(absolutePriceBounds);
   }, [absolutePriceBounds[0], absolutePriceBounds[1]]);
 
-  // -----------------------------------------------------------
   // Фильтрация и сортировка
-  // -----------------------------------------------------------
   const filteredFlowers = useMemo(() => {
-    // Важно: ключ — строковый id, чтобы не было рассинхрона number/string
+    // Для доступа к сырому продукту по id
     const productMap = new Map<string, Product>();
     products.forEach((p) => productMap.set(String(p.id), p));
 
     const [minPrice, maxPrice] = priceRange;
 
     const filtered = flowers.filter((flower) => {
-      // 1) Категория
       const prod = productMap.get(String(flower.id));
+
+      // 1) Категория
       const catIds = Array.isArray(prod?.category_ids) ? prod!.category_ids.map(String) : [];
+      if (!(selectedCategoryId === 'all' || catIds.includes(String(selectedCategoryId)))) {
+        return false;
+      }
 
-      const matchesCategory =
-        selectedCategoryId === 'all' || catIds.includes(String(selectedCategoryId));
-      if (!matchesCategory) return false;
+      // 2) Цвет (точное сравнение, регистронезависимо)
+      if (selectedColor !== 'all') {
+        const fColors = flower.colors ?? [];
+        const ok = fColors.some((c) => c.toLowerCase() === selectedColor.toLowerCase());
+        if (!ok) return false;
+      }
 
-      // 2) Цвет ('all' пропускает всё; пустой список цветов не режем)
-      const fColors = flower.colors ?? [];
-      const matchesColor =
-        selectedColor === 'all' ||
-        fColors.length === 0 ||
-        fColors.some((c) => c.toLowerCase().includes(selectedColor.toLowerCase()));
-      if (!matchesColor) return false;
+      // 3) Состав (точное сравнение, регистронезависимо)
+      if (selectedComposition !== 'all') {
+        const pComp = uniqueNormalized(splitItems(prod?.composition as any));
+        const ok = pComp.some((c) => c.toLowerCase() === selectedComposition.toLowerCase());
+        if (!ok) return false;
+      }
 
-      // 3) Состав ('all' пропускает всё; пустой состав не режем)
-      const pComp = (prod?.composition ?? []) as string[];
-      const matchesComposition =
-        selectedComposition === 'all' ||
-        pComp.length === 0 ||
-        pComp.some((comp) => comp.toLowerCase().includes(selectedComposition.toLowerCase()));
-      if (!matchesComposition) return false;
-
-      // 4) Цена (включительно)
+      // 4) Цена
       const price = flower.price ?? 0;
-      const matchesPrice = price >= minPrice && price <= maxPrice;
-      if (!matchesPrice) return false;
+      if (!(price >= minPrice && price <= maxPrice)) return false;
 
       return true;
     });
@@ -209,51 +220,37 @@ export const FlowerCatalog = () => {
         break;
       case 'newest': {
         filtered.sort((a, b) => {
-          const A = (products.find((p) => String(p.id) === String(a.id))?.sort_order) ?? 0;
-          const B = (products.find((p) => String(p.id) === String(b.id))?.sort_order) ?? 0;
-          return B - A; // по убыванию sort_order
+          const A = products.find((p) => String(p.id) === String(a.id))?.sort_order ?? 0;
+          const B = products.find((p) => String(p.id) === String(b.id))?.sort_order ?? 0;
+          return B - A;
         });
         break;
       }
       case 'popularity':
       default: {
         filtered.sort((a, b) => {
-          const A = (products.find((p) => String(p.id) === String(a.id))?.sort_order) ?? 0;
-          const B = (products.find((p) => String(p.id) === String(b.id))?.sort_order) ?? 0;
-          return A - B; // по возрастанию sort_order
+          const A = products.find((p) => String(p.id) === String(a.id))?.sort_order ?? 0;
+          const B = products.find((p) => String(p.id) === String(b.id))?.sort_order ?? 0;
+          return A - B;
         });
         break;
       }
     }
 
     return filtered;
-  }, [
-    flowers,
-    products,
-    selectedCategoryId,
-    selectedColor,
-    selectedComposition,
-    priceRange,
-    sortBy,
-  ]);
+  }, [flowers, products, selectedCategoryId, selectedColor, selectedComposition, priceRange, sortBy]);
 
-  // -----------------------------------------------------------
   // Избранное (заглушка)
-  // -----------------------------------------------------------
   const handleToggleFavorite = (flower: Flower) => {
     console.log('Добавлено в избранное:', flower.name);
   };
 
-  // -----------------------------------------------------------
   // Состояния загрузки/ошибок
-  // -----------------------------------------------------------
   if (productsLoading || categoriesLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h1 className="mb-4 text-4xl font-bold text-foreground">
-            Каталог цветов и букетов
-          </h1>
+          <h1 className="mb-4 text-4xl font-bold text-foreground">Каталог цветов и букетов</h1>
           <p className="text-lg text-muted-foreground">Загрузка каталога...</p>
         </div>
       </div>
@@ -264,18 +261,14 @@ export const FlowerCatalog = () => {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h1 className="mb-4 text-4xl font-bold text-foreground">
-            Каталог цветов и букетов
-          </h1>
+          <h1 className="mb-4 text-4xl font-bold text-foreground">Каталог цветов и букетов</h1>
           <p className="text-destructive">Ошибка загрузки каталога</p>
         </div>
       </div>
     );
   }
 
-  // -----------------------------------------------------------
   // Рендер
-  // -----------------------------------------------------------
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Заголовок */}

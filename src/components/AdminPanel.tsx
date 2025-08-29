@@ -28,6 +28,33 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DndContext, useSensors, useSensor, MouseSensor, TouchSensor } from "@dnd-kit/core";
 import { slugify } from "@/utils/slugify";
 
+// --- helpers: нормализация списка цветов ---
+const splitItems = (input: string) =>
+  input
+    .split(/[,;\n]+/g)                // запятая / ; / перенос строки
+    .map(s => s.trim())
+    .filter(Boolean);
+
+const capitalizeFirst = (s: string) =>
+  s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+const normalizeFlower = (raw: string) => {
+  return capitalizeFirst(
+    raw
+      .toLowerCase()
+      .replace(/\b\d+\s*(шт|штук)\.?/gi, '')
+      .replace(/\b[хx]\s*\d+\b/gi, '')
+      .replace(/\b\d+\b/g, '')
+      .replace(/[()]/g, ' ')
+      .replace(/[.]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+};
+
+const normalizeComposition = (input: string): string[] =>
+  Array.from(new Set(splitItems(input).map(normalizeFlower).filter(Boolean)));
+
 export const AdminPanel = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -305,18 +332,21 @@ React.useEffect(() => {
           galleryUrls = [...galleryUrls, ...uploadedGalleryUrls].slice(0, 4); // Limit to 4 gallery images
         }
 
-        // СБОР ПОЛЕЙ ТОВАРА (без категорий!)
-        const data = { 
+// СБОР ПОЛЕЙ ТОВАРА (без категорий!)
+const data = {
   ...formData,
-  composition: formData.composition.split(',').map(s => s.trim()).filter(Boolean),
-  colors: formData.colors.split(',').map(s => s.trim()).filter(Boolean),
+
+  // ✅ нормализуем состав (убираем "3шт", "x5" и дубли)
+  composition: normalizeComposition(formData.composition),
+
+  // ✅ цвета — просто разбиваем и чистим пробелы, первая буква заглавная
+  colors: splitItems(formData.colors).map(capitalizeFirst),
+
   image_url: imageUrl,
   gallery_urls: galleryUrls,
 
-  // 👇 генерим slug из имени, если пусто
   slug: (product as any)?.slug || slugify(formData.name),
 
-  // 👇 на всякий случай явно прокидываем новые поля
   show_substitution_note: formData.show_substitution_note,
   substitution_note_text: formData.substitution_note_text,
 };
