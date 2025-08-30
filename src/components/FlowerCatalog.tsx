@@ -290,7 +290,10 @@ export const FlowerCatalog = () => {
               КАТЕГОРИИ
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-80 p-4" align="start">
+          <DropdownMenuContent
+  className="w-[18rem] p-3 sm:w-80 sm:p-4"
+  align="start"
+>
             {/* Категории */}
             <div className="space-y-3">
               <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
@@ -406,35 +409,35 @@ export const FlowerCatalog = () => {
             </div>
 
             {/* Кнопки управления */}
-            <div className="border-t pt-4">
-              <div className="flex gap-2">
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="flex-1 transition-all duration-200"
-                  onClick={() => setDropdownOpen(false)}
-                >
-                  Применить
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => {
-                    setSelectedCategoryId('all');
-                    setSelectedColor('all');
-                    setSelectedComposition('all');
-                    setPriceRange(absolutePriceBounds);
-                    setSearchParams((prev) => {
-                      prev.delete('category');
-                      return prev;
-                    });
-                  }}
-                >
-                  Сбросить
-                </Button>
-              </div>
-            </div>
+<div className="border-t pt-3 sm:pt-4">
+  <div className="flex gap-2 sm:gap-3">
+    <Button
+      variant="default"
+      size="sm"
+      className="flex-1 h-9 px-2 text-xs sm:h-10 sm:px-4 sm:text-sm transition-all duration-200"
+      onClick={() => setDropdownOpen(false)}
+    >
+      Применить
+    </Button>
+    <Button
+      variant="outline"
+      size="sm"
+      className="flex-1 h-9 px-2 text-xs sm:h-10 sm:px-4 sm:text-sm"
+      onClick={() => {
+        setSelectedCategoryId('all');
+        setSelectedColor('all');
+        setSelectedComposition('all');
+        setPriceRange(absolutePriceBounds);
+        setSearchParams((prev) => {
+          prev.delete('category');
+          return prev;
+        });
+      }}
+    >
+      Сбросить
+    </Button>
+  </div>
+</div>
           </DropdownMenuContent>
         </DropdownMenu>
 
