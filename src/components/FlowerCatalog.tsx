@@ -76,7 +76,7 @@ function toFlower(product: Product): Flower {
     size: 'medium',
     occasion: [],
 
-    // 🔥 добавляем эти поля для ЧПУ
+    // 🔥 для ЧПУ
     slug: product.slug ?? null,
     categorySlug: product.category?.slug ?? null,
   };
@@ -173,7 +173,6 @@ export const FlowerCatalog = () => {
 
   // Фильтрация и сортировка
   const filteredFlowers = useMemo(() => {
-    // Для доступа к сырому продукту по id
     const productMap = new Map<string, Product>();
     products.forEach((p) => productMap.set(String(p.id), p));
 
@@ -188,14 +187,14 @@ export const FlowerCatalog = () => {
         return false;
       }
 
-      // 2) Цвет (точное сравнение, регистронезависимо)
+      // 2) Цвет
       if (selectedColor !== 'all') {
         const fColors = flower.colors ?? [];
         const ok = fColors.some((c) => c.toLowerCase() === selectedColor.toLowerCase());
         if (!ok) return false;
       }
 
-      // 3) Состав (точное сравнение, регистронезависимо)
+      // 3) Состав
       if (selectedComposition !== 'all') {
         const pComp = uniqueNormalized(splitItems(prod?.composition as any));
         const ok = pComp.some((c) => c.toLowerCase() === selectedComposition.toLowerCase());
@@ -290,155 +289,159 @@ export const FlowerCatalog = () => {
               КАТЕГОРИИ
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-  className="w-[18rem] p-3 sm:w-80 sm:p-4"
-  align="start"
->
-            {/* Категории */}
-            <div className="space-y-3">
-              <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
-                Категория
-              </DropdownMenuLabel>
-              <Select
-                value={selectedCategoryId}
-                onValueChange={(id) => {
-                  setSelectedCategoryId(id as any);
 
-                  // Обновляем URL: ?category=<slug> или убираем параметр, если "all"
-                  if (id === 'all') {
+          {/* ------- ВАЖНО: новый адаптивный попап ------- */}
+          <DropdownMenuContent
+            className="w-[18rem] sm:w-80 p-0 max-h-[85dvh] overflow-hidden"
+            align="start"
+          >
+            {/* Прокручиваемая зона */}
+            <div className="overflow-auto p-3 sm:p-4">
+              {/* Категории */}
+              <div className="space-y-3">
+                <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
+                  Категория
+                </DropdownMenuLabel>
+                <Select
+                  value={selectedCategoryId}
+                  onValueChange={(id) => {
+                    setSelectedCategoryId(id as any);
+                    if (id === 'all') {
+                      setSearchParams((prev) => {
+                        prev.delete('category');
+                        return prev;
+                      });
+                    } else {
+                      const cat = categories.find((c) => String(c.id) === id);
+                      if (cat) {
+                        setSearchParams((prev) => {
+                          prev.set('category', slugify(cat.name));
+                          return prev;
+                        });
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите категорию" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Все категории</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={String(category.id)}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <DropdownMenuSeparator className="my-4" />
+
+              {/* Цветы в составе */}
+              {availableCompositions.length > 0 && (
+                <div className="space-y-3">
+                  <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
+                    Цветы в составе
+                  </DropdownMenuLabel>
+                  <Select value={selectedComposition} onValueChange={setSelectedComposition}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите цветы" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Все цветы</SelectItem>
+                      {availableCompositions.map((comp) => (
+                        <SelectItem key={comp} value={comp}>
+                          {comp}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <DropdownMenuSeparator className="my-4" />
+
+              {/* Цвета */}
+              {availableColors.length > 0 && (
+                <div className="space-y-3">
+                  <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
+                    Цвета
+                  </DropdownMenuLabel>
+                    <Select value={selectedColor} onValueChange={setSelectedColor}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите цвет" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все цвета</SelectItem>
+                        {availableColors.map((color) => (
+                          <SelectItem key={color} value={color}>
+                            {color}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                </div>
+              )}
+
+              <DropdownMenuSeparator className="my-4" />
+
+              {/* Цена */}
+              <div className="space-y-3">
+                <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
+                  Цена: {priceRange[0]} — {priceRange[1]} ₽
+                </DropdownMenuLabel>
+                <div className="px-2">
+                  <Slider
+                    value={priceRange}
+                    onValueChange={(v) => setPriceRange([v[0], v[1]] as [number, number])}
+                    min={absolutePriceBounds[0]}
+                    max={absolutePriceBounds[1]}
+                    step={100}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              {/* небольшой отступ, чтобы контент не прилипал к футеру */}
+              <div className="h-3 sm:h-4" />
+            </div>
+
+            {/* Липкий футер с кнопками */}
+            <div
+              className="sticky bottom-0 border-t bg-popover/90 backdrop-blur px-3 py-3 sm:px-4 sm:py-4"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+            >
+              <div className="flex gap-2 sm:gap-3">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1 h-9 px-2 text-xs sm:h-10 sm:px-4 sm:text-sm transition-all duration-200"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Применить
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 h-9 px-2 text-xs sm:h-10 sm:px-4 sm:text-sm"
+                  onClick={() => {
+                    setSelectedCategoryId('all');
+                    setSelectedColor('all');
+                    setSelectedComposition('all');
+                    setPriceRange(absolutePriceBounds);
                     setSearchParams((prev) => {
                       prev.delete('category');
                       return prev;
                     });
-                  } else {
-                    const cat = categories.find((c) => String(c.id) === id);
-                    if (cat) {
-                      setSearchParams((prev) => {
-                        prev.set('category', slugify(cat.name));
-                        return prev;
-                      });
-                    }
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите категорию" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все категории</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={String(category.id)}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <DropdownMenuSeparator className="my-4" />
-
-            {/* Цветы в составе */}
-            {availableCompositions.length > 0 && (
-              <div className="space-y-3">
-                <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
-                  Цветы в составе
-                </DropdownMenuLabel>
-                <Select
-                  value={selectedComposition}
-                  onValueChange={setSelectedComposition}
+                  }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите цветы" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Все цветы</SelectItem>
-                    {availableCompositions.map((comp) => (
-                      <SelectItem key={comp} value={comp}>
-                        {comp}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <DropdownMenuSeparator className="my-4" />
-
-            {/* Цвета */}
-            {availableColors.length > 0 && (
-              <div className="space-y-3">
-                <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
-                  Цвета
-                </DropdownMenuLabel>
-                <Select
-                  value={selectedColor}
-                  onValueChange={setSelectedColor}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите цвет" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Все цвета</SelectItem>
-                    {availableColors.map((color) => (
-                      <SelectItem key={color} value={color}>
-                        {color}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <DropdownMenuSeparator className="my-4" />
-
-            {/* Цена */}
-            <div className="space-y-3">
-              <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
-                Цена: {priceRange[0]} — {priceRange[1]} ₽
-              </DropdownMenuLabel>
-              <div className="px-2">
-                <Slider
-                  value={priceRange}
-                  onValueChange={(v) => setPriceRange([v[0], v[1]] as [number, number])}
-                  min={absolutePriceBounds[0]}
-                  max={absolutePriceBounds[1]}
-                  step={100}
-                  className="w-full"
-                />
+                  Сбросить
+                </Button>
               </div>
             </div>
-
-            {/* Кнопки управления */}
-<div className="border-t pt-3 sm:pt-4">
-  <div className="flex gap-2 sm:gap-3">
-    <Button
-      variant="default"
-      size="sm"
-      className="flex-1 h-9 px-2 text-xs sm:h-10 sm:px-4 sm:text-sm transition-all duration-200"
-      onClick={() => setDropdownOpen(false)}
-    >
-      Применить
-    </Button>
-    <Button
-      variant="outline"
-      size="sm"
-      className="flex-1 h-9 px-2 text-xs sm:h-10 sm:px-4 sm:text-sm"
-      onClick={() => {
-        setSelectedCategoryId('all');
-        setSelectedColor('all');
-        setSelectedComposition('all');
-        setPriceRange(absolutePriceBounds);
-        setSearchParams((prev) => {
-          prev.delete('category');
-          return prev;
-        });
-      }}
-    >
-      Сбросить
-    </Button>
-  </div>
-</div>
           </DropdownMenuContent>
+          {/* ------- /новый попап ------- */}
         </DropdownMenu>
 
         {/* Сортировка */}
