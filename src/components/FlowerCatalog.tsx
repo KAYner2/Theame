@@ -50,7 +50,6 @@ const normalizeFlower = (raw: string) =>
       .trim()
   );
 
-/** Приводим массив к Set по кейсу (регистронезависимо) и возвращаем в красивом виде */
 const uniqueNormalized = (values: string[]) => {
   const map = new Map<string, string>();
   for (const v of values) {
@@ -75,14 +74,11 @@ function toFlower(product: Product): Flower {
     colors: product.colors || [],
     size: 'medium',
     occasion: [],
-
-    // 🔥 для ЧПУ
     slug: product.slug ?? null,
     categorySlug: product.category?.slug ?? null,
   };
 }
 
-/** Получить [min,max] цен по набору букетов */
 function getPriceBounds(flowers: Flower[]): [number, number] {
   if (!flowers.length) return [0, 10000];
   const prices = flowers.map((f) => f.price ?? 0);
@@ -94,25 +90,17 @@ function getPriceBounds(flowers: Flower[]): [number, number] {
 /* ---------------- основной компонент каталога ---------------- */
 
 export const FlowerCatalog = () => {
-  // URL-параметры: ?category=<slug> ИЛИ ?category=<id>
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category') ?? '';
 
-  // Состояния фильтров/сортировки
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | 'all'>('all');
   const [selectedColor, setSelectedColor] = useState('all');
   const [selectedComposition, setSelectedComposition] = useState('all');
-
-  // Диапазон цен (инициализируем после загрузки данных)
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
-
-  // popularity | price-asc | price-desc | name | newest
   const [sortBy, setSortBy] =
     useState<'popularity' | 'price-asc' | 'price-desc' | 'name' | 'newest'>('popularity');
-
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Данные
   const {
     data: products = [],
     isLoading: productsLoading,
@@ -125,7 +113,6 @@ export const FlowerCatalog = () => {
     error: categoriesError,
   } = useCategories();
 
-  // Подхват категории из URL (slug ИЛИ id) → выставляем selectedCategoryId (id)
   useEffect(() => {
     if (!categories.length) return;
 
@@ -150,10 +137,8 @@ export const FlowerCatalog = () => {
     }
   }, [categoryParam, categories, setSearchParams]);
 
-  // Преобразуем продукты → цветы (для карточек)
   const flowers = useMemo<Flower[]>(() => products.map(toFlower), [products]);
 
-  // Формируем справочники: цвета / составы (оба — уникальные и нормализованные)
   const availableColors = useMemo(() => {
     const all = flowers.flatMap((f) => f.colors ?? []);
     return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
@@ -164,14 +149,12 @@ export const FlowerCatalog = () => {
     return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
-  // Инициализация диапазона цен по данным
   const absolutePriceBounds = useMemo(() => getPriceBounds(flowers), [flowers]);
 
   useEffect(() => {
     setPriceRange(absolutePriceBounds);
   }, [absolutePriceBounds[0], absolutePriceBounds[1]]);
 
-  // Фильтрация и сортировка
   const filteredFlowers = useMemo(() => {
     const productMap = new Map<string, Product>();
     products.forEach((p) => productMap.set(String(p.id), p));
@@ -181,34 +164,29 @@ export const FlowerCatalog = () => {
     const filtered = flowers.filter((flower) => {
       const prod = productMap.get(String(flower.id));
 
-      // 1) Категория
       const catIds = Array.isArray(prod?.category_ids) ? prod!.category_ids.map(String) : [];
       if (!(selectedCategoryId === 'all' || catIds.includes(String(selectedCategoryId)))) {
         return false;
       }
 
-      // 2) Цвет
       if (selectedColor !== 'all') {
         const fColors = flower.colors ?? [];
         const ok = fColors.some((c) => c.toLowerCase() === selectedColor.toLowerCase());
         if (!ok) return false;
       }
 
-      // 3) Состав
       if (selectedComposition !== 'all') {
         const pComp = uniqueNormalized(splitItems(prod?.composition as any));
         const ok = pComp.some((c) => c.toLowerCase() === selectedComposition.toLowerCase());
         if (!ok) return false;
       }
 
-      // 4) Цена
       const price = flower.price ?? 0;
       if (!(price >= minPrice && price <= maxPrice)) return false;
 
       return true;
     });
 
-    // Сортировка
     switch (sortBy) {
       case 'price-asc':
         filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
@@ -241,12 +219,10 @@ export const FlowerCatalog = () => {
     return filtered;
   }, [flowers, products, selectedCategoryId, selectedColor, selectedComposition, priceRange, sortBy]);
 
-  // Избранное (заглушка)
   const handleToggleFavorite = (flower: Flower) => {
     console.log('Добавлено в избранное:', flower.name);
   };
 
-  // Состояния загрузки/ошибок
   if (productsLoading || categoriesLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -269,7 +245,6 @@ export const FlowerCatalog = () => {
     );
   }
 
-  // Рендер
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Заголовок */}
@@ -281,7 +256,6 @@ export const FlowerCatalog = () => {
 
       {/* Фильтры и сортировка */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        {/* Кнопка "Фильтры" */}
         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="h-10">
@@ -290,14 +264,14 @@ export const FlowerCatalog = () => {
             </Button>
           </DropdownMenuTrigger>
 
-          {/* ------- ВАЖНО: новый адаптивный попап ------- */}
+          {/* Попап: прокручивается контент, футер всегда виден */}
           <DropdownMenuContent
-            className="w-[18rem] sm:w-80 p-0 max-h-[85dvh] overflow-hidden"
+            className="w-[18rem] sm:w-80 p-0 max-h-[85dvh] flex flex-col"
             align="start"
           >
-            {/* Прокручиваемая зона */}
-            <div className="overflow-auto p-3 sm:p-4">
-              {/* Категории */}
+            {/* Контентная часть (скролл) */}
+            <div className="flex-1 overflow-auto p-3 sm:p-4">
+              {/* Категория */}
               <div className="space-y-3">
                 <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
                   Категория
@@ -368,19 +342,19 @@ export const FlowerCatalog = () => {
                   <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
                     Цвета
                   </DropdownMenuLabel>
-                    <Select value={selectedColor} onValueChange={setSelectedColor}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите цвет" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Все цвета</SelectItem>
-                        {availableColors.map((color) => (
-                          <SelectItem key={color} value={color}>
-                            {color}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <Select value={selectedColor} onValueChange={setSelectedColor}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите цвет" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Все цвета</SelectItem>
+                      {availableColors.map((color) => (
+                        <SelectItem key={color} value={color}>
+                          {color}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
@@ -402,15 +376,12 @@ export const FlowerCatalog = () => {
                   />
                 </div>
               </div>
-
-              {/* небольшой отступ, чтобы контент не прилипал к футеру */}
-              <div className="h-3 sm:h-4" />
             </div>
 
-            {/* Липкий футер с кнопками */}
+            {/* Футер (не скроллится) */}
             <div
-              className="sticky bottom-0 border-t bg-popover/90 backdrop-blur px-3 py-3 sm:px-4 sm:py-4"
-              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+              className="border-t bg-popover px-3 py-3 sm:px-4 sm:py-4"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
             >
               <div className="flex gap-2 sm:gap-3">
                 <Button
@@ -441,7 +412,6 @@ export const FlowerCatalog = () => {
               </div>
             </div>
           </DropdownMenuContent>
-          {/* ------- /новый попап ------- */}
         </DropdownMenu>
 
         {/* Сортировка */}
