@@ -664,17 +664,14 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
               </div>
               
               <RadioGroup
-                value={deliveryType}
-                onValueChange={(value) => {
-                  console.log("Выбран тип доставки:", value);
-                  setValue("deliveryType", value as "delivery" | "pickup" | "clarify");
-                  if (value === "pickup") {
-                    console.log("Устанавливаем оплату наличными");
-                    setValue("paymentMethod", "cash");
-                  }
-                }}
-                className="mb-6"
-              >
+  value={deliveryType}
+  onValueChange={(value) => {
+    console.log("Выбран тип доставки:", value);
+    setValue("deliveryType", value as "delivery" | "pickup" | "clarify");
+    // НИЧЕГО не трогаем в способе оплаты — пользователь сам выберет
+  }}
+  className="mb-6"
+>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="delivery" id="delivery" />
                   <Label htmlFor="delivery">Доставка</Label>
@@ -892,25 +889,15 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                 <h2 className="text-lg font-semibold">СПОСОБЫ ОПЛАТЫ</h2>
               </div>
               
-              <RadioGroup 
-                value={paymentMethod}
-                onValueChange={(value) => {
-                  console.log("Выбран способ оплаты:", value);
-                  
-                  // Проверяем ограничение для самовывоза
-                  if (deliveryType === "pickup" && value !== "cash") {
-                    toast.error("К сожалению, при самовывозе можно оплатить только наличными. Пожалуйста, выберите соответствующий способ оплаты.");
-                    return; // Не меняем значение
-                  }
-                  
-                  setValue("paymentMethod", value as "card" | "sbp" | "cash");
-                  if (value === "cash") {
-                    console.log("Устанавливаем самовывоз");
-                    setValue("deliveryType", "pickup");
-                  }
-                }}
-                className="mb-4"
-              >
+              <RadioGroup
+  value={paymentMethod}
+  onValueChange={(value) => {
+    console.log("Выбран способ оплаты:", value);
+    setValue("paymentMethod", value as "card" | "sbp" | "cash");
+    // Больше не форсим deliveryType и не запрещаем карточку/СБП при самовывозе
+  }}
+  className="mb-4"
+>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="card" id="card" />
                   <Label htmlFor="card">Оплата картой (VISA, Mastercard)</Label>
