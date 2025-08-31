@@ -1,5 +1,6 @@
 // api/order-notify.js — ESM, Vercel
 // Принимает POST от Supabase-триггера и шлёт уведомление в Telegram (формат — "кассовый чек")
+// Поддержка топиков (тем) в супергруппах через env TELEGRAM_TOPIC_ID
 
 const TG_TOKEN       = process.env.TG_BOT_TOKEN || '';
 const TG_CHAT_IDS    = (process.env.TELEGRAM_CHAT_ID || '').split(',').map(s=>s.trim()).filter(Boolean);
@@ -42,27 +43,43 @@ async function readBody(req) {
   try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 }
 
+// sendTG с поддержкой message_thread_id (топик супергруппы)
 async function sendTG(text) {
   if (!TG_TOKEN || TG_CHAT_IDS.length === 0) return;
   const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
+
+  // TELEGRAM_TOPIC_ID = message_thread_id нужной темы (например, “Заказы сайт”)
+  const threadEnv = process.env.TELEGRAM_TOPIC_ID || process.env.TELEGRAM_THREAD_ID || '';
+  const topicId = Number(threadEnv);
+  const withThread = Number.isFinite(topicId) && topicId > 0;
+
   for (const chat_id of TG_CHAT_IDS) {
     try {
+      const payload = {
+        chat_id,
+        text,
+        disable_web_page_preview: true,
+      };
+      if (withThread) payload.message_thread_id = topicId;
+
       const ac = new AbortController();
       const t = setTimeout(() => ac.abort('timeout'), 8000);
       let r = await fetch(url, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ chat_id, text, disable_web_page_preview: true }),
+        body: JSON.stringify(payload),
         signal: ac.signal,
       });
       clearTimeout(t);
-      if (!r.ok) { // один повтор
+
+      if (!r.ok) {
+        // один повтор
         const ac2 = new AbortController();
         const t2 = setTimeout(() => ac2.abort('timeout'), 8000);
         await fetch(url, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ chat_id, text, disable_web_page_preview: true }),
+          body: JSON.stringify(payload),
           signal: ac2.signal,
         }).catch(()=>{});
         clearTimeout(t2);
