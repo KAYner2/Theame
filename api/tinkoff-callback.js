@@ -1,24 +1,26 @@
-// api/tinkoff-callback.js  — ESM, Vercel
+// api/tinkoff-callback.js — ESM, Vercel
 import crypto from 'node:crypto';
 
-// === ENV ===
-const TG_TOKEN            = process.env.TG_BOT_TOKEN || '';
-const TG_CHAT_ID          = process.env.TELEGRAM_CHAT_ID || '';
-const TINKOFF_PASSWORD    = process.env.TINKOFF_TERMINAL_PASSWORD || ''; // пароль терминала из ЛК
-const IDEMPOTENCY_TTL_SEC = Number(process.env.IDEMPOTENCY_TTL_SEC || 60 * 60 * 24 * 14); // 14 дней
+// ===================== ENV =====================
+const TG_TOKEN             = process.env.TG_BOT_TOKEN || '';
+const TG_CHAT_ID           = process.env.TELEGRAM_CHAT_ID || '';
+const TINKOFF_PASSWORD     = process.env.TINKOFF_TERMINAL_PASSWORD || ''; // пароль терминала из ЛК
+const IDEMPOTENCY_TTL_SEC  = Number(process.env.IDEMPOTENCY_TTL_SEC || 60 * 60 * 24 * 14); // 14 дней
+const PUSH_AUTH            = String(process.env.PUSH_AUTH || 'false') === 'true'; // пушить AUTHORIZED (по умолчанию — нет)
+const DRY_RUN              = String(process.env.DRY_RUN || 'false') === 'true';   // не слать в TG, только лог (для отладки)
 
-// --- optional Vercel KV (Upstash) ---
+// ================== Vercel KV (Upstash) ==================
 async function getKV() {
   try {
     if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-      const { kv } = await import('@vercel/kv'); // не забудь добавить зависимость
+      const { kv } = await import('@vercel/kv'); // добавь зависимость в package.json
       return kv;
     }
   } catch {}
   return null;
 }
 
-// --- очень простой in-memory fallback на время жизни инстанса ---
+// === очень простой in-memory fallback на жизнь инстанса ===
 const memStore = new Map();
 function memHas(key) {
   const item = memStore.get(key);
@@ -32,7 +34,7 @@ function memSetNX(key, ttlSec) {
   return true;
 }
 
-// === UTILS ===
+// ===================== UTILS =====================
 const toRub = (kop = 0) => (Number(kop) / 100).toFixed(2);
 
 function getItems(body) {
@@ -48,56 +50,69 @@ async function readBody(req) {
   try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 }
 
+// — TG с таймаутом и 1 ретраем
 async function sendTG(text) {
   if (!TG_TOKEN || !TG_CHAT_ID) return { ok: false, reason: 'no-env' };
-  try {
-    const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
+  const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
+
+  async function doSend(signal) {
     const r = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ chat_id: TG_CHAT_ID, text, disable_web_page_preview: true }),
+      signal,
     });
     const bodyTxt = await r.text().catch(() => '');
     if (!r.ok) return { ok: false, reason: `tg-fail ${r.status}`, body: bodyTxt };
     return { ok: true };
+  }
+
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort('timeout'), 8000);
+    const res = await doSend(ac.signal);
+    clearTimeout(t);
+    if (res.ok) return res;
+
+    // один повтор, если HTTP ошибка
+    const ac2 = new AbortController();
+    const t2 = setTimeout(() => ac2.abort('timeout'), 8000);
+    const res2 = await doSend(ac2.signal);
+    clearTimeout(t2);
+    return res2;
   } catch (e) {
     return { ok: false, reason: 'fetch-error', error: String(e) };
   }
 }
 
-// === Проверка подписи Token (SHA-256 по правилам Т-Банка) ===
-// Алгоритм (сжатое резюме по оф. докам):
-// 1) Берём все поля входящего JSON, убираем поле Token, добавляем поле Password = TINKOFF_TERMINAL_PASSWORD
-// 2) Приводим Success к строке 'true'/'false' (важно)
-// 3) Сортируем КЛЮЧИ по алфавиту, конкатенируем ЗНАЧЕНИЯ в одну строку
-// 4) Делаем SHA-256 и сравниваем с присланным Token (без учёта регистра)
+// === Проверка подписи Tinkoff (SHA-256) ===
 function computeTinkoffToken(data, terminalPassword) {
   const payload = { ...data };
   delete payload.Token;
   payload.Password = terminalPassword;
 
-  // Приводим Success к строке, если есть
+  // Success -> 'true' / 'false'
   if (typeof payload.Success === 'boolean') {
     payload.Success = payload.Success ? 'true' : 'false';
   } else if (payload.Success !== undefined) {
-    // любые "нестандартные" представления приводим к 'true'/'false'
     payload.Success = String(payload.Success) === 'true' ? 'true' : 'false';
   }
 
-  // Вытаскиваем только примитивы (в webhook обычно плоские поля)
+  // Собираем только примитивные значения верхнего уровня
   const keys = Object.keys(payload).sort((a, b) => a.localeCompare(b));
   const concat = keys.map(k => {
     const v = payload[k];
-    return typeof v === 'object' ? '' : String(v ?? '');
+    return (v === null || typeof v !== 'object') ? String(v ?? '') : '';
   }).join('');
 
   return crypto.createHash('sha256').update(concat).digest('hex');
 }
 
 function isFinalStatus(status = '') {
-  // Для пуша в TG оставим строго CONFIRMED (одно-стадийная оплата финал).
-  // Если у тебя двухстадийная — тоже пушим только CONFIRMED, AUTHORIZED можно игнорить/логировать.
   return String(status).toUpperCase() === 'CONFIRMED';
+}
+function isAuthStatus(status = '') {
+  return String(status).toUpperCase() === 'AUTHORIZED';
 }
 
 function formatMessage(body) {
@@ -131,25 +146,24 @@ ${itemsText}` : ''}`
   );
 }
 
-async function setIdempotent(key) {
-  // сначала пробуем KV с NX, потом in-memory fallback
+async function setIdempotentOncePerPayment(paymentId) {
+  const key = `tinkoff:${paymentId}`; // один ключ на весь платёж
   const kv = await getKV();
   if (kv) {
-    // set NX + EX
     const ok = await kv.set(key, '1', { ex: IDEMPOTENCY_TTL_SEC, nx: true });
-    // @vercel/kv вернёт null если ключ уже был
     return ok === 'OK';
   }
   return memSetNX(key, IDEMPOTENCY_TTL_SEC);
 }
 
-// === Handler ===
+// ===================== HANDLER =====================
 export default async function handler(req, res) {
   try {
+    // Быстрый тест руками из браузера/поста:
     if (req.method === 'GET') {
       const now = new Date().toLocaleString('ru-RU');
-      const tg = await sendTG(`✅ Тест из Vercel (${now})\nДомен: ${req.headers.host}`);
-      // Ответ для ручной проверки
+      const text = `✅ Тест из Vercel (${now})\nДомен: ${req.headers.host}\nDRY_RUN=${DRY_RUN}`;
+      const tg = DRY_RUN ? { ok: true, dry_run: true } : await sendTG(text);
       res.status(200).json({ ok: true, mode: 'GET', tg });
       return;
     }
@@ -163,46 +177,62 @@ export default async function handler(req, res) {
 
     // 1) Проверка подписи
     if (!TINKOFF_PASSWORD) {
-      // Без пароля нельзя валидировать — лучше явно отказать, чтобы банк ретраил, а ты увидел misconfig
+      console.warn('[tinkoff] missing terminal password env');
       res.status(500).send('MISSING_TINKOFF_TERMINAL_PASSWORD');
       return;
     }
+
     const theirToken = String(body?.Token || '').toLowerCase();
     const ourToken   = computeTinkoffToken(body, TINKOFF_PASSWORD).toLowerCase();
 
     if (!theirToken || theirToken !== ourToken) {
-      // Некорректная подпись — отвечаем 200, но НИЧЕГО не делаем (чтобы не ддосили TG). Можно логировать в свою систему.
+      console.warn('[tinkoff] bad token, ignore', { theirTokenLen: theirToken?.length || 0 });
+      // Отвечаем 200, чтобы не получить лавину ретраев, но ничего не делаем
       res.status(200).send('IGNORED_BAD_TOKEN');
       return;
     }
 
-    // 2) Быстрый ответ банку — чтобы не ретраил (уже можно 200 OK)
-    // Но перед ответом — ставим идемпотентный флажок и параллельно (без await) пошлём ТГ, если нужно
-    const status   = String(body?.Status || '');
-    const success  = String(body?.Success) === 'true' || body?.Success === true;
+    // 2) Идентификатор платежа
+    const paymentId = body?.PaymentId || body?.OrderId || null;
+    const status    = String(body?.Status || '');
+    const success   = String(body?.Success) === 'true' || body?.Success === true;
 
-    // формируем ключ идемпотентности
-    const paymentId = body?.PaymentId || body?.OrderId || 'no-id';
-    const eventKey  = `${paymentId}:${status}`; // при желании можно ужесточить (добавить Amount и т.п.)
+    if (!paymentId) {
+      console.warn('[tinkoff] no payment id — skip TG');
+      res.status(200).send('IGNORED_NO_PAYMENT_ID');
+      return;
+    }
 
-    // Решение, пушим только CONFIRMED одного раза
-    if (success && isFinalStatus(status)) {
-      const isFirstTime = await setIdempotent(eventKey);
-      if (isFirstTime) {
-        // не блокируем ответ банку — шлём ТГ «в фоне», но без фоновых тасков: просто не await
-        sendTG(formatMessage(body)).catch(() => {});
+    // 3) Решение о пуше (минимум — CONFIRMED; опционально — AUTHORIZED)
+    const shouldPush =
+      (success && isFinalStatus(status)) ||
+      (PUSH_AUTH && isAuthStatus(status));
+
+    if (shouldPush) {
+      // один раз на весь платёж, даже если CONFIRMED пришёл повторно/через время
+      const first = await setIdempotentOncePerPayment(paymentId);
+      if (first) {
+        const msg = formatMessage(body);
+        if (DRY_RUN) {
+          console.log('[tinkoff][dry-run] TG message:\n' + msg);
+        } else {
+          sendTG(msg).catch(err => console.error('[tinkoff] tg send error', err));
+        }
+      } else {
+        // уже отправляли — молча подтверждаем
       }
     }
 
-    // Всегда отвечаем «OK» — банк прекратит ретраи
+    // 4) всегда быстрый OK банку (чтобы не было ретраев)
     res.status(200).send('OK');
   } catch (e) {
-    // На вебхуках лучше всегда 200, чтобы банк не бомбил ретраями; при этом зафиксируй ошибку у себя (лог/обсервабилити)
+    // на вебхуках лучше не провоцировать ретраи
+    console.error('[tinkoff] handler error', e);
     res.status(200).send('HANDLED');
   }
 }
 
-// В ESM-режиме конфиг так:
+// В ESM-режиме конфиг такой:
 export const config = {
   api: { bodyParser: true },
 };
