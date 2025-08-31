@@ -1,9 +1,9 @@
 // api/order-notify.js — ESM, Vercel
-// Принимает POST от Supabase-триггера и шлёт уведомление в Telegram
+// Принимает POST от Supabase-триггера и шлёт уведомление в Telegram (формат — "кассовый чек")
 
 const TG_TOKEN       = process.env.TG_BOT_TOKEN || '';
 const TG_CHAT_IDS    = (process.env.TELEGRAM_CHAT_ID || '').split(',').map(s=>s.trim()).filter(Boolean);
-const WEBHOOK_TOKEN  = process.env.SUPABASE_WEBHOOK_TOKEN || '';   // тот же, что захардкожен в SQL-функции
+const WEBHOOK_TOKEN  = process.env.SUPABASE_WEBHOOK_TOKEN || '';   // тот же, что в SQL-функции
 const IDEMP_TTL_SEC  = Number(process.env.IDEMPOTENCY_TTL_SEC || 60*60*24*14); // 14 дней
 
 // --- KV (опционально) + in-memory fallback ---
@@ -41,6 +41,7 @@ async function readBody(req) {
   const raw = Buffer.concat(chunks).toString('utf8');
   try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 }
+
 async function sendTG(text) {
   if (!TG_TOKEN || TG_CHAT_IDS.length === 0) return;
   const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
@@ -69,21 +70,23 @@ async function sendTG(text) {
     } catch {}
   }
 }
-function fmtRub(n) {
-  if (n == null) return '0';
-  const val = Number(n);
-  if (Number.isFinite(val)) return val.toLocaleString('ru-RU', { minimumFractionDigits: 0 });
-  return String(n);
+
+function fmtRub(n = 0) {
+  return Number(n || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0 });
 }
 
+// — «Кассовый чек» — аккуратный шаблон
 function formatOrderMessage(order, event) {
+  const line = '━━━━━━━━━━━━━━━━━━━';
+
   const id            = order.id ?? '—';
-  const total         = fmtRub(order.total_amount ?? order.amount_total ?? order.amount);
+  const total         = fmtRub(order.total_amount ?? order.amount_total ?? order.amount ?? 0);
   const payMethodMap  = { card: 'Карта', sbp: 'СБП', cash: 'Наличные' };
   const payMethod     = payMethodMap[order.payment_method] || order.payment_method || '—';
   const deliveryMap   = { delivery: 'Доставка', pickup: 'Самовывоз', clarify: 'Уточнить' };
   const delivery      = deliveryMap[order.delivery_type] || order.delivery_type || '—';
 
+  // Состав корзины (ожидаем order.items — массив)
   const items = Array.isArray(order.items) ? order.items : [];
   const itemsText = items.map(it => {
     const name = String(it?.name ?? it?.Name ?? '').trim();
@@ -93,35 +96,38 @@ function formatOrderMessage(order, event) {
     return `• ${name} ×${qty} — ${sum} ₽ (${price} ₽/шт)`;
   }).join('\n');
 
-  let addr = '';
+  // Адрес — только для доставки
+  let addrBlock = '';
   if (order.delivery_type === 'delivery') {
     const parts = [order.recipient_address, order.district].filter(Boolean);
-    addr = parts.length ? `\nАдрес: ${parts.join(', ')}` : '';
+    if (parts.length) addrBlock = `\n📍 Адрес: ${parts.join(', ')}`;
   }
 
+  const when = [order.delivery_date, order.delivery_time].filter(Boolean).join(' ');
+  const whenLine = when ? `\n🕒 Когда: ${when}` : '';
+
   const recipient = (order.recipient_name || order.recipient_phone)
-    ? `\nПолучатель: ${order.recipient_name || '—'}${order.recipient_phone ? ` (${order.recipient_phone})` : ''}`
+    ? `\n👤 Получатель: ${order.recipient_name || '—'}${order.recipient_phone ? ` (${order.recipient_phone})` : ''}`
     : '';
 
   const customer = (order.customer_name || order.customer_phone)
-    ? `\nЗаказчик: ${order.customer_name || '—'}${order.customer_phone ? ` (${order.customer_phone})` : ''}`
+    ? `\n📞 Заказчик: ${order.customer_name || '—'}${order.customer_phone ? ` (${order.customer_phone})` : ''}`
     : '';
 
   const promo = order.promo_code
-    ? `\nПромокод: ${order.promo_code}${order.discount_amount ? ` (−${fmtRub(order.discount_amount)} ₽)` : ''}`
+    ? `\n🔑 Промокод: ${order.promo_code}${order.discount_amount ? ` (−${fmtRub(order.discount_amount)} ₽)` : ''}`
     : '';
 
-  const when = [order.delivery_date, order.delivery_time].filter(Boolean).join(' ');
-  const whenLine = when ? `\nКогда: ${when}` : '';
-
-  const statusLine = order.payment_status || order.status ? `\nСтатус: ${order.payment_status || order.status}` : '';
+  const statusLine = order.payment_status || order.status ? `\n🏷 Статус: ${order.payment_status || order.status}` : '';
 
   return (
 `🧾 Заказ #${id} — ${event}
-Сумма: ${total ?? '—'} ₽
-Оплата: ${payMethod}
-Доставка: ${delivery}${statusLine}${addr}${whenLine}${recipient}${customer}${promo}
-${itemsText ? `\nСостав:\n${itemsText}` : ''}`
+${line}
+💰 Сумма: ${total} ₽
+💳 Оплата: ${payMethod}
+📦 Доставка: ${delivery}${addrBlock}${whenLine}${recipient}${customer}${promo}${statusLine}
+${itemsText ? `\n🎁 Состав заказа:\n${itemsText}` : ''}
+${line}`
   );
 }
 
