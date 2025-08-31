@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 // ===================== ENV =====================
 const TG_TOKEN             = process.env.TG_BOT_TOKEN || '';
 const TG_CHAT_ID           = process.env.TELEGRAM_CHAT_ID || '';
-const TINKOFF_PASSWORD     = process.env.TINKOFF_TERMINAL_PASSWORD || ''; // пароль терминала из ЛК
+const TINKOFF_PASSWORD     = process.env.TINKOFF_PASSWORD || ''; // пароль терминала из ЛК
 const IDEMPOTENCY_TTL_SEC  = Number(process.env.IDEMPOTENCY_TTL_SEC || 60 * 60 * 24 * 14); // 14 дней
 const PUSH_AUTH            = String(process.env.PUSH_AUTH || 'false') === 'true'; // пушить AUTHORIZED (по умолчанию — нет)
 const DRY_RUN              = String(process.env.DRY_RUN || 'false') === 'true';   // не слать в TG, только лог (для отладки)
@@ -178,7 +178,7 @@ export default async function handler(req, res) {
     // 1) Проверка подписи
     if (!TINKOFF_PASSWORD) {
       console.warn('[tinkoff] missing terminal password env');
-      res.status(500).send('MISSING_TINKOFF_TERMINAL_PASSWORD');
+      res.status(500).send('MISSING_TINKOFF_PASSWORD');
       return;
     }
 
