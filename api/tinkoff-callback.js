@@ -6,14 +6,25 @@ const TG_TOKEN            = process.env.TG_BOT_TOKEN || '';
 const TG_CHAT_ID_RAW      = process.env.TELEGRAM_CHAT_ID || ''; // можно несколько через запятую
 const TINKOFF_PASSWORD    = process.env.TINKOFF_PASSWORD || ''; // пароль терминала из ЛК
 const IDEMPOTENCY_TTL_SEC = Number(process.env.IDEMPOTENCY_TTL_SEC || 60 * 60 * 24 * 14); // 14 дней
-const PUSH_AUTH           = String(process.env.PUSH_AUTH || 'false') === 'true';
-const DRY_RUN             = String(process.env.DRY_RUN || 'false') === 'true';
 
-// === DEBUG (включай только на время отладки!) ===
-const DEBUG_WEBHOOK       = String(process.env.DEBUG_WEBHOOK || 'false') === 'true';       // слать краткий отчёт по КАЖДОМУ POST (до проверок)
-const DEBUG_TRUST_BAD_TOKEN = String(process.env.DEBUG_TRUST_BAD_TOKEN || 'false') === 'true'; // слать даже если подпись неверная (ОПАСНО!)
+// Отладка (включай только временно!)
+const DRY_RUN               = String(process.env.DRY_RUN || 'false') === 'true';                 // не слать в TG, только логи
+const DEBUG_WEBHOOK         = String(process.env.DEBUG_WEBHOOK || 'false') === 'true';           // слать краткую сводку по КАЖДОМУ POST
+const DEBUG_TRUST_BAD_TOKEN = String(process.env.DEBUG_TRUST_BAD_TOKEN || 'false') === 'true';   // принимать вебхук даже при неверной подписи (опасно!)
 
-// распарсим список чатов
+/**
+ * Фильтр статусов (опционально):
+ * - по умолчанию шлём на ЛЮБОЙ статус (все этапы)
+ * - можно задать через запятую, например: "AUTHORIZED,CONFIRMED,REVERSED,REFUNDED"
+ */
+const SEND_STATUSES_RAW = (process.env.SEND_STATUSES || '*').trim();
+const SEND_STATUSES = new Set(
+  SEND_STATUSES_RAW === '*'
+    ? [] // пустой сет = любые статусы
+    : SEND_STATUSES_RAW.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+);
+
+// несколько chat_id
 const TG_CHAT_IDS = TG_CHAT_ID_RAW.split(',').map(s => s.trim()).filter(Boolean);
 
 // ================== Vercel KV (Upstash) ==================
@@ -29,15 +40,11 @@ async function getKV() {
 
 // === очень простой in-memory fallback на жизнь инстанса ===
 const memStore = new Map();
-function memHas(key) {
-  const item = memStore.get(key);
-  if (!item) return false;
-  if (Date.now() > item.expiresAt) { memStore.delete(key); return false; }
-  return true;
-}
 function memSetNX(key, ttlSec) {
-  if (memHas(key)) return false;
-  memStore.set(key, { expiresAt: Date.now() + ttlSec * 1000 });
+  const now = Date.now();
+  const until = memStore.get(key);
+  if (until && until > now) return false;
+  memStore.set(key, now + ttlSec * 1000);
   return true;
 }
 
@@ -73,42 +80,38 @@ async function readBody(req) {
 
 // — TG c таймаутом, 1 ретраем и рассылкой в несколько chat_id
 async function sendTG(text) {
-  if (!TG_TOKEN || TG_CHAT_IDS.length === 0) return { ok: false, reason: 'no-env-or-chat' };
+  if (!TG_TOKEN || TG_CHAT_IDS.length === 0) return;
   const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
 
-  async function doSend(chat_id, signal) {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ chat_id, text, disable_web_page_preview: true }),
-      signal,
-    });
-    const bodyTxt = await r.text().catch(() => '');
-    return { chat_id, ok: r.ok, status: r.status, body: bodyTxt };
-  }
-
-  const results = [];
-  for (const chatId of TG_CHAT_IDS) {
+  for (const chat_id of TG_CHAT_IDS) {
     try {
       const ac = new AbortController();
       const t = setTimeout(() => ac.abort('timeout'), 8000);
-      let res = await doSend(chatId, ac.signal);
+      let r = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chat_id, text, disable_web_page_preview: true }),
+        signal: ac.signal,
+      });
       clearTimeout(t);
-      if (!res.ok) {
+
+      if (!r.ok) {
+        // один повтор
         const ac2 = new AbortController();
         const t2 = setTimeout(() => ac2.abort('timeout'), 8000);
-        res = await doSend(chatId, ac2.signal);
+        await fetch(url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ chat_id, text, disable_web_page_preview: true }),
+          signal: ac2.signal,
+        }).catch(()=>{});
         clearTimeout(t2);
       }
-      results.push(res);
-    } catch (e) {
-      results.push({ chat_id: chatId, ok: false, error: String(e) });
-    }
+    } catch {}
   }
-  return results;
 }
 
-// === Проверка подписи Tinkoff (SHA-256) ===
+// === Подпись Tinkoff (SHA-256 по их правилам) ===
 function computeTinkoffToken(data, terminalPassword) {
   const payload = { ...data };
   delete payload.Token;
@@ -131,21 +134,28 @@ function computeTinkoffToken(data, terminalPassword) {
   return crypto.createHash('sha256').update(concat).digest('hex');
 }
 
-function isFinalStatus(status = '') {
-  return String(status).toUpperCase() === 'CONFIRMED';
-}
-function isAuthStatus(status = '') {
-  return String(status).toUpperCase() === 'AUTHORIZED';
+// — Красивые эмодзи для статусов
+function statusEmoji(status) {
+  const s = String(status || '').toUpperCase();
+  if (s === 'AUTHORIZED') return '⏳';        // предварительная авторизация
+  if (s === 'CONFIRMED')  return '✅';        // подтверждён
+  if (s === 'REVERSED')   return '↩️';        // отмена авторизации
+  if (s === 'REFUNDED')   return '💸';        // полный возврат
+  if (s === 'PARTIAL_REFUNDED' || s === 'PARTIALREVERSED') return '💵';
+  if (s === 'CANCELED' || s === 'CANCELLED') return '🛑';
+  if (s === 'REJECTED')   return '❌';
+  return 'ℹ️';
 }
 
 function formatMessage(body) {
-  const status    = body?.Status || '—';
+  const status    = String(body?.Status || '—');
+  const success   = String(body?.Success) === 'true' || body?.Success === true;
   const orderId   = body?.OrderId || body?.PaymentId || '—';
+  const paymentId = body?.PaymentId || '—';
   const amountRub = toRub(body?.Amount || 0);
   const customer  = body?.CustomerKey || body?.Phone || body?.Email || 'не указано';
 
   const items = getItems(body);
-  const firstName = items[0]?.Name ? String(items[0].Name) : '';
   const itemsText = items.map(it => {
     const name  = String(it?.Name ?? '').trim();
     const qty   = Number(it?.Quantity ?? 1);
@@ -154,23 +164,24 @@ function formatMessage(body) {
     return `• ${name} ×${qty} — ${amt} ₽ (${price} ₽/шт)`;
   }).join('\n');
 
+  const e = statusEmoji(status);
+
   return (
-`💳 Платёж (T-Bank)
-
-Статус: ${status}
+`${e} Платёж (T-Bank) — ${status}
+PaymentId: ${paymentId}
 Заказ: ${orderId}
-Покупатель: ${customer}
-Сумма: ${amountRub} ₽${firstName ? `
-
-Название букета: ${firstName}` : ''}${itemsText ? `
+Успех: ${success ? 'true' : 'false'}
+Сумма: ${amountRub} ₽
+Покупатель: ${customer}${itemsText ? `
 
 Состав заказа:
 ${itemsText}` : ''}`
   );
 }
 
-async function setIdempotentOncePerPayment(paymentId) {
-  const key = `tinkoff:${paymentId}`; // один ключ на весь платёж
+// — Идемпотентность: «один раз на PaymentId+Status»
+async function idempotentPerStatus(paymentId, status) {
+  const key = `tinkoff:${paymentId}:${String(status).toUpperCase()}`;
   const kv = await getKV();
   if (kv) {
     const ok = await kv.set(key, '1', { ex: IDEMPOTENCY_TTL_SEC, nx: true });
@@ -187,38 +198,33 @@ export default async function handler(req, res) {
       const now = new Date().toLocaleString('ru-RU');
       const text = `✅ Тест из Vercel (${now})
 Домен: ${req.headers.host}
-DRY_RUN=${DRY_RUN}
-CHAT_IDS=${TG_CHAT_IDS.join(',') || '—'}`;
-      const tg = DRY_RUN ? [{ ok: true, dry_run: true }] : await sendTG(text);
-      res.status(200).json({ ok: true, mode: 'GET', tg });
-      return;
+CHAT_IDS=${TG_CHAT_IDS.join(',') || '—'}
+SEND_STATUSES=${SEND_STATUSES_RAW}`;
+      if (!DRY_RUN) await sendTG(text);
+      return res.status(200).json({ ok: true, mode: 'GET' });
     }
 
     if (req.method !== 'POST') {
-      res.status(405).json({ ok: false, error: 'Method Not Allowed' });
-      return;
+      return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
     }
 
     const body = await readBody(req);
 
-    // === DEBUG: шлём краткий отчёт о любом входящем POST ===
-    if (DEBUG_WEBHOOK) {
-      const dbg = `🐞 DEBUG Tinkoff Webhook
-IP: ${req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || '—'}
-CT: ${req.headers['content-type'] || '—'}
-Status: ${body?.Status || '—'}, Success: ${body?.Success}
-PaymentId: ${body?.PaymentId || '—'}
-OrderId: ${body?.OrderId || '—'}
-Amount: ${toRub(body?.Amount || 0)} ₽`;
-      if (!DRY_RUN) sendTG(dbg).catch(()=>{});
-      console.log('[DEBUG_WEBHOOK] ', dbg);
+    // DEBUG: короткая сводка по любому входящему POST
+    if (DEBUG_WEBHOOK && !DRY_RUN) {
+      const dbg = `🐞 DEBUG Webhook
+Status=${body?.Status || '—'}
+Success=${body?.Success}
+PaymentId=${body?.PaymentId || '—'}
+OrderId=${body?.OrderId || '—'}
+Amount=${toRub(body?.Amount || 0)} ₽`;
+      sendTG(dbg).catch(()=>{});
     }
 
-    // 1) Проверка наличия пароля (всегда 200, чтобы банк не ретраил)
+    // 1) Наличие пароля терминала
     if (!TINKOFF_PASSWORD) {
       console.warn('[tinkoff] missing TINKOFF_PASSWORD env');
-      res.status(200).send('MISSING_TINKOFF_PASSWORD');
-      return;
+      return res.status(200).send('MISSING_TINKOFF_PASSWORD'); // всегда 200, чтобы банк не ретраил
     }
 
     // 2) Проверка подписи
@@ -227,52 +233,51 @@ Amount: ${toRub(body?.Amount || 0)} ₽`;
     const tokenMatch = !!theirToken && theirToken === ourToken;
 
     if (!tokenMatch && !DEBUG_TRUST_BAD_TOKEN) {
-      console.warn('[tinkoff] bad token, ignore', { theirTokenLen: theirToken?.length || 0 });
-      res.status(200).send('IGNORED_BAD_TOKEN');
-      return;
+      console.warn('[tinkoff] bad token — ignore');
+      return res.status(200).send('IGNORED_BAD_TOKEN');
     }
 
-    // 3) Идентификатор платежа и статус
+    // 3) Идентификаторы
     const paymentId = body?.PaymentId || body?.OrderId || null;
-    const status    = String(body?.Status || '');
-    const success   = String(body?.Success) === 'true' || body?.Success === true;
+    const status    = String(body?.Status || '').toUpperCase();
 
-    if (!paymentId) {
-      console.warn('[tinkoff] no payment id — skip TG');
-      res.status(200).send('IGNORED_NO_PAYMENT_ID');
-      return;
+    if (!paymentId || !status) {
+      console.warn('[tinkoff] no paymentId or status');
+      return res.status(200).send('IGNORED_NO_ID_OR_STATUS');
     }
 
-    // 4) Когда пушим
-    const shouldPush =
-      (success && isFinalStatus(status)) ||
-      (PUSH_AUTH && isAuthStatus(status)) ||
-      (DEBUG_TRUST_BAD_TOKEN && !tokenMatch); // если включён режим «доверять» — пушим для наблюдения
-
-    if (shouldPush) {
-      const first = await setIdempotentOncePerPayment(paymentId);
-      if (first || DEBUG_TRUST_BAD_TOKEN) {
-        const msg = formatMessage(body) + (!tokenMatch ? `
-
-⚠️ ВНИМАНИЕ: Подпись не совпала (DEBUG_TRUST_BAD_TOKEN).` : '');
-        if (DRY_RUN) {
-          console.log('[tinkoff][dry-run] TG message:\n' + msg);
-        } else {
-          sendTG(msg).catch(err => console.error('[tinkoff] tg send error', err));
-        }
-      }
+    // 4) Фильтрация статусов (если задана переменная SEND_STATUSES)
+    if (SEND_STATUSES.size && !SEND_STATUSES.has(status)) {
+      // фильтр включён, а статус не в списке — подтверждаем, но не шлём
+      return res.status(200).send('OK_FILTERED');
     }
 
-    // 5) Всегда быстрый OK банку
-    res.status(200).send('OK');
+    // 5) Идемпотентность по (PaymentId, Status)
+    const firstTime = await idempotentPerStatus(paymentId, status);
+    if (!firstTime && !DEBUG_TRUST_BAD_TOKEN) {
+      return res.status(200).send('OK_DUP');
+    }
+
+    // 6) Формируем и шлём
+    const msg = formatMessage(body) + (!tokenMatch ? `
+
+⚠️ ВНИМАНИЕ: подпись не совпала (DEBUG_TRUST_BAD_TOKEN).` : '');
+    if (!DRY_RUN) {
+      sendTG(msg).catch(err => console.error('[tinkoff] tg send error', err));
+    } else {
+      console.log('[tinkoff][dry-run] message:\n' + msg);
+    }
+
+    // 7) Всегда быстрый OK банку
+    return res.status(200).send('OK');
   } catch (e) {
     console.error('[tinkoff] handler error', e);
     // Всегда 200, чтобы банк не ретраил
-    res.status(200).send('HANDLED');
+    return res.status(200).send('HANDLED');
   }
 }
 
-// В ESM-режиме конфиг такой:
+// ESM config
 export const config = {
   api: { bodyParser: true },
 };
