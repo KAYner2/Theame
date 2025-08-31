@@ -2,12 +2,18 @@
 import crypto from 'node:crypto';
 
 // ===================== ENV =====================
-const TG_TOKEN             = process.env.TG_BOT_TOKEN || '';
-const TG_CHAT_ID           = process.env.TELEGRAM_CHAT_ID || '';
-const TINKOFF_PASSWORD     = process.env.TINKOFF_PASSWORD || ''; // пароль терминала из ЛК
-const IDEMPOTENCY_TTL_SEC  = Number(process.env.IDEMPOTENCY_TTL_SEC || 60 * 60 * 24 * 14); // 14 дней
-const PUSH_AUTH            = String(process.env.PUSH_AUTH || 'false') === 'true'; // пушить AUTHORIZED (по умолчанию — нет)
-const DRY_RUN              = String(process.env.DRY_RUN || 'false') === 'true';   // не слать в TG, только лог (для отладки)
+const TG_TOKEN            = process.env.TG_BOT_TOKEN || '';
+const TG_CHAT_ID_RAW      = process.env.TELEGRAM_CHAT_ID || ''; // можно несколько через запятую
+const TINKOFF_PASSWORD    = process.env.TINKOFF_PASSWORD || ''; // пароль терминала из ЛК
+const IDEMPOTENCY_TTL_SEC = Number(process.env.IDEMPOTENCY_TTL_SEC || 60 * 60 * 24 * 14); // 14 дней
+const PUSH_AUTH           = String(process.env.PUSH_AUTH || 'false') === 'true';
+const DRY_RUN             = String(process.env.DRY_RUN || 'false') === 'true';
+
+// распарсим список чатов
+const TG_CHAT_IDS = TG_CHAT_ID_RAW
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
 
 // ================== Vercel KV (Upstash) ==================
 async function getKV() {
@@ -42,47 +48,64 @@ function getItems(body) {
   return Array.isArray(items) ? items : [];
 }
 
+// читаем JSON или x-www-form-urlencoded
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
+
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
   const raw = Buffer.concat(chunks).toString('utf8');
+
+  const ct = String(req.headers['content-type'] || '').toLowerCase();
+
+  if (ct.includes('application/x-www-form-urlencoded')) {
+    try {
+      const params = new URLSearchParams(raw);
+      const obj = Object.fromEntries(params.entries());
+      // приведение числовых полей, где это ожидаемо
+      if (obj.Amount != null && !Number.isNaN(Number(obj.Amount))) obj.Amount = Number(obj.Amount);
+      return obj;
+    } catch { return {}; }
+  }
+
   try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 }
 
-// — TG с таймаутом и 1 ретраем
+// — TG c таймаутом, 1 ретраем и рассылкой в несколько chat_id
 async function sendTG(text) {
-  if (!TG_TOKEN || !TG_CHAT_ID) return { ok: false, reason: 'no-env' };
+  if (!TG_TOKEN || TG_CHAT_IDS.length === 0) return { ok: false, reason: 'no-env-or-chat' };
   const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
 
-  async function doSend(signal) {
+  async function doSend(chat_id, signal) {
     const r = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ chat_id: TG_CHAT_ID, text, disable_web_page_preview: true }),
+      body: JSON.stringify({ chat_id, text, disable_web_page_preview: true }),
       signal,
     });
     const bodyTxt = await r.text().catch(() => '');
-    if (!r.ok) return { ok: false, reason: `tg-fail ${r.status}`, body: bodyTxt };
-    return { ok: true };
+    return { chat_id, ok: r.ok, status: r.status, body: bodyTxt };
   }
 
-  try {
-    const ac = new AbortController();
-    const t = setTimeout(() => ac.abort('timeout'), 8000);
-    const res = await doSend(ac.signal);
-    clearTimeout(t);
-    if (res.ok) return res;
-
-    // один повтор, если HTTP ошибка
-    const ac2 = new AbortController();
-    const t2 = setTimeout(() => ac2.abort('timeout'), 8000);
-    const res2 = await doSend(ac2.signal);
-    clearTimeout(t2);
-    return res2;
-  } catch (e) {
-    return { ok: false, reason: 'fetch-error', error: String(e) };
+  const results = [];
+  for (const chatId of TG_CHAT_IDS) {
+    try {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort('timeout'), 8000);
+      let res = await doSend(chatId, ac.signal);
+      clearTimeout(t);
+      if (!res.ok) {
+        const ac2 = new AbortController();
+        const t2 = setTimeout(() => ac2.abort('timeout'), 8000);
+        res = await doSend(chatId, ac2.signal);
+        clearTimeout(t2);
+      }
+      results.push(res);
+    } catch (e) {
+      results.push({ chat_id: chatId, ok: false, error: String(e) });
+    }
   }
+  return results;
 }
 
 // === Проверка подписи Tinkoff (SHA-256) ===
@@ -159,11 +182,11 @@ async function setIdempotentOncePerPayment(paymentId) {
 // ===================== HANDLER =====================
 export default async function handler(req, res) {
   try {
-    // Быстрый тест руками из браузера/поста:
+    // Быстрый тест руками:
     if (req.method === 'GET') {
       const now = new Date().toLocaleString('ru-RU');
-      const text = `✅ Тест из Vercel (${now})\nДомен: ${req.headers.host}\nDRY_RUN=${DRY_RUN}`;
-      const tg = DRY_RUN ? { ok: true, dry_run: true } : await sendTG(text);
+      const text = `✅ Тест из Vercel (${now})\nДомен: ${req.headers.host}\nDRY_RUN=${DRY_RUN}\nCHAT_IDS=${TG_CHAT_IDS.join(',') || '—'}`;
+      const tg = DRY_RUN ? [{ ok: true, dry_run: true }] : await sendTG(text);
       res.status(200).json({ ok: true, mode: 'GET', tg });
       return;
     }
@@ -175,24 +198,24 @@ export default async function handler(req, res) {
 
     const body = await readBody(req);
 
-    // 1) Проверка подписи
+    // 1) Проверка наличия пароля
     if (!TINKOFF_PASSWORD) {
-      console.warn('[tinkoff] missing terminal password env');
-      res.status(500).send('MISSING_TINKOFF_PASSWORD');
+      console.warn('[tinkoff] missing TINKOFF_PASSWORD env');
+      res.status(200).send('MISSING_TINKOFF_PASSWORD'); // всегда 200, чтобы не было ретраев
       return;
     }
 
+    // 2) Проверка подписи
     const theirToken = String(body?.Token || '').toLowerCase();
     const ourToken   = computeTinkoffToken(body, TINKOFF_PASSWORD).toLowerCase();
 
     if (!theirToken || theirToken !== ourToken) {
       console.warn('[tinkoff] bad token, ignore', { theirTokenLen: theirToken?.length || 0 });
-      // Отвечаем 200, чтобы не получить лавину ретраев, но ничего не делаем
-      res.status(200).send('IGNORED_BAD_TOKEN');
+      res.status(200).send('IGNORED_BAD_TOKEN'); // подтверждаем, но не обрабатываем
       return;
     }
 
-    // 2) Идентификатор платежа
+    // 3) Идентификатор платежа и статус
     const paymentId = body?.PaymentId || body?.OrderId || null;
     const status    = String(body?.Status || '');
     const success   = String(body?.Success) === 'true' || body?.Success === true;
@@ -203,13 +226,10 @@ export default async function handler(req, res) {
       return;
     }
 
-    // 3) Решение о пуше (минимум — CONFIRMED; опционально — AUTHORIZED)
-    const shouldPush =
-      (success && isFinalStatus(status)) ||
-      (PUSH_AUTH && isAuthStatus(status));
+    // 4) Решение: пушить только CONFIRMED (и/или AUTHORIZED при PUSH_AUTH)
+    const shouldPush = (success && isFinalStatus(status)) || (PUSH_AUTH && isAuthStatus(status));
 
     if (shouldPush) {
-      // один раз на весь платёж, даже если CONFIRMED пришёл повторно/через время
       const first = await setIdempotentOncePerPayment(paymentId);
       if (first) {
         const msg = formatMessage(body);
@@ -218,16 +238,14 @@ export default async function handler(req, res) {
         } else {
           sendTG(msg).catch(err => console.error('[tinkoff] tg send error', err));
         }
-      } else {
-        // уже отправляли — молча подтверждаем
       }
     }
 
-    // 4) всегда быстрый OK банку (чтобы не было ретраев)
+    // 5) Всегда быстрый OK банку
     res.status(200).send('OK');
   } catch (e) {
-    // на вебхуках лучше не провоцировать ретраи
     console.error('[tinkoff] handler error', e);
+    // Всегда 200, чтобы банк не ретраил
     res.status(200).send('HANDLED');
   }
 }
