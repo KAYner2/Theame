@@ -9,11 +9,12 @@ const IDEMPOTENCY_TTL_SEC = Number(process.env.IDEMPOTENCY_TTL_SEC || 60 * 60 * 
 const PUSH_AUTH           = String(process.env.PUSH_AUTH || 'false') === 'true';
 const DRY_RUN             = String(process.env.DRY_RUN || 'false') === 'true';
 
+// === DEBUG (включай только на время отладки!) ===
+const DEBUG_WEBHOOK       = String(process.env.DEBUG_WEBHOOK || 'false') === 'true';       // слать краткий отчёт по КАЖДОМУ POST (до проверок)
+const DEBUG_TRUST_BAD_TOKEN = String(process.env.DEBUG_TRUST_BAD_TOKEN || 'false') === 'true'; // слать даже если подпись неверная (ОПАСНО!)
+
 // распарсим список чатов
-const TG_CHAT_IDS = TG_CHAT_ID_RAW
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
+const TG_CHAT_IDS = TG_CHAT_ID_RAW.split(',').map(s => s.trim()).filter(Boolean);
 
 // ================== Vercel KV (Upstash) ==================
 async function getKV() {
@@ -62,7 +63,6 @@ async function readBody(req) {
     try {
       const params = new URLSearchParams(raw);
       const obj = Object.fromEntries(params.entries());
-      // приведение числовых полей, где это ожидаемо
       if (obj.Amount != null && !Number.isNaN(Number(obj.Amount))) obj.Amount = Number(obj.Amount);
       return obj;
     } catch { return {}; }
@@ -185,7 +185,10 @@ export default async function handler(req, res) {
     // Быстрый тест руками:
     if (req.method === 'GET') {
       const now = new Date().toLocaleString('ru-RU');
-      const text = `✅ Тест из Vercel (${now})\nДомен: ${req.headers.host}\nDRY_RUN=${DRY_RUN}\nCHAT_IDS=${TG_CHAT_IDS.join(',') || '—'}`;
+      const text = `✅ Тест из Vercel (${now})
+Домен: ${req.headers.host}
+DRY_RUN=${DRY_RUN}
+CHAT_IDS=${TG_CHAT_IDS.join(',') || '—'}`;
       const tg = DRY_RUN ? [{ ok: true, dry_run: true }] : await sendTG(text);
       res.status(200).json({ ok: true, mode: 'GET', tg });
       return;
@@ -198,20 +201,34 @@ export default async function handler(req, res) {
 
     const body = await readBody(req);
 
-    // 1) Проверка наличия пароля
+    // === DEBUG: шлём краткий отчёт о любом входящем POST ===
+    if (DEBUG_WEBHOOK) {
+      const dbg = `🐞 DEBUG Tinkoff Webhook
+IP: ${req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || '—'}
+CT: ${req.headers['content-type'] || '—'}
+Status: ${body?.Status || '—'}, Success: ${body?.Success}
+PaymentId: ${body?.PaymentId || '—'}
+OrderId: ${body?.OrderId || '—'}
+Amount: ${toRub(body?.Amount || 0)} ₽`;
+      if (!DRY_RUN) sendTG(dbg).catch(()=>{});
+      console.log('[DEBUG_WEBHOOK] ', dbg);
+    }
+
+    // 1) Проверка наличия пароля (всегда 200, чтобы банк не ретраил)
     if (!TINKOFF_PASSWORD) {
       console.warn('[tinkoff] missing TINKOFF_PASSWORD env');
-      res.status(200).send('MISSING_TINKOFF_PASSWORD'); // всегда 200, чтобы не было ретраев
+      res.status(200).send('MISSING_TINKOFF_PASSWORD');
       return;
     }
 
     // 2) Проверка подписи
     const theirToken = String(body?.Token || '').toLowerCase();
     const ourToken   = computeTinkoffToken(body, TINKOFF_PASSWORD).toLowerCase();
+    const tokenMatch = !!theirToken && theirToken === ourToken;
 
-    if (!theirToken || theirToken !== ourToken) {
+    if (!tokenMatch && !DEBUG_TRUST_BAD_TOKEN) {
       console.warn('[tinkoff] bad token, ignore', { theirTokenLen: theirToken?.length || 0 });
-      res.status(200).send('IGNORED_BAD_TOKEN'); // подтверждаем, но не обрабатываем
+      res.status(200).send('IGNORED_BAD_TOKEN');
       return;
     }
 
@@ -226,13 +243,18 @@ export default async function handler(req, res) {
       return;
     }
 
-    // 4) Решение: пушить только CONFIRMED (и/или AUTHORIZED при PUSH_AUTH)
-    const shouldPush = (success && isFinalStatus(status)) || (PUSH_AUTH && isAuthStatus(status));
+    // 4) Когда пушим
+    const shouldPush =
+      (success && isFinalStatus(status)) ||
+      (PUSH_AUTH && isAuthStatus(status)) ||
+      (DEBUG_TRUST_BAD_TOKEN && !tokenMatch); // если включён режим «доверять» — пушим для наблюдения
 
     if (shouldPush) {
       const first = await setIdempotentOncePerPayment(paymentId);
-      if (first) {
-        const msg = formatMessage(body);
+      if (first || DEBUG_TRUST_BAD_TOKEN) {
+        const msg = formatMessage(body) + (!tokenMatch ? `
+
+⚠️ ВНИМАНИЕ: Подпись не совпала (DEBUG_TRUST_BAD_TOKEN).` : '');
         if (DRY_RUN) {
           console.log('[tinkoff][dry-run] TG message:\n' + msg);
         } else {
