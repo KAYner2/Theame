@@ -10,7 +10,6 @@ import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
-import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -33,7 +32,7 @@ type Json =
   | { [key: string]: Json }
   | Json[];
 
-  // ======== PROMO: типы для правил из БД ========
+// ======== PROMO: типы для правил из БД ========
 type DiscountRule = {
   min_total: number;
   max_total?: number;
@@ -84,6 +83,16 @@ const checkoutSchema = z.object({
 }, {
   message: "Все обязательные поля должны быть заполнены для доставки",
   path: ["deliveryType"]
+})
+// NEW: запрет наличных, если не самовывоз
+.superRefine((data, ctx) => {
+  if (data.deliveryType !== "pickup" && data.paymentMethod === "cash") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Оплата наличными доступна только при самовывозе.",
+      path: ["paymentMethod"],
+    });
+  }
 });
 
 type CheckoutFormData = z.infer<typeof checkoutSchema>;
@@ -107,7 +116,6 @@ const districts = [
   { name: "п. Роза-Хутор", price: 1900, freeFrom: 20000 },
   { name: "На высоту 960м (Роза-Хутор/Горки город)", price: 2100, freeFrom: 25000 }
 ];
-
 
 export const CheckoutForm = () => {
   const { state, updateQuantity, removeFromCart, clearCart } = useCart();
@@ -136,17 +144,16 @@ export const CheckoutForm = () => {
   const deliveryType = watch("deliveryType");
   const paymentMethod = watch("paymentMethod");
   const selectedDate = watch("deliveryDate");
+
+  // NEW: флаг для дизейбла наличных
+  const cashDisabled = deliveryType !== "pickup";
   
   // Расчет доставки
   const calculateDeliveryPrice = () => {
     if (!selectedDistrict || deliveryType !== "delivery") return 0;
-    
     const district = districts.find(d => d.name === selectedDistrict);
     if (!district) return 0;
-    
-    // Если сумма больше или равна минимальной для бесплатной доставки
     if (state.total >= district.freeFrom) return 0;
-    
     return district.price;
   };
   
@@ -167,191 +174,176 @@ export const CheckoutForm = () => {
   };
 
   const calculateDiscount = (total: number, discount: AppliedDiscount | null) => {
-  if (!discount) return 0;
+    if (!discount) return 0;
 
-  // Приводит discount_rules к массиву правил (могут прийти массивом, строкой JSON или быть null)
+    // 1) Если промокод содержит rules из БД — ищем подходящее правило по сумме total
+    if (discount.rules && discount.rules.length > 0) {
+      const matched = discount.rules
+        .filter(r => total >= r.min_total && (r.max_total == null || total <= r.max_total))
+        .sort((a, b) => a.min_total - b.min_total)
+        .pop();
 
+      if (!matched) return 0;
 
-  // 1) Если промокод содержит rules из БД — ищем подходящее правило по сумме total
-  if (discount.rules && discount.rules.length > 0) {
-    const matched = discount.rules
-      .filter(r => total >= r.min_total && (r.max_total == null || total <= r.max_total))
-      .sort((a, b) => a.min_total - b.min_total)
-      .pop();
+      return matched.type === 'fixed'
+        ? Math.min(matched.amount, total)
+        : Math.floor(total * (matched.amount / 100));
+    }
 
-    if (!matched) return 0;
-
-    return matched.type === 'fixed'
-      ? Math.min(matched.amount, total)
-      : Math.floor(total * (matched.amount / 100));
-  }
-
-  // 2) Обычные промо (без rules): фикс/процент
-  if (discount.type === 'fixed') {
-    return Math.min(discount.amount, total);
-  }
-  return Math.floor(total * (discount.amount / 100));
-};
+    // 2) Обычные промо (без rules): фикс/процент
+    if (discount.type === 'fixed') {
+      return Math.min(discount.amount, total);
+    }
+    return Math.floor(total * (discount.amount / 100));
+  };
 
   const discountAmount = appliedDiscount ? calculateDiscount(state.total, appliedDiscount) : 0;
   const subtotalWithDelivery = state.total + deliveryPrice;
   const finalTotal = subtotalWithDelivery - discountAmount;
   const toKop = (rub: number) => Math.round(rub * 100);
 
-const receiptItems = [
-  ...state.items.map((item) => ({
-    Name: String(item.name).slice(0, 128),
-    Price: toKop(item.price),
-    Quantity: String(item.cartQuantity),
-    Amount: toKop(item.price) * item.cartQuantity,
-    PaymentMethod: "full_payment",
-    PaymentObject: "commodity",
-    Tax: "none", // УСН без НДС
-  })),
-  ...(deliveryPrice > 0
-    ? [{
-        Name: "Доставка",
-        Price: toKop(deliveryPrice),
-        Quantity: "1",
-        Amount: toKop(deliveryPrice),
-        PaymentMethod: "full_payment",
-        PaymentObject: "service",
-        Tax: "none",
-      }]
-    : [])
-];
+  const receiptItems = [
+    ...state.items.map((item) => ({
+      Name: String(item.name).slice(0, 128),
+      Price: toKop(item.price),
+      Quantity: String(item.cartQuantity),
+      Amount: toKop(item.price) * item.cartQuantity,
+      PaymentMethod: "full_payment",
+      PaymentObject: "commodity",
+      Tax: "none", // УСН без НДС
+    })),
+    ...(deliveryPrice > 0
+      ? [{
+          Name: "Доставка",
+          Price: toKop(deliveryPrice),
+          Quantity: "1",
+          Amount: toKop(deliveryPrice),
+          PaymentMethod: "full_payment",
+          PaymentObject: "service",
+          Tax: "none",
+        }]
+      : [])
+  ];
 
-const finalTotalKop = toKop(finalTotal);
+  const finalTotalKop = toKop(finalTotal);
 
-// Страхуемся от расхождения копеек
-const sumKop = receiptItems.reduce((sum, i) => sum + Number(i.Amount), 0);
-if (sumKop !== finalTotalKop && receiptItems.length > 0) {
-  const diff = finalTotalKop - sumKop;
-  receiptItems[receiptItems.length - 1].Amount =
-    Number(receiptItems[receiptItems.length - 1].Amount) + diff;
-}
-
-const receipt = {
-  Phone: getCleanPhoneNumber(watch("customerPhone") || ""),
-  Taxation: "usn_income_outcome", // или "usn_income" — выбери свою
-  Items: receiptItems
-};
-
-function normalizeRules(raw: unknown): DiscountRule[] | undefined {
-  if (!raw) return undefined;
-
-  if (Array.isArray(raw)) return raw as DiscountRule[];
-
-  if (typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? (parsed as DiscountRule[]) : undefined;
-    } catch {
-      return undefined;
-    }
+  // Страхуемся от расхождения копеек
+  const sumKop = receiptItems.reduce((sum, i) => sum + Number(i.Amount), 0);
+  if (sumKop !== finalTotalKop && receiptItems.length > 0) {
+    const diff = finalTotalKop - sumKop;
+    receiptItems[receiptItems.length - 1].Amount =
+      Number(receiptItems[receiptItems.length - 1].Amount) + diff;
   }
 
-  if (typeof raw === 'object' && raw !== null) {
-    const maybeArray = raw as any;
-    return Array.isArray(maybeArray) ? (maybeArray as DiscountRule[]) : undefined;
-  }
+  const receipt = {
+    Phone: getCleanPhoneNumber(watch("customerPhone") || ""),
+    Taxation: "usn_income_outcome", // или "usn_income" — выбери свою
+    Items: receiptItems
+  };
 
-  return undefined;
-}
-
-const handlePromoCode = async () => {
-  if (!promoCode.trim()) {
-    toast.error("Введите промокод");
-    return;
-  }
-
-  setIsApplyingPromo(true);
-
-  try {
-    const code = promoCode.toUpperCase();
-
-    // Тип строки из БД
-    type PromoRow = {
-      code: string;
-      is_active: boolean;
-      expires_at: string | null;
-      usage_limit: number | null;
-      used_count: number | null;
-      discount_type: 'fixed' | 'percent' | string | null;
-      discount_amount: number | null;
-      discount_rules?: unknown; // может быть jsonb или текст
-    };
-
-    // Берём нужные поля (включая discount_rules) и используем maybeSingle<PromoRow>()
-    const response = await supabase
-      .from('promo_codes')
-      .select('code, is_active, expires_at, usage_limit, used_count, discount_type, discount_amount, discount_rules')
-      .eq('code', code)
-      .eq('is_active', true)
-      .maybeSingle<PromoRow>();
-
-    // Если упала БД-ошибка (например, колонки нет)
-    if (response.error) {
-      if (response.error.message?.includes("discount_rules")) {
-        toast.error("В БД нет колонки discount_rules. Добавь её в public.promo_codes (jsonb).");
-      } else {
-        toast.error("Промокод не найден или недействителен");
+  function normalizeRules(raw: unknown): DiscountRule[] | undefined {
+    if (!raw) return undefined;
+    if (Array.isArray(raw)) return raw as DiscountRule[];
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? (parsed as DiscountRule[]) : undefined;
+      } catch {
+        return undefined;
       }
-      return;
     }
-
-    // Если промокод не найден
-    if (!response.data) {
-      toast.error("Промокод не найден или недействителен");
-      return;
+    if (typeof raw === 'object' && raw !== null) {
+      const maybeArray = raw as any;
+      return Array.isArray(maybeArray) ? (maybeArray as DiscountRule[]) : undefined;
     }
-
-    const promoData = response.data;
-
-    if (promoData.expires_at && new Date(promoData.expires_at) < new Date()) {
-      toast.error("Промокод истёк");
-      return;
-    }
-
-    if (promoData.usage_limit != null && promoData.used_count != null && promoData.used_count >= promoData.usage_limit) {
-      toast.error("Промокод больше недоступен");
-      return;
-    }
-
-    const rules = normalizeRules(promoData.discount_rules);
-
-    // Собираем объект для расчёта
-    const discountFromDb: AppliedDiscount = {
-      code: promoData.code,
-      type: (promoData.discount_type ?? 'fixed') as 'fixed' | 'percent',
-      amount: Number(promoData.discount_amount ?? 0),
-      rules
-    };
-
-    // Предпросмотр скидки на текущую сумму корзины
-    const preview = calculateDiscount(state.total, discountFromDb);
-    if (preview <= 0) {
-      // Например, твои пороги 2500/3500 — если меньше, покажем подсказку
-      toast.error("Промокод применим при большей сумме корзины");
-      return;
-    }
-
-    setAppliedDiscount(discountFromDb);
-
-    const discountText = rules
-      ? `${preview} ₽` // для тировых — фактическая скидка по текущей сумме
-      : (discountFromDb.type === 'fixed'
-          ? `${discountFromDb.amount} ₽`
-          : `${discountFromDb.amount}%`);
-
-    toast.success(`Промокод применён! Скидка: ${discountText}`);
-  } catch (error) {
-    toast.error("Ошибка при применении промокода");
-  } finally {
-    setIsApplyingPromo(false);
+    return undefined;
   }
-};
 
+  const handlePromoCode = async () => {
+    if (!promoCode.trim()) {
+      toast.error("Введите промокод");
+      return;
+    }
+
+    setIsApplyingPromo(true);
+
+    try {
+      const code = promoCode.toUpperCase();
+
+      type PromoRow = {
+        code: string;
+        is_active: boolean;
+        expires_at: string | null;
+        usage_limit: number | null;
+        used_count: number | null;
+        discount_type: 'fixed' | 'percent' | string | null;
+        discount_amount: number | null;
+        discount_rules?: unknown; // может быть jsonb или текст
+      };
+
+      const response = await supabase
+        .from('promo_codes')
+        .select('code, is_active, expires_at, usage_limit, used_count, discount_type, discount_amount, discount_rules')
+        .eq('code', code)
+        .eq('is_active', true)
+        .maybeSingle<PromoRow>();
+
+      if (response.error) {
+        if (response.error.message?.includes("discount_rules")) {
+          toast.error("В БД нет колонки discount_rules. Добавь её в public.promo_codes (jsonb).");
+        } else {
+          toast.error("Промокод не найден или недействителен");
+        }
+        return;
+      }
+
+      if (!response.data) {
+        toast.error("Промокод не найден или недействителен");
+        return;
+      }
+
+      const promoData = response.data;
+
+      if (promoData.expires_at && new Date(promoData.expires_at) < new Date()) {
+        toast.error("Промокод истёк");
+        return;
+      }
+
+      if (promoData.usage_limit != null && promoData.used_count != null && promoData.used_count >= promoData.usage_limit) {
+        toast.error("Промокод больше недоступен");
+        return;
+      }
+
+      const rules = normalizeRules(promoData.discount_rules);
+
+      const discountFromDb: AppliedDiscount = {
+        code: promoData.code,
+        type: (promoData.discount_type ?? 'fixed') as 'fixed' | 'percent',
+        amount: Number(promoData.discount_amount ?? 0),
+        rules
+      };
+
+      const preview = calculateDiscount(state.total, discountFromDb);
+      if (preview <= 0) {
+        toast.error("Промокод применим при большей сумме корзины");
+        return;
+      }
+
+      setAppliedDiscount(discountFromDb);
+
+      const discountText = rules
+        ? `${preview} ₽`
+        : (discountFromDb.type === 'fixed'
+            ? `${discountFromDb.amount} ₽`
+            : `${discountFromDb.amount}%`);
+
+      toast.success(`Промокод применён! Скидка: ${discountText}`);
+    } catch (error) {
+      toast.error("Ошибка при применении промокода");
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
 
   const removePromoCode = () => {
     setAppliedDiscount(null);
@@ -360,6 +352,12 @@ const handlePromoCode = async () => {
   };
 
   const onSubmit = async (data: CheckoutFormData) => {
+    // NEW: жесткая проверка перед сохранением
+    if (data.paymentMethod === "cash" && data.deliveryType !== "pickup") {
+      toast.error("Оплата наличными доступна только при самовывозе.");
+      return;
+    }
+
     console.log("=== НАЧАЛО ОТПРАВКИ ЗАКАЗА ===");
     console.log("Данные формы:", data);
     console.log("Состояние корзины:", state);
@@ -367,36 +365,35 @@ const handlePromoCode = async () => {
     setIsSubmitting(true);
     
     const itemsJson: Json = state.items.map((i) => ({
-  id: i.id,
-  name: i.name,
-  price: i.price,
-  cartQuantity: i.cartQuantity,
-  image: i.image,
-  // если в CartItem есть ещё простые поля — добавь их сюда
-})) as Json; 
+      id: i.id,
+      name: i.name,
+      price: i.price,
+      cartQuantity: i.cartQuantity,
+      image: i.image,
+    })) as Json; 
+
     try {
       // Создаем объект заказа
       const orderData = {
-  items: itemsJson,  // ⬅️ важно: без JSON.stringify
-
-  total_amount: finalTotal,
-  customer_name: data.customerName,
-  customer_phone: getCleanPhoneNumber(data.customerPhone),
-  delivery_type: data.deliveryType,
-  delivery_date: data.deliveryDate ? format(data.deliveryDate, "yyyy-MM-dd") : null,
-  delivery_time: data.deliveryTime,
-  district: data.district,
-  recipient_name: data.recipientName,
-  recipient_phone: data.recipientPhone ? getCleanPhoneNumber(data.recipientPhone) : null,
-  recipient_address: data.deliveryType === "delivery" ? data.address ?? null : null,
-  card_wishes: data.cardWishes,
-  payment_method: data.paymentMethod,
-  order_comment: data.orderComment,
-  promo_code: appliedDiscount?.code || null,
-  discount_amount: discountAmount,
-  status: "pending",
-  order_status: "new"
-};
+        items: itemsJson,  // ⬅️ важно: без JSON.stringify
+        total_amount: finalTotal,
+        customer_name: data.customerName,
+        customer_phone: getCleanPhoneNumber(data.customerPhone),
+        delivery_type: data.deliveryType,
+        delivery_date: data.deliveryDate ? format(data.deliveryDate, "yyyy-MM-dd") : null,
+        delivery_time: data.deliveryTime,
+        district: data.district,
+        recipient_name: data.recipientName,
+        recipient_phone: data.recipientPhone ? getCleanPhoneNumber(data.recipientPhone) : null,
+        recipient_address: data.deliveryType === "delivery" ? data.address ?? null : null,
+        card_wishes: data.cardWishes,
+        payment_method: data.paymentMethod,
+        order_comment: data.orderComment,
+        promo_code: appliedDiscount?.code || null,
+        discount_amount: discountAmount,
+        status: "pending",
+        order_status: "new"
+      };
 
       console.log("Объект заказа для отправки:", orderData);
 
@@ -404,7 +401,7 @@ const handlePromoCode = async () => {
       console.log("Отправляем заказ в Supabase...");
       const { data: savedOrder, error: orderError } = await supabase
         .from('orders')
-        .insert([orderData])   // ← массив строк на вставку
+        .insert([orderData])
         .select()
         .single();
 
@@ -416,18 +413,17 @@ const handlePromoCode = async () => {
       console.log("Заказ успешно сохранен:", savedOrder);
 
       // Сохраняем ID заказа для виджета оплаты
-setSavedOrderId(savedOrder.id);
+      setSavedOrderId(savedOrder.id);
 
-// Если онлайн-оплата — просто показываем виджет Tinkoff
-if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
-  setIsSubmitting(false);
-  return; // Дальше UI сам покажет <TinkoffPaymentButton />
-}
+      // Если онлайн-оплата — просто показываем виджет Tinkoff
+      if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
+        setIsSubmitting(false);
+        return; // Дальше UI сам покажет <TinkoffPaymentButton />
+      }
 
       // Обновляем счетчик использования промокода
       if (appliedDiscount) {
         console.log("Обновляем промокод...");
-        // Получаем данные промокода
         const { data: promoData } = await supabase
           .from('promo_codes')
           .select('id, used_count')
@@ -435,13 +431,11 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
           .single();
 
         if (promoData) {
-          // Обновляем счетчик использования
           await supabase
             .from('promo_codes')
             .update({ used_count: promoData.used_count + 1 })
             .eq('code', appliedDiscount.code);
 
-          // Записываем использование промокода
           await supabase
             .from('promo_code_usage')
             .insert({
@@ -478,7 +472,6 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                   <div key={item.id} className="border rounded-lg overflow-hidden">
                     {/* Mobile Layout */}
                     <div className="md:hidden">
-                      {/* Image - Large on top */}
                       <div className="relative w-full">
                         <img
                           src={item.image}
@@ -486,20 +479,14 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                           className="w-full h-64 object-cover"
                         />
                       </div>
-                      
-                      {/* Content below image */}
                       <div className="p-4 space-y-3">
-                        {/* Name and price row */}
                         <div className="flex items-start justify-between gap-2">
                           <h4 className="font-medium text-base flex-1">{item.name}</h4>
                           <p className="font-semibold text-lg text-nowrap">
                             {(item.price * item.cartQuantity).toLocaleString()} ₽
                           </p>
                         </div>
-                        
-                        {/* Controls row */}
                         <div className="flex items-center justify-between">
-                          {/* Quantity controls */}
                           <div className="flex items-center space-x-2">
                             <Button
                               type="button"
@@ -523,15 +510,8 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                               <Plus className="h-3 w-3" />
                             </Button>
                           </div>
-                          
-                          {/* Action buttons only */}
                           <div className="flex items-center space-x-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                            >
+                            <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0">
                               <Heart className="h-4 w-4" />
                             </Button>
                             <Button
@@ -548,7 +528,7 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                       </div>
                     </div>
 
-                    {/* Desktop Layout - Original */}
+                    {/* Desktop Layout */}
                     <div className="hidden md:flex items-center space-x-6 p-4">
                       <div className="relative">
                         <img
@@ -585,12 +565,7 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                       </div>
                       <div className="text-right">
                         <div className="flex items-center space-x-2 mb-2">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                          >
+                          <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0">
                             <Heart className="h-4 w-4" />
                           </Button>
                           <Button
@@ -664,14 +639,18 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
               </div>
               
               <RadioGroup
-  value={deliveryType}
-  onValueChange={(value) => {
-    console.log("Выбран тип доставки:", value);
-    setValue("deliveryType", value as "delivery" | "pickup" | "clarify");
-    // НИЧЕГО не трогаем в способе оплаты — пользователь сам выберет
-  }}
-  className="mb-6"
->
+                value={deliveryType}
+                onValueChange={(value) => {
+                  // CHANGED: ставим тип доставки и если наличка — переключаем на карту
+                  setValue("deliveryType", value as "delivery" | "pickup" | "clarify");
+
+                  if (value !== "pickup" && getValues("paymentMethod") === "cash") {
+                    setValue("paymentMethod", "card");
+                    toast.message("Наличными — только при самовывозе. Переключили на оплату картой.");
+                  }
+                }}
+                className="mb-6"
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="delivery" id="delivery" />
                   <Label htmlFor="delivery">Доставка</Label>
@@ -710,13 +689,13 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
                           <Calendar
-  mode="single"
-  selected={selectedDate}
-  onSelect={(date) => setValue("deliveryDate", date)}
-  disabled={(d) => startOfDay(d) < startOfToday()}
-  initialFocus
-  className="pointer-events-auto"
-/>
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={(date) => setValue("deliveryDate", date)}
+                            disabled={(d) => startOfDay(d) < startOfToday()}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
                         </PopoverContent>
                       </Popover>
                     </div>
@@ -728,12 +707,8 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                         value={watch("deliveryTime") || ''}
                         onChange={(e) => {
                           const value = e.target.value;
-                          
-                          // Оставляем только цифры
                           const digitsOnly = value.replace(/[^\d]/g, '');
-                          
                           let formatted = '';
-                          
                           if (digitsOnly.length === 0) {
                             formatted = '';
                           } else if (digitsOnly.length <= 2) {
@@ -745,7 +720,6 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                           } else {
                             formatted = digitsOnly.slice(0, 2) + ':' + digitsOnly.slice(2, 4) + ' - ' + digitsOnly.slice(4, 6) + ':' + digitsOnly.slice(6, 8);
                           }
-                          
                           setValue("deliveryTime", formatted);
                         }}
                         className={errors.deliveryTime ? "border-red-500" : ""}
@@ -890,14 +864,17 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
               </div>
               
               <RadioGroup
-  value={paymentMethod}
-  onValueChange={(value) => {
-    console.log("Выбран способ оплаты:", value);
-    setValue("paymentMethod", value as "card" | "sbp" | "cash");
-    // Больше не форсим deliveryType и не запрещаем карточку/СБП при самовывозе
-  }}
-  className="mb-4"
->
+                value={paymentMethod}
+                onValueChange={(value) => {
+                  // CHANGED: блокируем выбор наличных при доставке/уточнить
+                  if (value === "cash" && cashDisabled) {
+                    toast.error("Оплата наличными доступна только при самовывозе.");
+                    return;
+                  }
+                  setValue("paymentMethod", value as "card" | "sbp" | "cash");
+                }}
+                className="mb-4"
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="card" id="card" />
                   <Label htmlFor="card">Оплата картой (VISA, Mastercard)</Label>
@@ -906,9 +883,17 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                   <RadioGroupItem value="sbp" id="sbp" />
                   <Label htmlFor="sbp">СБП (Система быстрых платежей)</Label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="cash" id="cash" />
-                  <Label htmlFor="cash">Оплата наличными</Label>
+
+                <div className={`flex items-center space-x-2 ${cashDisabled ? "opacity-50 cursor-not-allowed" : ""}`}>
+                  <RadioGroupItem value="cash" id="cash" disabled={cashDisabled} />
+                  <Label htmlFor="cash">
+                    Оплата наличными
+                    {cashDisabled && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        доступно только при самовывозе
+                      </span>
+                    )}
+                  </Label>
                 </div>
               </RadioGroup>
 
@@ -1042,10 +1027,10 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
                         clearCart();
                         setSavedOrderId(null);
                       }}
-                        onFail={() => {
+                      onFail={() => {
                         toast.error("Ошибка оплаты. Попробуйте ещё раз.");
-                        }}
-                      />
+                      }}
+                    />
                   )}
                 </div>
               ) : (
@@ -1068,21 +1053,15 @@ if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
               )}
               
               <p className="text-xs text-muted-foreground mt-3">
-  Нажимая на кнопку "Оформить заказ", Вы автоматически соглашаетесь{" "}
-  <a
-    href="/public-offer"
-    className="underline hover:text-primary transition-colors"
-  >
-    с условиями публичной оферты
-  </a>{" "}
-  и{" "}
-  <a
-    href="/privacy"
-    className="underline hover:text-primary transition-colors"
-  >
-    политикой конфиденциальности
-  </a>.
-</p>
+                Нажимая на кнопку "Оформить заказ", Вы автоматически соглашаетесь{" "}
+                <a href="/public-offer" className="underline hover:text-primary transition-colors">
+                  с условиями публичной оферты
+                </a>{" "}
+                и{" "}
+                <a href="/privacy" className="underline hover:text-primary transition-colors">
+                  политикой конфиденциальности
+                </a>.
+              </p>
             </CardContent>
           </Card>
         </div>
