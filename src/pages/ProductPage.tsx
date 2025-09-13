@@ -16,7 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { ProductRecommendations } from '@/components/ProductRecommendations';
 import { parseCompositionRaw, parseFromArray } from '@/utils/parseComposition';
 
-// простая проверка UUID v4 (достаточно для извлечения id из конца слега)
+// UUID (для распознавания "...-<uuid>" в productSlug)
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function ProductPage() {
@@ -27,45 +27,61 @@ export default function ProductPage() {
   }>();
   const navigate = useNavigate();
 
-  // если productSlug оканчивается на -<uuid> — берём этот id
+  // если productSlug оканчивается на -<uuid>, извлекаем этот id
   const idFromSlug = useMemo(() => {
     if (!productSlug) return '';
     const m = productSlug.match(UUID_RE);
     return m ? m[0] : '';
   }, [productSlug]);
 
-  // режимы загрузки
-  // 1) есть idFromSlug (чпу с -id)   -> по id
-  // 2) есть categorySlug+productSlug -> по slug
-  // 3) /product/:id                  -> по id
+  // Режимы загрузки:
+  // - если есть пара (categorySlug, productSlug) и НЕТ idFromSlug → грузим по slug (основной)
+  // - если есть idFromSlug ИЛИ /product/:id → грузим по id (и дальше редиректим на короткий)
   const isCatalogRoute = Boolean(categorySlug && productSlug);
-  const useId = Boolean(idFromSlug || idParam);
+  const shouldLoadById = Boolean(idFromSlug || idParam);
   const realId = idFromSlug || idParam || '';
 
-  const { data: productById, isLoading: loadingById, error: errorById } = useProduct(useId ? realId : '');
+  // загрузка
+  const { data: productById, isLoading: loadingById, error: errorById } =
+    useProduct(shouldLoadById ? realId : '');
   const { data: productBySlug, isLoading: loadingBySlug, error: errorBySlug } =
-    useProductBySlug(useId ? '' : (categorySlug || ''), useId ? '' : (productSlug || ''));
+    useProductBySlug(!shouldLoadById ? (categorySlug || '') : '', !shouldLoadById ? (productSlug || '') : '');
 
-  const product   = useId ? productById : productBySlug;
-  const isLoading = useId ? loadingById : loadingBySlug;
-  const error     = useId ? errorById   : errorBySlug;
+  const product   = shouldLoadById ? productById : productBySlug;
+  const isLoading = shouldLoadById ? loadingById : loadingBySlug;
+  const error     = shouldLoadById ? errorById   : errorBySlug;
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
 
+  // скролл наверх при смене параметров
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [idParam, categorySlug, productSlug]);
 
-  // редирект со старого /product/:id на красивый URL /catalog/:cat/:slug-:id
+  // Канонический редирект:
+  //  - со старого /product/:id
+  //  - и с варианта ".../:productSlug-:id"
+  //  → на короткий /catalog/:categorySlug/:productSlug
   useEffect(() => {
-    if (idParam && !isCatalogRoute && !isLoading && product && (product as any).slug && (product as any).category?.slug) {
-      const newUrl = `/catalog/${(product as any).category.slug}/${(product as any).slug}-${product.id}`;
-      navigate(newUrl, { replace: true });
+    if (!isLoading && product) {
+      const catSlugFinal =
+        (product as any)?.category?.slug ||
+        slugify((product as any)?.category?.name || '') ||
+        'catalog';
+      const prodSlugFinal =
+        (product as any)?.slug ||
+        slugify(product.name);
+
+      const canonical = `/catalog/${catSlugFinal}/${prodSlugFinal}`;
+
+      if (window.location.pathname !== canonical) {
+        navigate(canonical, { replace: true });
+      }
     }
-  }, [idParam, isCatalogRoute, isLoading, product, navigate]);
+  }, [isLoading, product, navigate]);
 
   if (isLoading) {
     return (
@@ -88,6 +104,7 @@ export default function ProductPage() {
     );
   }
 
+  // изображения
   const images = [product.image_url || '/placeholder.svg', ...(product.gallery_urls || [])].filter(Boolean);
   const availableImages = images.length > 1 ? images : [product.image_url || '/placeholder.svg'];
 
@@ -147,7 +164,7 @@ export default function ProductPage() {
       <div className="container mx-auto px-4 py-4">
         {(() => {
           const catName = product.category?.name || 'Цветы';
-          const catSlug = product.category?.slug || (catName ? slugify(catName) : '');
+          const catSlugFinal = product.category?.slug || (catName ? slugify(catName) : '');
           return (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Link to="/" className="hover:text-foreground transition-colors">ГЛАВНАЯ</Link>
@@ -155,7 +172,7 @@ export default function ProductPage() {
               <Link to="/catalog" className="hover:text-foreground transition-colors">КАТАЛОГ ТОВАРОВ</Link>
               <span>›</span>
               <Link
-                to={catSlug ? `/catalog?category=${encodeURIComponent(catSlug)}` : '/catalog'}
+                to={catSlugFinal ? `/catalog?category=${encodeURIComponent(catSlugFinal)}` : '/catalog'}
                 className="hover:text-foreground transition-colors"
               >
                 {catName.toUpperCase()}
