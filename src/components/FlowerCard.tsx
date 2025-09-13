@@ -6,7 +6,7 @@ import { ShoppingCart, Heart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useToast } from '../hooks/use-toast';
-import { slugify } from '@/utils/slugify';
+import { buildProductUrl } from '@/utils/buildProductUrl'; // 👈 общий конструктор ссылки
 
 interface FlowerCardProps {
   flower: Flower;
@@ -45,10 +45,14 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
     onToggleFavorite?.(flower);
   };
 
-  // ЧПУ без правок БД: используем slug (если есть) или slugify(name) и добавляем -id в конец
-  const catSlug = flower.categorySlug || 'catalog';
-  const prodSlug = flower.slug || slugify(flower.name);
-  const productUrl = `/catalog/${catSlug}/${prodSlug}-${flower.id}`;
+  // ✅ Единый “топовый” URL (работает даже без слугов в БД)
+  const productUrl = buildProductUrl({
+    id: flower.id,
+    name: flower.name,
+    productSlug: (flower as any).slug ?? null,
+    categorySlug: (flower as any).categorySlug ?? null,
+    categoryName: (flower as any).category ?? null,
+  });
 
   return (
     <div className="group relative">
@@ -74,7 +78,6 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
               {flower.name}
             </h3>
 
-            {/* Bottom section with price and actions */}
             <div className="flex items-center justify-between mt-auto">
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold text-foreground">
