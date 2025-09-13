@@ -43,12 +43,23 @@ async function readBody(req) {
   try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 }
 
+function fmtRub(n = 0) {
+  return Number(n || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0 });
+}
+
+// Нормализация текстовых полей: пустые/NULL/"EMPTY" -> ''
+function normText(v) {
+  const s = String(v ?? '').trim();
+  if (!s) return '';
+  if (s.toLowerCase() === 'empty') return '';
+  return s;
+}
+
 // sendTG с поддержкой message_thread_id (топик супергруппы)
 async function sendTG(text) {
   if (!TG_TOKEN || TG_CHAT_IDS.length === 0) return;
   const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
 
-  // TELEGRAM_TOPIC_ID = message_thread_id нужной темы (например, “Заказы сайт”)
   const threadEnv = process.env.TELEGRAM_TOPIC_ID || process.env.TELEGRAM_THREAD_ID || '';
   const topicId = Number(threadEnv);
   const withThread = Number.isFinite(topicId) && topicId > 0;
@@ -73,7 +84,6 @@ async function sendTG(text) {
       clearTimeout(t);
 
       if (!r.ok) {
-        // один повтор
         const ac2 = new AbortController();
         const t2 = setTimeout(() => ac2.abort('timeout'), 8000);
         await fetch(url, {
@@ -86,10 +96,6 @@ async function sendTG(text) {
       }
     } catch {}
   }
-}
-
-function fmtRub(n = 0) {
-  return Number(n || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0 });
 }
 
 // — «Кассовый чек» — аккуратный шаблон
@@ -106,8 +112,8 @@ function formatOrderMessage(order, event) {
   // Состав корзины (ожидаем order.items — массив)
   const items = Array.isArray(order.items) ? order.items : [];
   const itemsText = items.map(it => {
-    const name = String(it?.name ?? it?.Name ?? '').trim();
-    const qty  = Number(it?.cartQuantity ?? it?.quantity ?? 1);
+    const name  = String(it?.name ?? it?.Name ?? '').trim();
+    const qty   = Number(it?.cartQuantity ?? it?.quantity ?? 1);
     const price = fmtRub(it?.price ?? it?.Price ?? 0);
     const sum   = fmtRub((it?.price ?? it?.Price ?? 0) * qty);
     return `• ${name} ×${qty} — ${sum} ₽ (${price} ₽/шт)`;
@@ -137,12 +143,18 @@ function formatOrderMessage(order, event) {
 
   const statusLine = order.payment_status || order.status ? `\n🏷 Статус: ${order.payment_status || order.status}` : '';
 
+  // 💌 Открытка и 📝 Комментарий
+  const cardWishes   = normText(order.card_wishes ?? order.card_text ?? order.card_message);
+  const orderComment = normText(order.order_comment ?? order.comment ?? order.customer_comment);
+  const cardLine     = cardWishes   ? `\n💌 Открытка: ${cardWishes}` : '';
+  const commentLine  = orderComment ? `\n📝 Комментарий: ${orderComment}` : '';
+
   return (
 `🧾 Заказ #${id} — ${event}
 ${line}
 💰 Сумма: ${total} ₽
 💳 Оплата: ${payMethod}
-📦 Доставка: ${delivery}${addrBlock}${whenLine}${recipient}${customer}${promo}${statusLine}
+📦 Доставка: ${delivery}${addrBlock}${whenLine}${recipient}${customer}${promo}${statusLine}${cardLine}${commentLine}
 ${itemsText ? `\n🎁 Состав заказа:\n${itemsText}` : ''}
 ${line}`
   );
