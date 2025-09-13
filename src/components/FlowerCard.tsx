@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Flower } from '../types/flower';
-import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useToast } from '../hooks/use-toast';
+import { slugify } from '@/utils/slugify';
 
 interface FlowerCardProps {
   flower: Flower;
@@ -23,7 +23,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
   const handleAddToCart = () => {
     addToCart(flower);
     toast({
-      title: "Товар добавлен в корзину",
+      title: 'Товар добавлен в корзину',
       description: `${flower.name} добавлен в корзину`,
     });
   };
@@ -32,24 +32,23 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
     if (isInFavorites) {
       removeFromFavorites(flower.id);
       toast({
-        title: "Удалено из избранного",
+        title: 'Удалено из избранного',
         description: `${flower.name} удален из избранного`,
       });
     } else {
       addToFavorites(flower);
       toast({
-        title: "Добавлено в избранное",
+        title: 'Добавлено в избранное',
         description: `${flower.name} добавлен в избранное`,
       });
     }
     onToggleFavorite?.(flower);
   };
 
-  // 👇 если есть оба слага — строим ЧПУ; иначе — fallback на /product/:id
-  const productUrl =
-    flower.categorySlug && flower.slug
-      ? `/catalog/${flower.categorySlug}/${flower.slug}`
-      : `/product/${flower.id}`;
+  // ЧПУ без правок БД: используем slug (если есть) или slugify(name) и добавляем -id в конец
+  const catSlug = flower.categorySlug || 'catalog';
+  const prodSlug = flower.slug || slugify(flower.name);
+  const productUrl = `/catalog/${catSlug}/${prodSlug}-${flower.id}`;
 
   return (
     <div className="group relative">

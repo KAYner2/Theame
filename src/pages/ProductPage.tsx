@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 import { useProduct } from '@/hooks/useProduct';
 import { useProductBySlug } from '@/hooks/useProductBySlug';
@@ -14,55 +14,58 @@ import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { toast } from '@/hooks/use-toast';
 import { ProductRecommendations } from '@/components/ProductRecommendations';
-
-/* 🔥 добавили парсер количеств */
 import { parseCompositionRaw, parseFromArray } from '@/utils/parseComposition';
 
+// простая проверка UUID v4 (достаточно для извлечения id из конца слега)
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function ProductPage() {
-  const { id, categorySlug, productSlug } = useParams<{
+  const { id: idParam, categorySlug, productSlug } = useParams<{
     id?: string;
     categorySlug?: string;
     productSlug?: string;
   }>();
   const navigate = useNavigate();
 
-  // Если оба слега есть — работаем по ЧПУ
-  const isSlugRoute = Boolean(categorySlug && productSlug);
+  // если productSlug оканчивается на -<uuid> — берём этот id
+  const idFromSlug = useMemo(() => {
+    if (!productSlug) return '';
+    const m = productSlug.match(UUID_RE);
+    return m ? m[0] : '';
+  }, [productSlug]);
 
-  // Загрузка товара: по слегам ИЛИ по id (оба хука безопасны)
-  const {
-    data: productBySlug,
-    isLoading: loadingBySlug,
-    error: errorBySlug,
-  } = useProductBySlug(categorySlug || '', productSlug || '');
+  // режимы загрузки
+  // 1) есть idFromSlug (чпу с -id)   -> по id
+  // 2) есть categorySlug+productSlug -> по slug
+  // 3) /product/:id                  -> по id
+  const isCatalogRoute = Boolean(categorySlug && productSlug);
+  const useId = Boolean(idFromSlug || idParam);
+  const realId = idFromSlug || idParam || '';
 
-  const {
-    data: productById,
-    isLoading: loadingById,
-    error: errorById,
-  } = useProduct(id || '');
+  const { data: productById, isLoading: loadingById, error: errorById } = useProduct(useId ? realId : '');
+  const { data: productBySlug, isLoading: loadingBySlug, error: errorBySlug } =
+    useProductBySlug(useId ? '' : (categorySlug || ''), useId ? '' : (productSlug || ''));
 
-  const product   = isSlugRoute ? productBySlug : productById;
-  const isLoading = isSlugRoute ? loadingBySlug : loadingById;
-  const error     = isSlugRoute ? errorBySlug   : errorById;
+  const product   = useId ? productById : productBySlug;
+  const isLoading = useId ? loadingById : loadingBySlug;
+  const error     = useId ? errorById   : errorBySlug;
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
 
-  // Скроллим к началу при смене id/slug
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [id, categorySlug, productSlug]);
+  }, [idParam, categorySlug, productSlug]);
 
-  // Редирект со старого URL /product/:id → на ЧПУ, если у товара есть слаги
+  // редирект со старого /product/:id на красивый URL /catalog/:cat/:slug-:id
   useEffect(() => {
-    if (!isSlugRoute && !isLoading && product && (product as any).slug && (product as any).category?.slug) {
-      const newUrl = `/catalog/${(product as any).category.slug}/${(product as any).slug}`;
+    if (idParam && !isCatalogRoute && !isLoading && product && (product as any).slug && (product as any).category?.slug) {
+      const newUrl = `/catalog/${(product as any).category.slug}/${(product as any).slug}-${product.id}`;
       navigate(newUrl, { replace: true });
     }
-  }, [isSlugRoute, isLoading, product, navigate]);
+  }, [idParam, isCatalogRoute, isLoading, product, navigate]);
 
   if (isLoading) {
     return (
@@ -85,7 +88,6 @@ export default function ProductPage() {
     );
   }
 
-  // Галерея
   const images = [product.image_url || '/placeholder.svg', ...(product.gallery_urls || [])].filter(Boolean);
   const availableImages = images.length > 1 ? images : [product.image_url || '/placeholder.svg'];
 
@@ -104,17 +106,11 @@ export default function ProductPage() {
       occasion: [],
       cartQuantity: quantity,
     };
-
     for (let i = 0; i < quantity; i++) addToCart(cartItem);
-
-    toast({
-      title: 'Добавлено в корзину',
-      description: `${product.name} (${quantity} шт.) добавлен в корзину`,
-    });
+    toast({ title: 'Добавлено в корзину', description: `${product.name} (${quantity} шт.) добавлен в корзину` });
   };
 
   const isInFavorites = isFavorite(product.id);
-
   const handleToggleFavorite = () => {
     if (isInFavorites) {
       removeFromFavorites(product.id);
@@ -140,7 +136,6 @@ export default function ProductPage() {
   const nextImage = () => setSelectedImageIndex((prev) => (prev + 1) % availableImages.length);
   const prevImage = () => setSelectedImageIndex((prev) => (prev - 1 + availableImages.length) % availableImages.length);
 
-  /* ✅ готовим состав к показу: берём composition_raw с фоллбеком на массив */
   const compositionItems =
     product.composition_raw
       ? parseCompositionRaw(product.composition_raw)
@@ -148,67 +143,42 @@ export default function ProductPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Хлебные крошки (на слагах) */}
-<div className="container mx-auto px-4 py-4">
-  {(() => {
-    const catName = product.category?.name || 'Цветы';
-    const catSlug =
-      product.category?.slug || (catName ? slugify(catName) : '');
-    const prodSlug =
-      (product as any)?.slug || slugify(product.name);
-
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link to="/" className="hover:text-foreground transition-colors">
-          ГЛАВНАЯ
-        </Link>
-        <span>›</span>
-        <Link to="/catalog" className="hover:text-foreground transition-colors">
-          КАТАЛОГ ТОВАРОВ
-        </Link>
-        <span>›</span>
-        <Link
-          to={catSlug ? `/catalog?category=${encodeURIComponent(catSlug)}` : '/catalog'}
-          className="hover:text-foreground transition-colors"
-        >
-          {catName.toUpperCase()}
-        </Link>
-        <span>›</span>
-        <span className="text-foreground font-medium">
-          {product.name.toUpperCase()}
-        </span>
+      {/* Хлебные крошки */}
+      <div className="container mx-auto px-4 py-4">
+        {(() => {
+          const catName = product.category?.name || 'Цветы';
+          const catSlug = product.category?.slug || (catName ? slugify(catName) : '');
+          return (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Link to="/" className="hover:text-foreground transition-colors">ГЛАВНАЯ</Link>
+              <span>›</span>
+              <Link to="/catalog" className="hover:text-foreground transition-colors">КАТАЛОГ ТОВАРОВ</Link>
+              <span>›</span>
+              <Link
+                to={catSlug ? `/catalog?category=${encodeURIComponent(catSlug)}` : '/catalog'}
+                className="hover:text-foreground transition-colors"
+              >
+                {catName.toUpperCase()}
+              </Link>
+              <span>›</span>
+              <span className="text-foreground font-medium">{product.name.toUpperCase()}</span>
+            </div>
+          );
+        })()}
       </div>
-    );
-  })()}
-</div>
 
       <div className="container mx-auto px-4 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Галерея */}
           <div className="space-y-4">
             <Card className="relative overflow-hidden aspect-square">
-              <img
-                src={availableImages[selectedImageIndex]}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-
+              <img src={availableImages[selectedImageIndex]} alt={product.name} className="w-full h-full object-cover" />
               {availableImages.length > 1 && (
                 <>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
-                    onClick={prevImage}
-                  >
+                  <Button variant="outline" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white" onClick={prevImage}>
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
-                    onClick={nextImage}
-                  >
+                  <Button variant="outline" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white" onClick={nextImage}>
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </>
@@ -220,9 +190,7 @@ export default function ProductPage() {
                 {availableImages.map((image, index) => (
                   <Card
                     key={index}
-                    className={`cursor-pointer overflow-hidden aspect-square transition-all ${
-                      selectedImageIndex === index ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'
-                    }`}
+                    className={`cursor-pointer overflow-hidden aspect-square transition-all ${selectedImageIndex === index ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'}`}
                     onClick={() => setSelectedImageIndex(index)}
                   >
                     <img src={image} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover" />
@@ -241,10 +209,7 @@ export default function ProductPage() {
           <div className="space-y-6">
             {/* Статус + избранное */}
             <div className="flex items-center justify-between">
-              <Badge
-                variant={product.availability_status === 'in_stock' ? 'default' : 'secondary'}
-                className="text-sm"
-              >
+              <Badge variant={product.availability_status === 'in_stock' ? 'default' : 'secondary'} className="text-sm">
                 {product.availability_status === 'in_stock' ? 'В НАЛИЧИИ' : 'НЕТ В НАЛИЧИИ'}
               </Badge>
 
@@ -269,21 +234,11 @@ export default function ProductPage() {
               <div className="flex items-center gap-4">
                 <span className="text-foreground font-medium">КОЛИЧЕСТВО</span>
                 <div className="flex items-center border rounded-lg">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="h-10 w-10"
-                  >
+                  <Button variant="ghost" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="h-10 w-10">
                     <Minus className="w-4 h-4" />
                   </Button>
                   <span className="px-4 py-2 min-w-[60px] text-center">{quantity}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="h-10 w-10"
-                  >
+                  <Button variant="ghost" size="icon" onClick={() => setQuantity(quantity + 1)} className="h-10 w-10">
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
@@ -291,40 +246,43 @@ export default function ProductPage() {
 
               <div className="flex items-center gap-4">
                 <div className="text-2xl font-bold">{((product.price || 0) * quantity).toLocaleString()} ₽</div>
-                <Button
-                  onClick={handleAddToCart}
-                  disabled={product.availability_status !== 'in_stock'}
-                  className="flex-1 h-12"
-                >
+                <Button onClick={handleAddToCart} disabled={product.availability_status !== 'in_stock'} className="flex-1 h-12">
                   <ShoppingBag className="w-4 h-4 mr-2" />
                   КУПИТЬ
                 </Button>
               </div>
             </div>
 
-            {/* 🔥 Состав + примечание о замене (с количеством "шт") */}
-            {compositionItems.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-semibold text-foreground">СОСТАВ</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {compositionItems.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full" />
-                      <span className="text-muted-foreground">
-                        {item.name}{typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+            {/* Состав + примечание */}
+            {(() => {
+              const compositionItems =
+                product.composition_raw
+                  ? parseCompositionRaw(product.composition_raw)
+                  : parseFromArray(product.composition);
 
-                {product.show_substitution_note && (
-                  <p className="mt-2 text-sm text-green-700">
-                    {(product.substitution_note_text && product.substitution_note_text.trim()) ||
-                      'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
-                  </p>
-                )}
-              </div>
-            )}
+              return compositionItems.length > 0 ? (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">СОСТАВ</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {compositionItems.map((item) => (
+                      <div key={item.name} className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-primary rounded-full" />
+                        <span className="text-muted-foreground">
+                          {item.name}{typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {product.show_substitution_note && (
+                    <p className="mt-2 text-sm text-green-700">
+                      {(product.substitution_note_text && product.substitution_note_text.trim()) ||
+                        'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
+                    </p>
+                  )}
+                </div>
+              ) : null;
+            })()}
 
             {/* Аккордеоны */}
             <Accordion type="single" collapsible className="w-full">
@@ -333,9 +291,7 @@ export default function ProductPage() {
                   <AccordionTrigger className="text-left font-medium">ОПИСАНИЕ</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground space-y-2">
                     {product.description && <p className="whitespace-pre-line">{product.description}</p>}
-                    {product.detailed_description && (
-                      <p className="whitespace-pre-line">{product.detailed_description}</p>
-                    )}
+                    {product.detailed_description && <p className="whitespace-pre-line">{product.detailed_description}</p>}
                   </AccordionContent>
                 </AccordionItem>
               )}
