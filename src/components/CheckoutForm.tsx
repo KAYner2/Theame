@@ -915,7 +915,7 @@ export const CheckoutForm = () => {
           {/* Промокод */}
           <Card>
             <CardContent className="pt-6">
-              <h3 className="font-semibold mb-4">ИМЕЕТЕ ПРОМОКОД?</h3>
+              <h3 className="font-semibold mb-4">ЕСТЬ ПРОМОКОД?</h3>
               <div className="space-y-3">
                 {!appliedDiscount ? (
                   <>
