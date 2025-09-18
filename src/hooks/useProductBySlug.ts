@@ -6,7 +6,7 @@ import type { Product } from '@/types/database';
 export const useProductBySlug = (categorySlug: string | undefined, productSlug: string) => {
   return useQuery({
     queryKey: ['product-by-slug', categorySlug ?? null, productSlug],
-    enabled: Boolean(productSlug), // 🔑 теперь не требуем categorySlug для запуска
+    enabled: Boolean(productSlug),
     queryFn: async (): Promise<Product | null> => {
       const { data, error } = await (supabase as any)
         .from('products_with_categories')
@@ -15,12 +15,20 @@ export const useProductBySlug = (categorySlug: string | undefined, productSlug: 
         .eq('is_active', true)
         .maybeSingle();
 
-      if (error) throw error;
-      if (!data) return null;
+      console.log('[useProductBySlug] slug=', productSlug, 'categorySlug=', categorySlug, 'data=', data, 'error=', error);
 
-      // сверяем slug категории только если она указана
+      if (error) {
+        console.error('[useProductBySlug] Supabase error:', error);
+        throw error;
+      }
+      if (!data) {
+        console.warn('[useProductBySlug] No product found for slug', productSlug);
+        return null;
+      }
+
       const catSlug = data.category?.slug || null;
       if (categorySlug && catSlug && catSlug !== categorySlug) {
+        console.warn('[useProductBySlug] Category mismatch: expected', categorySlug, 'got', catSlug);
         return null;
       }
 
