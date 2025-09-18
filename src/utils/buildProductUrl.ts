@@ -9,18 +9,13 @@ type P = {
   categoryName?: string | null;
 };
 
-/**
- * Формируем человеко-читаемый URL:
- * - /catalog/:categorySlug/:productSlug — если категория валидная
- * - /catalog/:productSlug — если категории нет или она = "catalog"
- */
 export function buildProductUrl(p: P) {
   const prod = p.productSlug || slugify(p.name);
 
   let cat = p.categorySlug || (p.categoryName ? slugify(p.categoryName) : '');
 
-  // 🟢 защита от дублирования: если категория == "catalog", считаем что её нет
-  if (cat === 'catalog') {
+  // 🟢 полностью убираем категорию, если она "catalog"
+  if (cat.trim().toLowerCase() === 'catalog') {
     cat = '';
   }
 
