@@ -34,29 +34,26 @@ export default function ProductPage() {
     return m ? m[0] : '';
   }, [productSlug]);
 
-// Режимы загрузки:
-// - если есть productSlug (и НЕТ idFromSlug) → грузим по slug (основной)
-// - если есть idFromSlug ИЛИ /product/:id → грузим по id (и дальше редиректим на короткий)
-const isCatalogRoute = Boolean(productSlug); // категории может не быть
-const shouldLoadById = Boolean(idFromSlug || idParam);
-const realId = idFromSlug || idParam || '';
+  // --- Режимы загрузки ---
+  const shouldLoadById = Boolean(idFromSlug || idParam);
+  const realId = idFromSlug || idParam || '';
 
-const { data: productById, isLoading: loadingById, error: errorById } =
-  useProduct(shouldLoadById ? realId : '');
+  const { data: productById, isLoading: loadingById, error: errorById } =
+    useProduct(shouldLoadById ? realId : '');
 
-// ✅ если категории нет, передаём undefined, а не пустую строку
-const effectiveCategorySlug =
-  categorySlug && categorySlug.toLowerCase() !== 'catalog' ? categorySlug : undefined;
+  // если категории нет или она == "catalog" — игнорируем её
+  const effectiveCategorySlug =
+    categorySlug && categorySlug.toLowerCase() !== 'catalog' ? categorySlug : undefined;
 
-const { data: productBySlug, isLoading: loadingBySlug, error: errorBySlug } =
-  useProductBySlug(
-    !shouldLoadById ? effectiveCategorySlug : undefined,
-    !shouldLoadById ? (productSlug || '') : ''
-  );
+  // вызываем useProductBySlug только если грузим по slug
+  const { data: productBySlug, isLoading: loadingBySlug, error: errorBySlug } =
+    !shouldLoadById && productSlug
+      ? useProductBySlug(effectiveCategorySlug, productSlug)
+      : { data: null, isLoading: false, error: null };
 
-  const product   = shouldLoadById ? productById : productBySlug;
+  const product = shouldLoadById ? productById : productBySlug;
   const isLoading = shouldLoadById ? loadingById : loadingBySlug;
-  const error     = shouldLoadById ? errorById   : errorBySlug;
+  const error = shouldLoadById ? errorById : errorBySlug;
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -68,27 +65,25 @@ const { data: productBySlug, isLoading: loadingBySlug, error: errorBySlug } =
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [idParam, categorySlug, productSlug]);
 
-// ✅ Новый вариант — игнорирует пустую категорию и "catalog"
-useEffect(() => {
-  if (!isLoading && product) {
-    let catSlugFinal = (product as any)?.category?.slug || slugify((product as any)?.category?.name || '');
-    if (!catSlugFinal || catSlugFinal.toLowerCase() === 'catalog') {
-      catSlugFinal = ''; // убираем сегмент категории, если его нет или он = "catalog"
+  // ✅ Новый вариант — игнорирует пустую категорию и "catalog"
+  useEffect(() => {
+    if (!isLoading && product) {
+      let catSlugFinal = product?.category?.slug || slugify(product?.category?.name || '');
+      if (!catSlugFinal || catSlugFinal.toLowerCase() === 'catalog') {
+        catSlugFinal = '';
+      }
+
+      const prodSlugFinal = product?.slug || slugify(product.name);
+
+      const canonical = catSlugFinal
+        ? `/catalog/${catSlugFinal}/${prodSlugFinal}`
+        : `/catalog/${prodSlugFinal}`;
+
+      if (window.location.pathname !== canonical) {
+        navigate(canonical, { replace: true });
+      }
     }
-
-    const prodSlugFinal =
-      (product as any)?.slug ||
-      slugify(product.name);
-
-    const canonical = catSlugFinal
-      ? `/catalog/${catSlugFinal}/${prodSlugFinal}`
-      : `/catalog/${prodSlugFinal}`;
-
-    if (window.location.pathname !== canonical) {
-      navigate(canonical, { replace: true });
-    }
-  }
-}, [isLoading, product, navigate]);
+  }, [isLoading, product, navigate]);
 
   if (isLoading) {
     return (
@@ -278,35 +273,28 @@ useEffect(() => {
             </div>
 
             {/* Состав + примечание */}
-            {(() => {
-              const compositionItems =
-                product.composition_raw
-                  ? parseCompositionRaw(product.composition_raw)
-                  : parseFromArray(product.composition);
-
-              return compositionItems.length > 0 ? (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-foreground">СОСТАВ</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {compositionItems.map((item) => (
-                      <div key={item.name} className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-primary rounded-full" />
-                        <span className="text-muted-foreground">
-                          {item.name}{typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {product.show_substitution_note && (
-                    <p className="mt-2 text-sm text-green-700">
-                      {(product.substitution_note_text && product.substitution_note_text.trim()) ||
-                        'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
-                    </p>
-                  )}
+            {compositionItems.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">СОСТАВ</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {compositionItems.map((item) => (
+                    <div key={item.name} className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-primary rounded-full" />
+                      <span className="text-muted-foreground">
+                        {item.name}{typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ) : null;
-            })()}
+
+                {product.show_substitution_note && (
+                  <p className="mt-2 text-sm text-green-700">
+                    {(product.substitution_note_text && product.substitution_note_text.trim()) ||
+                      'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Аккордеоны */}
             <Accordion type="single" collapsible className="w-full">
