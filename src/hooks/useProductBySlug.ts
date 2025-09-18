@@ -3,12 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Product } from '@/types/database';
 
-export const useProductBySlug = (categorySlug: string, productSlug: string) => {
+export const useProductBySlug = (categorySlug: string | undefined, productSlug: string) => {
   return useQuery({
-    queryKey: ['product-by-slug', categorySlug, productSlug],
-    enabled: Boolean(categorySlug && productSlug),
+    queryKey: ['product-by-slug', categorySlug ?? null, productSlug],
+    enabled: Boolean(productSlug), // 🔑 теперь не требуем categorySlug для запуска
     queryFn: async (): Promise<Product | null> => {
-      // Берём из ВЬЮХИ — тут уже есть category (jsonb), category_ids и composition_raw
       const { data, error } = await (supabase as any)
         .from('products_with_categories')
         .select('*')
@@ -19,7 +18,7 @@ export const useProductBySlug = (categorySlug: string, productSlug: string) => {
       if (error) throw error;
       if (!data) return null;
 
-      // Если пришёл categorySlug — сверяем с полем category.slug (если оно есть)
+      // сверяем slug категории только если она указана
       const catSlug = data.category?.slug || null;
       if (categorySlug && catSlug && catSlug !== categorySlug) {
         return null;
