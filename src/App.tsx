@@ -42,24 +42,29 @@ const App = () => (
             <Header />
             <main className="min-h-screen">
               <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/catalog" element={<Catalog />} />
-                <Route path="/favorites" element={<Favorites />} />
-                <Route path="/catalog/:categorySlug/:productSlug" element={<ProductPage />} />
-                <Route path="/product/:id" element={<ProductPage />} />
-                <Route path="/cart" element={<CartPage />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/public-offer" element={<PublicOffer />} />
-                <Route path="/success" element={<PaymentSuccess />} />
-                <Route path="/payment-error" element={<PaymentError />} />
-                <Route path="*" element={<NotFound />} />
-                <Route path="/success" element={<Navigate to="/payment-success" replace />} />
-                <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
-                <Route path="/test-sort" element={<SortableTest />} />
-              </Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="/catalog" element={<Catalog />} />
+  <Route path="/favorites" element={<Favorites />} />
+
+  {/* ✅ новый маршрут без категории */}
+  <Route path="/catalog/:productSlug" element={<ProductPage />} />
+  <Route path="/catalog/:categorySlug/:productSlug" element={<ProductPage />} />
+
+  <Route path="/product/:id" element={<ProductPage />} />
+  <Route path="/cart" element={<CartPage />} />
+  <Route path="/admin" element={<Admin />} />
+  <Route path="/about" element={<About />} />
+  <Route path="/contact" element={<Contact />} />
+  <Route path="/privacy" element={<Privacy />} />
+  <Route path="/public-offer" element={<PublicOffer />} />
+  <Route path="/success" element={<PaymentSuccess />} />
+  <Route path="/payment-error" element={<PaymentError />} />
+  <Route path="/success" element={<Navigate to="/payment-success" replace />} />
+  <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
+  <Route path="/test-sort" element={<SortableTest />} />
+
+  <Route path="*" element={<NotFound />} />
+</Routes>
             </main>
             <Footer />
             <WhatsAppFloat />
