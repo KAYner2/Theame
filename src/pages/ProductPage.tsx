@@ -34,18 +34,25 @@ export default function ProductPage() {
     return m ? m[0] : '';
   }, [productSlug]);
 
-  // Режимы загрузки:
-  // - если есть пара (categorySlug, productSlug) и НЕТ idFromSlug → грузим по slug (основной)
-  // - если есть idFromSlug ИЛИ /product/:id → грузим по id (и дальше редиректим на короткий)
-  const isCatalogRoute = Boolean(categorySlug && productSlug);
-  const shouldLoadById = Boolean(idFromSlug || idParam);
-  const realId = idFromSlug || idParam || '';
+// Режимы загрузки:
+// - если есть productSlug (и НЕТ idFromSlug) → грузим по slug (основной)
+// - если есть idFromSlug ИЛИ /product/:id → грузим по id (и дальше редиректим на короткий)
+const isCatalogRoute = Boolean(productSlug); // категории может не быть
+const shouldLoadById = Boolean(idFromSlug || idParam);
+const realId = idFromSlug || idParam || '';
 
-  // загрузка
-  const { data: productById, isLoading: loadingById, error: errorById } =
-    useProduct(shouldLoadById ? realId : '');
-  const { data: productBySlug, isLoading: loadingBySlug, error: errorBySlug } =
-    useProductBySlug(!shouldLoadById ? (categorySlug || '') : '', !shouldLoadById ? (productSlug || '') : '');
+const { data: productById, isLoading: loadingById, error: errorById } =
+  useProduct(shouldLoadById ? realId : '');
+
+// ✅ если категории нет, передаём undefined, а не пустую строку
+const effectiveCategorySlug =
+  categorySlug && categorySlug.toLowerCase() !== 'catalog' ? categorySlug : undefined;
+
+const { data: productBySlug, isLoading: loadingBySlug, error: errorBySlug } =
+  useProductBySlug(
+    !shouldLoadById ? effectiveCategorySlug : undefined,
+    !shouldLoadById ? (productSlug || '') : ''
+  );
 
   const product   = shouldLoadById ? productById : productBySlug;
   const isLoading = shouldLoadById ? loadingById : loadingBySlug;
