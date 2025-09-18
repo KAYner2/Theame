@@ -9,15 +9,20 @@ type P = {
   categoryName?: string | null;
 };
 
-/** Красивый URL без id:
- *  /catalog/:categorySlug/:productSlug  — если категория есть
- *  /catalog/:productSlug                — если категории нет
+/**
+ * Формируем человеко-читаемый URL:
+ * - /catalog/:categorySlug/:productSlug — если категория валидная
+ * - /catalog/:productSlug — если категории нет или она = "catalog"
  */
 export function buildProductUrl(p: P) {
   const prod = p.productSlug || slugify(p.name);
-  const cat =
-    p.categorySlug ||
-    (p.categoryName ? slugify(p.categoryName) : '');
+
+  let cat = p.categorySlug || (p.categoryName ? slugify(p.categoryName) : '');
+
+  // 🟢 защита от дублирования: если категория == "catalog", считаем что её нет
+  if (cat === 'catalog') {
+    cat = '';
+  }
 
   return cat ? `/catalog/${cat}/${prod}` : `/catalog/${prod}`;
 }
