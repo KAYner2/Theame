@@ -1,5 +1,5 @@
 // src/utils/buildProductUrl.ts
-import { slugifyOrFallback, slugify } from '@/utils/slugify';
+import { slugify } from '@/utils/slugify';
 
 type P = {
   id: string;
@@ -9,9 +9,15 @@ type P = {
   categoryName?: string | null;
 };
 
-/** Красивый URL без id: /catalog/:categorySlug/:productSlug */
+/** Красивый URL без id:
+ *  /catalog/:categorySlug/:productSlug  — если категория есть
+ *  /catalog/:productSlug                — если категории нет
+ */
 export function buildProductUrl(p: P) {
-  const cat = p.categorySlug || slugifyOrFallback(p.categoryName || '', 'catalog') || 'catalog';
   const prod = p.productSlug || slugify(p.name);
-  return `/catalog/${cat}/${prod}`;
+  const cat =
+    p.categorySlug ||
+    (p.categoryName ? slugify(p.categoryName) : '');
+
+  return cat ? `/catalog/${cat}/${prod}` : `/catalog/${prod}`;
 }
