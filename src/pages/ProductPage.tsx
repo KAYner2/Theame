@@ -60,6 +60,15 @@ const product = productBySlug ?? productById; // приоритет slug
   const { addToCart } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
 
+  console.log('[ProductPage]', {
+  idParam,
+  categorySlug,
+  productSlug,
+  productById,
+  productBySlug,
+  shouldLoadById,
+});
+
   // скролл наверх при смене параметров
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
