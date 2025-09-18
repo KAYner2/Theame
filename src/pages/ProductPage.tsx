@@ -51,9 +51,9 @@ export default function ProductPage() {
       ? useProductBySlug(effectiveCategorySlug, productSlug)
       : { data: null, isLoading: false, error: null };
 
-  const product = shouldLoadById ? productById : productBySlug;
-  const isLoading = shouldLoadById ? loadingById : loadingBySlug;
-  const error = shouldLoadById ? errorById : errorBySlug;
+const isLoading = loadingById || loadingBySlug;
+const error = errorById || errorBySlug;
+const product = productBySlug ?? productById; // приоритет slug
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
