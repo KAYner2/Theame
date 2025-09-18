@@ -61,27 +61,27 @@ export default function ProductPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [idParam, categorySlug, productSlug]);
 
-  // Канонический редирект:
-  //  - со старого /product/:id
-  //  - и с варианта ".../:productSlug-:id"
-  //  → на короткий /catalog/:categorySlug/:productSlug
-  useEffect(() => {
-    if (!isLoading && product) {
-      const catSlugFinal =
-        (product as any)?.category?.slug ||
-        slugify((product as any)?.category?.name || '') ||
-        'catalog';
-      const prodSlugFinal =
-        (product as any)?.slug ||
-        slugify(product.name);
-
-      const canonical = `/catalog/${catSlugFinal}/${prodSlugFinal}`;
-
-      if (window.location.pathname !== canonical) {
-        navigate(canonical, { replace: true });
-      }
+// ✅ Новый вариант — игнорирует пустую категорию и "catalog"
+useEffect(() => {
+  if (!isLoading && product) {
+    let catSlugFinal = (product as any)?.category?.slug || slugify((product as any)?.category?.name || '');
+    if (!catSlugFinal || catSlugFinal.toLowerCase() === 'catalog') {
+      catSlugFinal = ''; // убираем сегмент категории, если его нет или он = "catalog"
     }
-  }, [isLoading, product, navigate]);
+
+    const prodSlugFinal =
+      (product as any)?.slug ||
+      slugify(product.name);
+
+    const canonical = catSlugFinal
+      ? `/catalog/${catSlugFinal}/${prodSlugFinal}`
+      : `/catalog/${prodSlugFinal}`;
+
+    if (window.location.pathname !== canonical) {
+      navigate(canonical, { replace: true });
+    }
+  }
+}, [isLoading, product, navigate]);
 
   if (isLoading) {
     return (
