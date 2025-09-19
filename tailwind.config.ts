@@ -118,7 +118,7 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out'
 			},
 			fontFamily: {
-				'forum': ['Forum', 'serif'],
+				montserrat: ['Montserrat', 'ui-sans-serif', 'system-ui', 'Arial', 'sans-serif'],
 			}
 		}
 	},
