@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { 
   Flower, 
@@ -12,7 +11,7 @@ import {
   Gift
 } from 'lucide-react';
 import { HeroCarousel } from '../components/HeroCarousel';
-import { CategorySection } from '../components/CategorySection';
+// import { CategorySection } from '../components/CategorySection'; // ← удалено
 import { FeaturedProducts } from '../components/FeaturedProducts';
 import { ReviewsSection } from '../components/ReviewsSection';
 import { WelcomeBonusModal } from '../components/WelcomeBonusModal';
@@ -56,7 +55,7 @@ export default function Home() {
     <div className="min-h-screen">
       <WelcomeBonusModal />
       <HeroCarousel />
-      <CategorySection />
+      {/* <CategorySection /> ← удалено */}
       <FeaturedProducts />
       <ReviewsSection />
 
@@ -91,8 +90,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-
     </div>
   );
 }
