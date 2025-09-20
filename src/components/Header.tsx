@@ -13,14 +13,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
-import { ShoppingCart, Menu, Heart, Instagram, Send } from "lucide-react";
+import { ShoppingCart, Menu } from "lucide-react";
 import { useCart } from "../context/CartContext";
-import { useFavorites } from "../context/FavoritesContext";
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { state } = useCart();
-  const { state: favoritesState } = useFavorites();
 
   // нормализация имён категорий
   const normalize = (name: string) => {
@@ -69,7 +67,7 @@ export const Header = () => {
       {/* top-9 = 36px (высота дороги). Убедись, что в Marquee стоит h-9 */}
       <div className="fixed inset-x-0 top-9 z-[55] bg-[#ffe9c3]">
         <div className="w-full h-12 flex items-center">
-          {/* Слева: кнопка МЕНЮ */}
+          {/* слева: МЕНЮ */}
           <div className="pl-2">
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <SheetTrigger asChild>
@@ -85,7 +83,7 @@ export const Header = () => {
                 </button>
               </SheetTrigger>
 
-              {/* Левый сайдбар */}
+              {/* левый сайдбар */}
               <SheetContent
                 side="left"
                 className="bg-[#ffe9c3] text-[#819570] w-[80vw] sm:w-[65vw] md:w-[22rem] lg:w-[26rem] max-w-[420px] p-6"
@@ -96,45 +94,27 @@ export const Header = () => {
                   onTouchMove={onTouchMove}
                   onTouchEnd={onTouchEnd}
                 >
-                  <div className="mb-6" style={{ fontFamily: "Forum, serif" }}>
-                    <div className="text-4xl leading-none">The Áme</div>
-                  </div>
+                  <SheetHeader>
+                    <SheetTitle className="text-4xl leading-none" style={{ fontFamily: "Forum, serif" }}>
+                      The Áme
+                    </SheetTitle>
+                  </SheetHeader>
 
-                  <div className="flex-1 overflow-y-auto pr-1 space-y-6">
+                  <div className="flex-1 overflow-y-auto pr-1 space-y-6 mt-6">
                     {/* Страницы */}
                     <div>
-                      <div className="text-xs uppercase tracking-wider opacity-70 mb-2">
-                        Страницы
-                      </div>
+                      <div className="text-xs uppercase tracking-wider opacity-70 mb-2">Страницы</div>
                       <ul className="space-y-2">
-                        <li>
-                          <Link to="/" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">
-                            Главная
-                          </Link>
-                        </li>
-                        <li>
-                          <Link to="/catalog" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">
-                            Каталог
-                          </Link>
-                        </li>
-                        <li>
-                          <Link to="/about" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">
-                            О нас
-                          </Link>
-                        </li>
-                        <li>
-                          <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">
-                            Контакты
-                          </Link>
-                        </li>
+                        <li><Link to="/" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">Главная</Link></li>
+                        <li><Link to="/catalog" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">Каталог</Link></li>
+                        <li><Link to="/about" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">О нас</Link></li>
+                        <li><Link to="/contact" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">Контакты</Link></li>
                       </ul>
                     </div>
 
                     {/* Категории */}
                     <div>
-                      <div className="text-xs uppercase tracking-wider opacity-70 mb-2">
-                        Категории
-                      </div>
+                      <div className="text-xs uppercase tracking-wider opacity-70 mb-2">Категории</div>
                       <ul className="space-y-2">
                         <li>
                           <Link to="/catalog" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">
@@ -160,7 +140,7 @@ export const Header = () => {
                     </div>
                   </div>
 
-                  {/* Низ сайдбара */}
+                  {/* низ сайдбара */}
                   <div className="mt-6 text-sm opacity-85 leading-relaxed">
                     <div>Сочи, Донская 10а</div>
                     <div>Пн–Вс с 09:00 до 21:00</div>
@@ -170,7 +150,7 @@ export const Header = () => {
             </Sheet>
           </div>
 
-          {/* Справа в плашке: CTA + корзина */}
+          {/* справа: CTA + корзина (живут в плашке) */}
           <div className="ml-auto pr-4 flex items-center gap-4">
             <a
               href="https://wa.me/message/XQDDWGSEL35LP1"
@@ -199,45 +179,10 @@ export const Header = () => {
         </div>
       </div>
 
-      {/* 3) ФИКСИРОВАННЫЙ инфо-блок под плашкой, в правом верхнем углу */}
-      {/* 36px (дорога) + 48px (плашка) = 84px */}
-      <div className="fixed top-[84px] right-4 z-[54] text-[#819570]">
-        <div className="text-xs leading-snug tracking-wide text-right">
-          <div>Режим работы: с 09:00 до 21:00</div>
-          <div>Доставка букетов ~45 минут</div>
-        </div>
-
-        <div className="mt-2 flex items-center justify-end gap-3">
-          <a
-            href="https://www.instagram.com/theame.flowers"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Instagram"
-            className="inline-flex"
-          >
-            <Instagram className="w-5 h-5 text-[#819570]" />
-          </a>
-
-          <a
-            href="https://t.me/the_ame_flowers"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Telegram"
-            className="inline-flex"
-          >
-            <Send className="w-5 h-5 text-[#819570]" />
-          </a>
-
-          <Link to="/favorites" aria-label="Избранное" className="inline-flex">
-            <Heart className="w-5 h-5 text-[#819570]" />
-          </Link>
-        </div>
-      </div>
-
-      {/* 4) Спейсер под фикс-полосы (36 + 48 = 84px) */}
+      {/* отступ под фикс-полосы (36 + 48) */}
       <div className="h-[84px]" />
 
-      {/* 5) Большая плашка ниже */}
+      {/* 3) Большая плашка (логотип + чипсы + ПРАВЫЙ инфо-блок) */}
       <BrandingStrip />
     </header>
   );
