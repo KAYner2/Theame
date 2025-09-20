@@ -81,7 +81,7 @@ export function HeroCarousel() {
             {slides.map((slide, idx) => (
               <CarouselItem key={slide.id} className="basis-full">
                 <div className="w-full flex items-center justify-center">
-                  <div className="relative w-[96%] md:w-[94%] lg:w-[92%] h-[46vh] md:h-[54vh] lg:h-[60vh] max-h-[820px] rounded-3xl overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.18)]">
+                  <div className="relative w-[96%] md:w-[94%] lg:w-[92%] h-[46vh] md:h-[54vh] lg:h-[60vh] max-h-[820px] rounded-3xl overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.18)] will-change-transform">
                     <img
                       src={slide.image_url}
                       alt={slide.title ?? "Слайд"}
