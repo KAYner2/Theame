@@ -9,7 +9,7 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Minimalist two-color palette: Warm Beige & Sage Green */
-    --background: 42 28% 92%;
+    --background: 40 100% 96%;
     --foreground: 100 15% 25%;
     
     /* Header specific color - warm beige */

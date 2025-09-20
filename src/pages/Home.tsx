@@ -52,7 +52,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#fff8ea]">
+    <div className="min-h-screen bg-[var(--page-bg)]">
       <WelcomeBonusModal />
       <HeroCarousel />
       {/* <CategorySection /> ← удалено */}

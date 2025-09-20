@@ -35,7 +35,7 @@ export function HeroCarousel() {
     return () => stop();
   }, [api]);
 
-  const sectionClass = "relative bg-[#fff8ea] py-6 md:py-8";
+  const sectionClass = "relative isolate bg-[var(--page-bg)] py-6 md:py-8";
 
   if (isLoading || !slides?.length) {
     return (
