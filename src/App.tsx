@@ -39,28 +39,44 @@ const App = () => (
             <YandexMetrikaListener />
             <Header />
 
-            {/* === Боковые «полукружки» по краям экрана (всегда видны) ===
-                Цвет поставил как у твоего фона (#ffe9c3).
-                Если нужна розовая как на рефе — поменяй на свой, например #ffd0db. */}
+            {/* === Боковые декоративные «хвостики» === */}
             <div
               aria-hidden
               className="
-                pointer-events-none fixed inset-y-0 left-0
-                w-3 sm:w-4 bg-[#ffe9c3]
-                rounded-tr-[22px] rounded-br-[22px]
+                pointer-events-none fixed top-0 left-0
+                w-4 h-10 bg-[#ffe9c3]
+                rounded-br-full
                 z-40
               "
             />
             <div
               aria-hidden
               className="
-                pointer-events-none fixed inset-y-0 right-0
-                w-3 sm:w-4 bg-[#ffe9c3]
-                rounded-tl-[22px] rounded-bl-[22px]
+                pointer-events-none fixed bottom-0 left-0
+                w-4 h-10 bg-[#ffe9c3]
+                rounded-tr-full
                 z-40
               "
             />
-            {/* === /полукружки === */}
+            <div
+              aria-hidden
+              className="
+                pointer-events-none fixed top-0 right-0
+                w-4 h-10 bg-[#ffe9c3]
+                rounded-bl-full
+                z-40
+              "
+            />
+            <div
+              aria-hidden
+              className="
+                pointer-events-none fixed bottom-0 right-0
+                w-4 h-10 bg-[#ffe9c3]
+                rounded-tl-full
+                z-40
+              "
+            />
+            {/* === /хвостики === */}
 
             <main className="min-h-screen">
               <Routes>
