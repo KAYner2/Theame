@@ -1,7 +1,6 @@
 import YandexMetrikaListener from "./components/YandexMetrikaListener";
 import SortableTest from "./components/SortableTest";
-// import { Toaster } from "@/components/ui/toaster"; // ⛔ убрали shadcn-тостер
-import { Toaster as Sonner } from "@/components/ui/sonner"; // ✅ оставляем только Sonner
+import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -34,38 +33,58 @@ const App = () => (
     <TooltipProvider>
       <CartProvider>
         <FavoritesProvider>
-          {/* ✅ используем только Sonner */}
           <Sonner position="bottom-right" richColors closeButton />
 
           <BrowserRouter>
             <YandexMetrikaListener />
             <Header />
+
+            {/* === Боковые «полукружки» по краям экрана (всегда видны) ===
+                Цвет поставил как у твоего фона (#ffe9c3).
+                Если нужна розовая как на рефе — поменяй на свой, например #ffd0db. */}
+            <div
+              aria-hidden
+              className="
+                pointer-events-none fixed inset-y-0 left-0
+                w-3 sm:w-4 bg-[#ffe9c3]
+                rounded-tr-[22px] rounded-br-[22px]
+                z-40
+              "
+            />
+            <div
+              aria-hidden
+              className="
+                pointer-events-none fixed inset-y-0 right-0
+                w-3 sm:w-4 bg-[#ffe9c3]
+                rounded-tl-[22px] rounded-bl-[22px]
+                z-40
+              "
+            />
+            {/* === /полукружки === */}
+
             <main className="min-h-screen">
               <Routes>
-  <Route path="/" element={<Home />} />
-  <Route path="/catalog" element={<Catalog />} />
-  <Route path="/favorites" element={<Favorites />} />
-
-  {/* ✅ новый маршрут без категории */}
-  <Route path="/catalog/:productSlug" element={<ProductPage />} />
-  <Route path="/catalog/:categorySlug/:productSlug" element={<ProductPage />} />
-
-  <Route path="/product/:id" element={<ProductPage />} />
-  <Route path="/cart" element={<CartPage />} />
-  <Route path="/admin" element={<Admin />} />
-  <Route path="/about" element={<About />} />
-  <Route path="/contact" element={<Contact />} />
-  <Route path="/privacy" element={<Privacy />} />
-  <Route path="/public-offer" element={<PublicOffer />} />
-  <Route path="/success" element={<PaymentSuccess />} />
-  <Route path="/payment-error" element={<PaymentError />} />
-  <Route path="/success" element={<Navigate to="/payment-success" replace />} />
-  <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
-  <Route path="/test-sort" element={<SortableTest />} />
-
-  <Route path="*" element={<NotFound />} />
-</Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/catalog" element={<Catalog />} />
+                <Route path="/favorites" element={<Favorites />} />
+                <Route path="/catalog/:productSlug" element={<ProductPage />} />
+                <Route path="/catalog/:categorySlug/:productSlug" element={<ProductPage />} />
+                <Route path="/product/:id" element={<ProductPage />} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/public-offer" element={<PublicOffer />} />
+                <Route path="/success" element={<PaymentSuccess />} />
+                <Route path="/payment-error" element={<PaymentError />} />
+                <Route path="/success" element={<Navigate to="/payment-success" replace />} />
+                <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
+                <Route path="/test-sort" element={<SortableTest />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
             </main>
+
             <Footer />
             <WhatsAppFloat />
           </BrowserRouter>
