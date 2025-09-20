@@ -45,23 +45,18 @@ export function FeaturedProducts() {
     addToCart(product);
   };
 
-  // надёжный генератор «красивого» URL
-  const buildUrl = (p: any) => {
-    const catSlug =
-      p.categorySlug ||
-      p.category_slug ||
-      p.category?.slug ||
-      (p.category?.name ? slugify(p.category.name) : '');
+const buildUrl = (p: any) => {
+  const cat =
+    p.categorySlug ||
+    p.category_slug ||
+    p.category?.slug ||
+    (p.category?.name ? slugify(p.category.name) : "") ||
+    "catalog";
 
-    const prodSlug = p.slug || (p.name ? slugify(p.name) : '');
+  const prod = (p.slug || slugify(p.name || "product")) + "-" + p.id;
 
-    // 1) красивый URL без id — ProductPage умеет грузить по slug
-    if (catSlug && prodSlug) {
-      return `/catalog/${catSlug}/${prodSlug}`;
-    }
-    // 2) если чего-то нет, fallback на стабильный id
-    return `/product/${p.id}`;
-  };
+  return `/catalog/${cat}/${prod}`;
+};
 
   return (
     <section className="relative isolate py-20 bg-[#fff8ea]">
