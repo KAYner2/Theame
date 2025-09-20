@@ -83,12 +83,9 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-50 bg-header-bg border-b border-border">
       <Marquee
-      items={[
-        { text: "осенняя коллекция", to: "/catalog/autumn" },
-        { text: "каталог", to: "/catalog" },
-        { text: "доставка ~45 минут", to: "/delivery" },
-      ]}
-    />
+  text="осень за окном"
+  href="https://theame.ru/catalog?category=sezon-podsolnuhov"
+/>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Логотип */}
