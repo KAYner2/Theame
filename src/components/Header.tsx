@@ -1,4 +1,5 @@
 import logoUrl from '@/assets/logo.png';
+import { Marquee } from "./Marquee";
 import { useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from './ui/button';
@@ -81,6 +82,13 @@ export const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 bg-header-bg border-b border-border">
+      <Marquee
+      items={[
+        { text: "осенняя коллекция", to: "/catalog/autumn" },
+        { text: "каталог", to: "/catalog" },
+        { text: "доставка ~45 минут", to: "/delivery" },
+      ]}
+    />
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Логотип */}
