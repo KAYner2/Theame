@@ -177,16 +177,10 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
 
       {/* Выемка/полукруг снизу */}
       {/* Делает аккуратный «укус» по нижнему краю, совпадая с отступами контейнера */}
-      <div className="pointer-events-none absolute left-0 right-0 -bottom-4 z-10">
-  <div
-    className="
-      bg-white
-      h-8 md:h-10               /* глубина выемки */
-      rounded-t-[36px]          /* мягче радиус */
-      -mx-2 sm:-mx-4 md:-mx-6   /* расширяем за контейнер, чтобы не было 'ушек' */
-      lg:-mx-8 xl:-mx-10
-    "
-  />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
+  <div className="container mx-auto px-4 md:px-10 lg:px-16 xl:px-24">
+    <div className="h-8 md:h-10 bg-white rounded-t-[36px]" />
+  </div>
 </div>
     </div>
   );
