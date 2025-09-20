@@ -166,7 +166,7 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
 
 {/* Выемка/полукруг снизу — на всю ширину экрана */}
 <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 z-10 w-screen">
-  <div className="h-[14px] md:h-[16px] bg-white rounded-t-[24px]" />
+  <div className="h-[14px] md:h-[16px] bg-[#fff8ea] rounded-t-[24px]" />
 </div>
     </div>
   );
