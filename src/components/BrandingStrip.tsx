@@ -175,33 +175,16 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
         </div>
       </div>
 
-      {/* ↓↓↓ ХВОСТИКИ-СКРУГЛЕНИЯ ВНИЗУ (как на рефе) ↓↓↓ */}
+      {/* ВЫЕМКА-СКРУГЛЕНИЕ ВНИЗУ (единая полоса с верхними скруглениями) */}
       <div
         aria-hidden
         className="
-          pointer-events-none absolute inset-x-0 bottom-0 h-0 z-30
+          pointer-events-none absolute left-0 right-0
+          -bottom-[14px] h-[28px] md:-bottom-[16px] md:h-[32px]
+          bg-white rounded-t-[18px] md:rounded-t-[20px]
+          z-30 shadow-[0_-8px_18px_rgba(0,0,0,0.08)]
         "
-      >
-        {/* левый полукруг */}
-        <div
-          className="
-            absolute -bottom-[18px] -left-[18px]
-            w-[36px] h-[36px] bg-white
-            rounded-tr-[36px]
-            shadow-[0_-6px_14px_rgba(0,0,0,0.10)]
-          "
-        />
-        {/* правый полукруг */}
-        <div
-          className="
-            absolute -bottom-[18px] -right-[18px]
-            w-[36px] h-[36px] bg-white
-            rounded-tl-[36px]
-            shadow-[0_-6px_14px_rgba(0,0,0,0.10)]
-          "
-        />
-      </div>
-      {/* ↑↑↑ /ХВОСТИКИ ↑↑↑ */}
+      />
     </div>
   );
 }
