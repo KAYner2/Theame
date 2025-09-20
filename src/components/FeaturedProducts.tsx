@@ -1,3 +1,4 @@
+// src/components/FeaturedProducts.tsx
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
@@ -44,6 +45,15 @@ export function FeaturedProducts() {
     addToCart(product);
   };
 
+  const buildUrl = (p: Flower) => {
+    // красивый URL + надёжность через id в конце
+    if (p.categorySlug && p.slug) {
+      return `/catalog/${p.categorySlug}/${p.slug}-${p.id}`;
+    }
+    // запасной вариант
+    return `/product/${p.id}`;
+  };
+
   return (
     <section className="relative isolate py-20 bg-[#fff8ea]">
       <div className="container mx-auto px-4">
@@ -51,8 +61,7 @@ export function FeaturedProducts() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {displayedProducts.map((product) => {
-            // ВСЕГДА ведём на /product/:id — это стабильно
-            const to = `/product/${product.id}`;
+            const to = buildUrl(product);
 
             return (
               <Link key={product.id} to={to} aria-label={product.name}>
