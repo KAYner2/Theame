@@ -88,7 +88,7 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
 
       {/* КОНТЕНТ — потолще плашка + отступы, чтобы цветы не наезжали */}
       <div className="relative z-10 container mx-auto px-4 md:px-10 lg:px-16 xl:px-24">
-        <div className="pt-8 pb-6 md:pt-12 md:pb-8">
+        <div className="pt-6 pb-4 md:pt-8 md:pb-5">
           {/* ЛОГО-ТЕКСТ */}
           <div className="text-center" style={{ fontFamily: "Forum, serif" }}>
             <Link to="/" className="block">
