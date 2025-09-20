@@ -15,8 +15,6 @@ import { ShoppingCart, Menu } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useFavorites } from "../context/FavoritesContext";
 
-const TAIL = 22; // ← радиус «хвостиков» (px). Такой же в BrandingStrip.
-
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { state } = useCart();
@@ -33,7 +31,6 @@ export const Header = () => {
     new Map(categories.map((c) => [normalize(c.name), c])).values()
   );
 
-  // свайп закрытия сайдбара
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -56,7 +53,7 @@ export const Header = () => {
 
   return (
     <header className="relative z-50">
-      {/* 1) Дорога — фикс сверху */}
+      {/* 1) Дорога */}
       <div className="fixed inset-x-0 top-0 z-[60]">
         <Marquee
           text="осень за окном"
@@ -64,35 +61,10 @@ export const Header = () => {
         />
       </div>
 
-      {/* 2) Фиксированная навигационная плашка */}
+      {/* 2) Верхняя плашка */}
       <div className="fixed inset-x-0 top-9 z-[55] bg-[#ffe9c3]">
-        {/* обёртка нужна как якорь для «хвостиков» */}
-        <div className="relative w-full h-12 flex items-center">
-          {/* ХВОСТИКИ — та же геометрия, что в BrandingStrip */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute bg-white rounded-full"
-            style={{
-              width: TAIL * 2,
-              height: TAIL * 2,
-              left: -TAIL,
-              bottom: -TAIL,
-              boxShadow: "0 4px 14px rgba(0,0,0,0.10)",
-            }}
-          />
-          <span
-            aria-hidden
-            className="pointer-events-none absolute bg-white rounded-full"
-            style={{
-              width: TAIL * 2,
-              height: TAIL * 2,
-              right: -TAIL,
-              bottom: -TAIL,
-              boxShadow: "0 4px 14px rgba(0,0,0,0.10)",
-            }}
-          />
-
-          {/* Слева: Меню */}
+        <div className="w-full h-12 flex items-center">
+          {/* Меню слева */}
           <div className="pl-2">
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <SheetTrigger asChild>
@@ -129,40 +101,16 @@ export const Header = () => {
                       </div>
                       <ul className="space-y-2">
                         <li>
-                          <Link
-                            to="/"
-                            onClick={() => setIsMenuOpen(false)}
-                            className="hover:opacity-80"
-                          >
-                            Главная
-                          </Link>
+                          <Link to="/" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">Главная</Link>
                         </li>
                         <li>
-                          <Link
-                            to="/catalog"
-                            onClick={() => setIsMenuOpen(false)}
-                            className="hover:opacity-80"
-                          >
-                            Каталог
-                          </Link>
+                          <Link to="/catalog" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">Каталог</Link>
                         </li>
                         <li>
-                          <Link
-                            to="/about"
-                            onClick={() => setIsMenuOpen(false)}
-                            className="hover:opacity-80"
-                          >
-                            О нас
-                          </Link>
+                          <Link to="/about" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">О нас</Link>
                         </li>
                         <li>
-                          <Link
-                            to="/contact"
-                            onClick={() => setIsMenuOpen(false)}
-                            className="hover:opacity-80"
-                          >
-                            Контакты
-                          </Link>
+                          <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">Контакты</Link>
                         </li>
                       </ul>
                     </div>
@@ -173,13 +121,7 @@ export const Header = () => {
                       </div>
                       <ul className="space-y-2">
                         <li>
-                          <Link
-                            to="/catalog"
-                            onClick={() => setIsMenuOpen(false)}
-                            className="hover:opacity-80"
-                          >
-                            Каталог (все)
-                          </Link>
+                          <Link to="/catalog" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">Каталог (все)</Link>
                         </li>
                         {uniqueCats.map((c) => {
                           const name = normalize(c.name);
@@ -209,7 +151,7 @@ export const Header = () => {
             </Sheet>
           </div>
 
-          {/* Справа: «Заказать букет» + корзина */}
+          {/* Справа: Заказать букет + корзина */}
           <div className="ml-auto flex items-center gap-1.5 md:gap-2 pr-4">
             <a
               href="https://wa.me/message/XQDDWGSEL35LP1"
@@ -238,10 +180,10 @@ export const Header = () => {
         </div>
       </div>
 
-      {/* 3) Спейсер под фикс-полосы (36 + 48 = 84px) */}
+      {/* 3) Спейсер (36 + 48) */}
       <div className="h-[84px]" />
 
-      {/* 4) Большая плашка (логотип + чипсы) */}
+      {/* 4) Бренд-плашка */}
       <BrandingStrip />
     </header>
   );
