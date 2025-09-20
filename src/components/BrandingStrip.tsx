@@ -28,27 +28,6 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
 
   return (
     <div className="relative overflow-hidden bg-[#ffe9c3]">
-      {/* === ДОП. ДЕКОР: круглые выемки снизу (лево/право) ===
-          Радиус 14px (диаметр 28px) — подгоняй под закругление хиро.
-          Если фон секции под брендингом не чисто белый — поменяй bg-white на нужный. */}
-      <div
-        aria-hidden
-        className="
-          pointer-events-none absolute -bottom-[14px] -left-[14px]
-          w-[28px] h-[28px] rounded-full bg-white
-          shadow-[0_0_18px_rgba(0,0,0,0.06)] z-20
-        "
-      />
-      <div
-        aria-hidden
-        className="
-          pointer-events-none absolute -bottom-[14px] -right-[14px]
-          w-[28px] h-[28px] rounded-full bg-white
-          shadow-[0_0_18px_rgba(0,0,0,0.06)] z-20
-        "
-      />
-      {/* === /выемки === */}
-
       {/* ДЕКОР-ЦВЕТЫ — за контентом */}
       {flowerLeftSrc && (
         <img
@@ -67,8 +46,8 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
         />
       )}
 
-      {/* ПРАВЫЙ ИНФО-БЛОК — прижат к правому краю секции */}
-      <div className="hidden md:block absolute top-4 right-4 z-30 text-[#819570] text-xs leading-snug tracking-wide text-right">
+      {/* ПРАВЫЙ ИНФО-БЛОК — ВНЕ container, чтобы прижать к правому краю секции */}
+      <div className="hidden md:block absolute top-4 right-4 z-20 text-[#819570] text-xs leading-snug tracking-wide text-right">
         <div>Режим работы: с 09:00 до 21:00</div>
         <div>Доставка букетов ~45 минут</div>
 
@@ -107,10 +86,10 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
         </div>
       </div>
 
-      {/* Контент плашки */}
+      {/* КОНТЕНТ */}
       <div className="relative z-10 container mx-auto px-4 md:px-10 lg:px-16 xl:px-24">
         <div className="pt-6 pb-4 md:pt-8 md:pb-5">
-          {/* Лого */}
+          {/* ЛОГО-ТЕКСТ */}
           <div className="text-center" style={{ fontFamily: "Forum, serif" }}>
             <Link to="/" className="block">
               <span className="text-[#819570] tracking-wide text-5xl md:text-7xl">
@@ -119,7 +98,7 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
             </Link>
           </div>
 
-          {/* Категории */}
+          {/* КАТЕГОРИИ — тонкие овальные чипсы */}
           <nav className="mt-5 md:mt-6 pb-6">
             <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3.5">
               {isLoading &&
@@ -157,7 +136,7 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
             </div>
           </nav>
 
-          {/* Моб. инфо-блок */}
+          {/* Мобильная версия инфо-блока */}
           <div className="md:hidden mt-2 text-[#819570] text-xs leading-snug tracking-wide text-center">
             <div>Режим работы: с 09:00 до 21:00</div>
             <div>Доставка букетов ~45 минут</div>
@@ -194,6 +173,12 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Выемка/полукруг снизу */}
+      {/* Делает аккуратный «укус» по нижнему краю, совпадая с отступами контейнера */}
+      <div className="pointer-events-none absolute left-0 right-0 -bottom-3 z-10">
+        <div className="mx-4 md:mx-10 lg:mx-16 xl:mx-24 h-6 md:h-7 bg-white rounded-t-[28px]" />
       </div>
     </div>
   );

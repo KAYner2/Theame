@@ -3,7 +3,7 @@ export function Marquee({
   text = "осенняя коллекция",
   href,
   duplicates = 10,
-  speed = 25,           // секунды на цикл (быстрее чем 28)
+  speed = 28,           // секунды на цикл (быстрее чем 28)
 }: {
   text?: string;
   href: string;
