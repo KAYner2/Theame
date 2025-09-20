@@ -14,13 +14,12 @@ export function Marquee({
   const row = Array.from({ length: duplicates }, () => text);
   const content = [...row, ...row];
 
-  return (
-    <div className="w-full overflow-hidden bg-[#819570] text-white">
-      {/* убрал hover-паузу; задаём скорость через CSS var */}
-      <div
-        className="flex items-center whitespace-nowrap animate-marquee"
-        style={{ ["--marquee-duration" as any]: `${speed}s` }}
-      >
+return (
+  <div className="w-full overflow-hidden bg-[#819570] text-white h-10 flex items-center">
+    <div
+      className="flex items-center whitespace-nowrap animate-marquee"
+      style={{ ["--marquee-duration" as any]: `${speed}s` }}
+    >
         {content.map((t, i) => (
           <div key={i} className="flex items-center">
             {/* кликабельна вся фраза */}

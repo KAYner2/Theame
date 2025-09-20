@@ -81,18 +81,23 @@ export const Header = () => {
   };
   // =================================================================
 
-  return (
-  <header className="sticky top-0 z-50">
-    {/* 1) Бегущая строка */}
-    <Marquee
-      text="осень за окном"
-      href="https://theame.ru/catalog?category=sezon-podsolnuhov"
-    />
+return (
+  <header className="relative z-50">
+    {/* 1) Бегущая строка — липкая у самого верха */}
+    <div className="sticky top-0 z-50">
+      <Marquee
+        text="осень за окном"
+        href="https://theame.ru/catalog?category=sezon-podsolnuhov"
+      />
+    </div>
 
-    {/* 2) Блок под дорогой (лого + категории) */}
-    <BrandingStrip />
+    {/* 2) Блок под дорогой (лого + категории) — тоже липкий, сразу под дорогой */}
+    {/* top-10 = 40px = высота "дороги" (если изменишь высоту, поменяй и это) */}
+    <div className="sticky top-10 z-40">
+      <BrandingStrip />
+    </div>
 
-    {/* 3) Твой текущий хедер (оставляем пока как есть) */}
+    {/* 3) Твой текущий хедер (пока остаётся обычным и скроллится) */}
     <div className="bg-header-bg border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
@@ -294,5 +299,5 @@ export const Header = () => {
       </div>
     </div>
   </header>
-  );
+);
 };
