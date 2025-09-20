@@ -1,58 +1,42 @@
+// src/pages/ProductPage.tsx
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
-
-import { useProduct } from '@/hooks/useProduct';
-import { useProductBySlug } from '@/hooks/useProductBySlug';
-
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ChevronLeft, ChevronRight, Heart, Minus, Plus, ShoppingBag } from 'lucide-react';
-import { slugify } from '@/utils/slugify';
+import { ChevronLeft, ChevronRight, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { toast } from '@/hooks/use-toast';
-import { ProductRecommendations } from '@/components/ProductRecommendations';
-import { parseCompositionRaw, parseFromArray } from '@/utils/parseComposition';
-import { SectionBoundary } from '@/components/SectionBoundary';
+import { useProduct } from '@/hooks/useProduct';
+import { useProductBySlug } from '@/hooks/useProductBySlug';
 
-const asArray = <T,>(v: T[] | T | null | undefined): T[] =>
-  Array.isArray(v) ? v : v ? [v] : [];
+const asArray = <T,>(v: T[] | T | null | undefined): T[] => (Array.isArray(v) ? v : v ? [v] : []);
 
-// UUID в конце слага
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function ProductPage() {
   const { id: idParam, categorySlug, productSlug } = useParams<{
-    id?: string;
-    categorySlug?: string;
-    productSlug?: string;
+    id?: string; categorySlug?: string; productSlug?: string;
   }>();
   const navigate = useNavigate();
 
-  // если productSlug оканчивается на -<uuid>, извлекаем этот id
+  // Извлекаем id из "...-<uuid>"
   const idFromSlug = useMemo(() => {
     if (!productSlug) return '';
     const m = productSlug.match(UUID_RE);
     return m ? m[0] : '';
   }, [productSlug]);
 
-  // режимы загрузки
   const shouldLoadById = Boolean(idFromSlug || idParam);
   const realId = idFromSlug || idParam || '';
 
   const { data: productById, isLoading: loadingById, error: errorById } =
     useProduct(shouldLoadById ? realId : '');
 
-  // если категории нет или она == "catalog" — игнорируем её
-  const effectiveCategorySlug =
-    categorySlug && categorySlug.toLowerCase() !== 'catalog' ? categorySlug : undefined;
-
-  // важно: в хук передаём строку, не undefined
   const { data: productBySlug, isLoading: loadingBySlug, error: errorBySlug } =
     !shouldLoadById && productSlug
-      ? useProductBySlug(effectiveCategorySlug ?? '', productSlug)
+      ? useProductBySlug(categorySlug ?? '', productSlug)
       : { data: null, isLoading: false, error: null } as const;
 
   const isLoading = loadingById || loadingBySlug;
@@ -64,61 +48,39 @@ export default function ProductPage() {
   const { addToCart } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
 
-  // скролл наверх при смене параметров
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [idParam, categorySlug, productSlug]);
-
-  // канонический URL
-  useEffect(() => {
-    if (!isLoading && product) {
-      let catSlugFinal = product?.category?.slug || slugify(product?.category?.name || '');
-      if (!catSlugFinal || catSlugFinal.toLowerCase() === 'catalog') catSlugFinal = '';
-      const prodSlugFinal = product?.slug || slugify(product?.name || '');
-
-      const canonical = catSlugFinal
-        ? `/catalog/${catSlugFinal}/${prodSlugFinal}`
-        : `/catalog/${prodSlugFinal}`;
-
-      if (canonical && window.location.pathname !== canonical) {
-        navigate(canonical, { replace: true });
-      }
-    }
-  }, [isLoading, product, navigate]);
+  // Поднимаем кверху при смене товара
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [idParam, categorySlug, productSlug]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <p className="text-lg text-muted-foreground">Загрузка товара...</p>
-          </div>
-        </div>
+      <div className="min-h-screen bg-[#fff8ea]">
+        <div className="container mx-auto px-4 py-8 text-center">Загрузка товара…</div>
       </div>
     );
   }
 
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-foreground mb-4">Товар не найден</h1>
-            <Button onClick={() => navigate('/catalog')}>Вернуться в каталог</Button>
-          </div>
+      <div className="min-h-screen bg-[#fff8ea]">
+        <div className="container mx-auto px-4 py-8 text-center">
+          <div className="text-2xl font-bold mb-4">Товар не найден</div>
+          <Button onClick={() => navigate('/catalog')}>Вернуться в каталог</Button>
         </div>
       </div>
     );
   }
 
-  // изображения (безопасно)
+  // Картинки — безопасно
   const baseImg = product?.image_url || '/placeholder.svg';
   const gallery = asArray<string>(product?.gallery_urls);
   const images = [baseImg, ...gallery].filter(Boolean) as string[];
   const imagesLen = images.length || 1;
 
+  const nextImage = () => setSelectedImageIndex((i) => (i + 1) % imagesLen);
+  const prevImage = () => setSelectedImageIndex((i) => (i - 1 + imagesLen) % imagesLen);
+
   const handleAddToCart = () => {
-    const cartItem = {
+    addToCart({
       id: product.id,
       name: product.name,
       price: product.price || 0,
@@ -128,195 +90,105 @@ export default function ProductPage() {
       inStock: product.is_active,
       quantity: 1,
       colors: [],
-      size: 'medium' as const,
+      size: 'medium',
       occasion: [],
       cartQuantity: quantity,
-    };
-    for (let i = 0; i < quantity; i++) addToCart(cartItem);
+    } as any);
     toast({ title: 'Добавлено в корзину', description: `${product.name} (${quantity} шт.) добавлен в корзину` });
   };
 
-  const isInFavorites = isFavorite(product.id);
-  const handleToggleFavorite = () => {
-    if (isInFavorites) {
-      removeFromFavorites(product.id);
-      toast({ title: 'Удалено из избранного', description: `${product.name} удален из избранного` });
-    } else {
-      addToFavorites({
-        id: product.id,
-        name: product.name,
-        price: product.price || 0,
-        image: product.image_url || '/placeholder.svg',
-        description: product.description || '',
-        category: product.category?.name || 'Разное',
-        inStock: product.is_active,
-        quantity: 1,
-        colors: [],
-        size: 'medium',
-        occasion: [],
-      });
-      toast({ title: 'Добавлено в избранное', description: `${product.name} добавлен в избранное` });
-    }
-  };
-
-  const nextImage = () => setSelectedImageIndex((prev) => (prev + 1) % imagesLen);
-  const prevImage = () => setSelectedImageIndex((prev) => (prev - 1 + imagesLen) % imagesLen);
-
-  // Состав (безопасно)
-  const compositionItems =
-    product?.composition_raw
-      ? parseCompositionRaw(product.composition_raw)
-      : parseFromArray(asArray(product?.composition));
+  const isFav = isFavorite(product.id);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Хлебные крошки */}
-      <div className="container mx-auto px-4 py-4">
-        {(() => {
-          const catName = product?.category?.name || 'Цветы';
-          const catSlugFinal = product?.category?.slug || (catName ? slugify(catName) : '');
-          return (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Link to="/" className="hover:text-foreground transition-colors">ГЛАВНАЯ</Link>
-              <span>›</span>
-              <Link to="/catalog" className="hover:text-foreground transition-colors">КАТАЛОГ ТОВАРОВ</Link>
-              <span>›</span>
-              <Link
-                to={catSlugFinal ? `/catalog?category=${encodeURIComponent(catSlugFinal)}` : '/catalog'}
-                className="hover:text-foreground transition-colors"
-              >
-                {catName.toUpperCase()}
-              </Link>
-              <span>›</span>
-              <span className="text-foreground font-medium">{(product?.name || '').toUpperCase()}</span>
-            </div>
-          );
-        })()}
+    <div className="min-h-screen bg-[#fff8ea]">
+      {/* Хлебные крошки (минимум) */}
+      <div className="container mx-auto px-4 py-4 text-sm text-muted-foreground">
+        <Link to="/" className="hover:text-foreground">ГЛАВНАЯ</Link> <span>›</span>{' '}
+        <Link to="/catalog" className="hover:text-foreground">КАТАЛОГ ТОВАРОВ</Link> <span>›</span>{' '}
+        <span className="text-foreground font-medium">{(product?.name || '').toUpperCase()}</span>
       </div>
 
       <div className="container mx-auto px-4 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* === ГАЛЕРЕЯ === */}
-          <SectionBoundary name="GALLERY">
-            <div className="space-y-4">
-              <Card className="relative overflow-hidden aspect-square">
-                <img src={images[selectedImageIndex] || baseImg} alt={product?.name || ''} className="w-full h-full object-cover" />
-                {imagesLen > 1 && (
-                  <>
-                    <Button variant="outline" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white" onClick={prevImage}>
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white" onClick={nextImage}>
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </>
-                )}
-              </Card>
-
+          {/* Галерея */}
+          <div className="space-y-4">
+            <Card className="relative overflow-hidden aspect-square">
+              <img src={images[selectedImageIndex] || baseImg} alt={product?.name || ''} className="w-full h-full object-cover" />
               {imagesLen > 1 && (
-                <div className="grid grid-cols-5 gap-2">
-                  {images.map((image, index) => (
-                    <Card
-                      key={image + index}
-                      className={`cursor-pointer overflow-hidden aspect-square transition-all ${selectedImageIndex === index ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'}`}
-                      onClick={() => setSelectedImageIndex(index)}
-                    >
-                      <img src={image} alt={`${product?.name || ''} ${index + 1}`} className="w-full h-full object-cover" />
-                      {index === 0 && (
-                        <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs px-1 py-0.5 rounded">
-                          Основное
-                        </div>
-                      )}
-                    </Card>
-                  ))}
-                </div>
+                <>
+                  <Button variant="outline" size="icon"
+                          className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+                          onClick={prevImage}><ChevronLeft className="w-4 h-4" /></Button>
+                  <Button variant="outline" size="icon"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+                          onClick={nextImage}><ChevronRight className="w-4 h-4" /></Button>
+                </>
               )}
-            </div>
-          </SectionBoundary>
+            </Card>
 
-          {/* === ИНФО === */}
-          <SectionBoundary name="INFO">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <Badge variant={product?.availability_status === 'in_stock' ? 'default' : 'secondary'} className="text-sm">
-                  {product?.availability_status === 'in_stock' ? 'В НАЛИЧИИ' : 'НЕТ В НАЛИЧИИ'}
-                </Badge>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleToggleFavorite}
-                    aria-label={isInFavorites ? 'Убрать из избранного' : 'Добавить в избранное'}
-                    className={isInFavorites ? 'bg-destructive text-destructive-foreground' : ''}
-                  >
-                    <Heart className={`w-4 h-4 ${isInFavorites ? 'fill-current' : ''}`} />
-                  </Button>
-                </div>
+            {imagesLen > 1 && (
+              <div className="grid grid-cols-5 gap-2">
+                {images.map((src, idx) => (
+                  <Card key={src + idx}
+                        className={`cursor-pointer overflow-hidden aspect-square transition-all ${selectedImageIndex === idx ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'}`}
+                        onClick={() => setSelectedImageIndex(idx)}>
+                    <img src={src} alt={`${product?.name || ''} ${idx + 1}`} className="w-full h-full object-cover" />
+                  </Card>
+                ))}
               </div>
-
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">{(product?.name || '').toUpperCase()}</h1>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <span className="text-foreground font-medium">КОЛИЧЕСТВО</span>
-                  <div className="flex items-center border rounded-lg">
-                    <Button variant="ghost" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="h-10 w-10">
-                      <Minus className="w-4 h-4" />
-                    </Button>
-                    <span className="px-4 py-2 min-w-[60px] text-center">{quantity}</span>
-                    <Button variant="ghost" size="icon" onClick={() => setQuantity(quantity + 1)} className="h-10 w-10">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="text-2xl font-bold">{(((product?.price || 0) * quantity) || 0).toLocaleString()} ₽</div>
-                  <Button onClick={handleAddToCart} disabled={product?.availability_status !== 'in_stock'} className="flex-1 h-12">
-                    <ShoppingBag className="w-4 h-4 mr-2" />
-                    КУПИТЬ
-                  </Button>
-                </div>
-              </div>
-
-              {( (product?.composition_raw && parseCompositionRaw(product.composition_raw)?.length) ||
-                 (parseFromArray(asArray(product?.composition))?.length) ) ? (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-foreground">СОСТАВ</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(
-                      product?.composition_raw
-                        ? parseCompositionRaw(product.composition_raw)
-                        : parseFromArray(asArray(product?.composition))
-                    ).map((item) => (
-                      <div key={item.name} className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-primary rounded-full" />
-                        <span className="text-muted-foreground">
-                          {item.name}{typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {product?.show_substitution_note && (
-                    <p className="mt-2 text-sm text-green-700">
-                      {(product?.substitution_note_text && product.substitution_note_text.trim()) ||
-                        'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
-                    </p>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          </SectionBoundary>
-        </div>
-
-        {/* === РЕКОМЕНДАЦИИ === */}
-        <SectionBoundary name="RECOMMENDATIONS">
-          <div className="container mx-auto px-4">
-            {product?.id ? <ProductRecommendations productId={String(product.id)} /> : null}
+            )}
           </div>
-        </SectionBoundary>
+
+          {/* Инфо */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <Badge variant={product?.availability_status === 'in_stock' ? 'default' : 'secondary'} className="text-sm">
+                {product?.availability_status === 'in_stock' ? 'В НАЛИЧИИ' : 'НЕТ В НАЛИЧИИ'}
+              </Badge>
+              <Button variant="outline" size="icon"
+                      onClick={() => {
+                        if (isFav) {
+                          removeFromFavorites(product.id);
+                          toast({ title: 'Удалено из избранного', description: `${product.name} удален из избранного` });
+                        } else {
+                          addToFavorites({
+                            id: product.id, name: product.name, price: product.price || 0,
+                            image: product.image_url || '/placeholder.svg', description: product.description || '',
+                            category: product.category?.name || 'Разное', inStock: product.is_active,
+                            quantity: 1, colors: [], size: 'medium', occasion: [],
+                          } as any);
+                          toast({ title: 'Добавлено в избранное', description: `${product.name} добавлен в избранное` });
+                        }
+                      }}>
+                {/* сердечко убрал для простоты — иконки не важны */}
+                ♥
+              </Button>
+            </div>
+
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">{(product?.name || '').toUpperCase()}</h1>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <span className="text-foreground font-medium">КОЛИЧЕСТВО</span>
+                <div className="flex items-center border rounded-lg">
+                  <Button variant="ghost" size="icon" onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="h-10 w-10"> <Minus className="w-4 h-4" /> </Button>
+                  <span className="px-4 py-2 min-w-[60px] text-center">{quantity}</span>
+                  <Button variant="ghost" size="icon" onClick={() => setQuantity((q) => q + 1)} className="h-10 w-10"> <Plus className="w-4 h-4" /> </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="text-2xl font-bold">{(((product?.price || 0) * quantity) || 0).toLocaleString()} ₽</div>
+                <Button onClick={handleAddToCart} disabled={product?.availability_status !== 'in_stock'} className="flex-1 h-12">
+                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  КУПИТЬ
+                </Button>
+              </div>
+            </div>
+
+            {/* ВАЖНО: ничего лишнего — ни Accordion, ни составов, ни рекомендаций */}
+          </div>
+        </div>
       </div>
     </div>
   );
