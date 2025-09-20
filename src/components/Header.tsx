@@ -193,13 +193,13 @@ export const Header = () => {
           </div>
 
           {/* Справа: ТОЛЬКО текстовая кнопка WhatsApp + корзина — прижаты к правому краю */}
-          <div className="ml-auto flex items-center gap-3 md:gap-4 pr-2">
+          <div className="ml-auto flex items-center gap-1.5 md:gap-2 pr-4">
             {/* Текстовая кнопка: Заказать букет */}
             <a
   href="https://wa.me/message/XQDDWGSEL35LP1"
   target="_blank"
   rel="noopener noreferrer"
-  className="uppercase text-base font-medium text-[#819570] hover:underline tracking-wide mr-4"
+  className="uppercase text-sm font-medium text-[#819570] tracking-wide mr-4"
 >
   Заказать букет
 </a>
