@@ -89,10 +89,10 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
           {/* ЛОГО-ТЕКСТ */}
           <div className="text-center" style={{ fontFamily: "Forum, serif" }}>
             <Link to="/" className="block">
-              <span className="text-[#819570] tracking-wide text-5xl md:text-7xl">
-                The Áme
-              </span>
-            </Link>
+  <span className="text-[#819570] tracking-wide leading-[0.9] text-6xl md:text-8xl lg:text-9xl">
+    The Áme
+  </span>
+</Link>
           </div>
 
           {/* КАТЕГОРИИ — тонкие овальные чипсы */}
