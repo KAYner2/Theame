@@ -1,7 +1,8 @@
-// src/components/BrandingStrip.tsx
 import { Link, useLocation } from "react-router-dom";
 import { useCategories } from "@/hooks/useCategories";
 import { slugify } from "@/utils/slugify";
+
+const TAIL = 22; // ← тот же радиус, что и в Header
 
 /** Первая буква заглавная */
 const normalize = (name: string) => {
@@ -11,7 +12,6 @@ const normalize = (name: string) => {
 };
 
 type Props = {
-  /** PNG/SVG без фона */
   flowerLeftSrc?: string;
   flowerRightSrc?: string;
 };
@@ -28,7 +28,7 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
 
   return (
     <div className="relative overflow-hidden bg-[#ffe9c3]">
-      {/* ДЕКОР-ЦВЕТЫ — за контентом */}
+      {/* Декор-цветы */}
       {flowerLeftSrc && (
         <img
           src={flowerLeftSrc}
@@ -46,50 +46,34 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
         />
       )}
 
-      {/* ПРАВЫЙ ИНФО-БЛОК — ВНЕ container, чтобы прижать к правому краю секции */}
-      <div className="hidden md:block absolute top-4 right-4 z-20 text-[#819570] text-xs leading-snug tracking-wide text-right">
-        <div>Режим работы: с 09:00 до 21:00</div>
-        <div>Доставка букетов ~45 минут</div>
+      {/* ХВОСТИКИ снизу плашки (совпадают с верхней плашкой) */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute bg-white rounded-full"
+        style={{
+          width: TAIL * 2,
+          height: TAIL * 2,
+          left: -TAIL,
+          bottom: -TAIL,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.10)",
+        }}
+      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute bg-white rounded-full"
+        style={{
+          width: TAIL * 2,
+          height: TAIL * 2,
+          right: -TAIL,
+          bottom: -TAIL,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.10)",
+        }}
+      />
 
-        <div className="mt-2 flex items-center justify-end gap-3">
-          <a
-            href="https://www.instagram.com/theame.flowers"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Instagram"
-            className="inline-flex"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-              <path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5Z" stroke="#819570" strokeWidth="1.5" />
-              <circle cx="12" cy="12" r="3.5" stroke="#819570" strokeWidth="1.5" />
-              <circle cx="17.5" cy="6.5" r="1" fill="#819570" />
-            </svg>
-          </a>
-
-          <a
-            href="https://t.me/the_ame_flowers"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Telegram"
-            className="inline-flex"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-              <path d="M21.7 3.3L2.8 10.6c-.9.35-.88 1.66.04 1.97l4.73 1.62 1.83 4.87c.34.9 1.59.97 2 .11l2.52-5.01 4.8-7.68c.53-.85-.3-1.88-1.52-1.58Z" stroke="#819570" strokeWidth="1.5" strokeLinejoin="round" />
-            </svg>
-          </a>
-
-          <Link to="/favorites" aria-label="Избранное" className="inline-flex">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-              <path d="M12 21s-7-4.35-9.5-8.21C.83 10.03 2.2 6.5 5.6 6.5c2.05 0 3.4 1.22 4 2.22.6-1 1.95-2.22 4-2.22 3.4 0 4.77 3.53 3.1 6.29C19 16.65 12 21 12 21Z" stroke="#819570" strokeWidth="1.5" strokeLinejoin="round" />
-            </svg>
-          </Link>
-        </div>
-      </div>
-
-      {/* КОНТЕНТ — потолще плашка + отступы, чтобы цветы не наезжали */}
+      {/* Контент */}
       <div className="relative z-10 container mx-auto px-4 md:px-10 lg:px-16 xl:px-24">
         <div className="pt-6 pb-4 md:pt-8 md:pb-5">
-          {/* ЛОГО-ТЕКСТ */}
+          {/* Лого */}
           <div className="text-center" style={{ fontFamily: "Forum, serif" }}>
             <Link to="/" className="block">
               <span className="text-[#819570] tracking-wide text-5xl md:text-7xl">
@@ -98,7 +82,7 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
             </Link>
           </div>
 
-          {/* КАТЕГОРИИ — тонкие овальные чипсы */}
+          {/* Чипсы */}
           <nav className="mt-5 md:mt-6 pb-6">
             <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3.5">
               {isLoading &&
@@ -110,7 +94,8 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
                   />
                 ))}
 
-              {!isLoading && !error &&
+              {!isLoading &&
+                !error &&
                 unique.map((c) => {
                   const name = normalize(c.name);
                   const slug = slugify(name);
@@ -136,7 +121,7 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
             </div>
           </nav>
 
-          {/* Мобильная версия инфо-блока */}
+          {/* Моб. инфо-блок (остался как был) */}
           <div className="md:hidden mt-2 text-[#819570] text-xs leading-snug tracking-wide text-center">
             <div>Режим работы: с 09:00 до 21:00</div>
             <div>Доставка букетов ~45 минут</div>
@@ -149,7 +134,11 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
                 className="inline-flex"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                  <path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5Z" stroke="#819570" strokeWidth="1.5" />
+                  <path
+                    d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5Z"
+                    stroke="#819570"
+                    strokeWidth="1.5"
+                  />
                   <circle cx="12" cy="12" r="3.5" stroke="#819570" strokeWidth="1.5" />
                   <circle cx="17.5" cy="6.5" r="1" fill="#819570" />
                 </svg>
@@ -162,29 +151,28 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
                 className="inline-flex"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                  <path d="M21.7 3.3L2.8 10.6c-.9.35-.88 1.66.04 1.97l4.73 1.62 1.83 4.87c.34.9 1.59.97 2 .11l2.52-5.01 4.8-7.68c.53-.85-.3-1.88-1.52-1.58Z" stroke="#819570" strokeWidth="1.5" strokeLinejoin="round" />
+                  <path
+                    d="M21.7 3.3L2.8 10.6c-.9.35-.88 1.66.04 1.97l4.73 1.62 1.83 4.87c.34.9 1.59.97 2 .11l2.52-5.01 4.8-7.68c.53-.85-.3-1.88-1.52-1.58Z"
+                    stroke="#819570"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </a>
               <Link to="/favorites" aria-label="Избранное" className="inline-flex">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 21s-7-4.35-9.5-8.21C.83 10.03 2.2 6.5 5.6 6.5c2.05 0 3.4 1.22 4 2.22.6-1 1.95-2.22 4-2.22 3.4 0 4.77 3.53 3.1 6.29C19 16.65 12 21 12 21Z" stroke="#819570" strokeWidth="1.5" strokeLinejoin="round" />
+                  <path
+                    d="M12 21s-7-4.35-9.5-8.21C.83 10.03 2.2 6.5 5.6 6.5c2.05 0 3.4 1.22 4 2.22.6-1 1.95-2.22 4-2.22 3.4 0 4.77 3.53 3.1 6.29C19 16.65 12 21 12 21Z"
+                    stroke="#819570"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </Link>
             </div>
           </div>
         </div>
       </div>
-
-      {/* ВЫЕМКА-СКРУГЛЕНИЕ ВНИЗУ (единая полоса с верхними скруглениями) */}
-      <div
-        aria-hidden
-        className="
-          pointer-events-none absolute left-0 right-0
-          -bottom-[14px] h-[28px] md:-bottom-[16px] md:h-[32px]
-          bg-white rounded-t-[18px] md:rounded-t-[20px]
-          z-30 shadow-[0_-8px_18px_rgba(0,0,0,0.08)]
-        "
-      />
     </div>
   );
 }
