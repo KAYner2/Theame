@@ -15,7 +15,7 @@ export function FeaturedProducts() {
 
   if (isLoading) {
     return (
-      <section className="py-20 bg-muted/30">
+      <section className="relative isolate py-20 bg-background">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-12">Букеты недели</h2>
           <div className="text-center">
@@ -28,7 +28,7 @@ export function FeaturedProducts() {
 
   if (error) {
     return (
-      <section className="py-20 bg-muted/30">
+      <section className="relative isolate py-20 bg-background">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-12">Букеты недели</h2>
           <div className="text-center">
@@ -42,12 +42,11 @@ export function FeaturedProducts() {
   const displayedProducts: Flower[] = showAll ? homepageProducts : homepageProducts.slice(0, 12);
 
   const handleAddToCart = (product: Flower) => {
-    // Контекст корзины у тебя принимает Flower — просто передаём его
     addToCart(product);
   };
 
   return (
-    <section className="py-20 bg-muted/30">
+    <section className="relative isolate py-20 bg-background">
       <div className="container mx-auto px-4">
         <h2 className="text-4xl font-bold text-center mb-12">Букеты недели</h2>
 
@@ -59,7 +58,7 @@ export function FeaturedProducts() {
                 : `/product/${product.id}`;
 
             return (
-              <Link key={product.id} to={to}>
+              <Link key={product.id} to={to} aria-label={product.name}>
                 <Card className="group overflow-hidden border-0 shadow-soft hover:shadow-elegant transition-all duration-300">
                   <CardContent className="p-0">
                     <div
@@ -81,9 +80,11 @@ export function FeaturedProducts() {
                       variant="default"
                       className="h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
                       onClick={(e) => {
-                        e.preventDefault();
+                        e.preventDefault(); // не уходим со страницы при клике по кнопке
                         handleAddToCart(product);
                       }}
+                      aria-label="Добавить в корзину"
+                      title="Добавить в корзину"
                     >
                       <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
                     </Button>
