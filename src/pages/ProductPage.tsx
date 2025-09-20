@@ -15,6 +15,7 @@ import { useFavorites } from '@/context/FavoritesContext';
 import { toast } from '@/hooks/use-toast';
 import { ProductRecommendations } from '@/components/ProductRecommendations';
 import { parseCompositionRaw, parseFromArray } from '@/utils/parseComposition';
+import { SectionBoundary } from '@/components/SectionBoundary';
 
 const asArray = <T,>(v: T[] | T | null | undefined): T[] =>
   Array.isArray(v) ? v : v ? [v] : [];
@@ -48,7 +49,7 @@ export default function ProductPage() {
   const effectiveCategorySlug =
     categorySlug && categorySlug.toLowerCase() !== 'catalog' ? categorySlug : undefined;
 
-  // ВАЖНО: передаём в хук пустую строку вместо undefined
+  // важно: в хук передаём строку, не undefined
   const { data: productBySlug, isLoading: loadingBySlug, error: errorBySlug } =
     !shouldLoadById && productSlug
       ? useProductBySlug(effectiveCategorySlug ?? '', productSlug)
@@ -68,7 +69,7 @@ export default function ProductPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [idParam, categorySlug, productSlug]);
 
-  // Канонический URL
+  // канонический URL
   useEffect(() => {
     if (!isLoading && product) {
       let catSlugFinal = product?.category?.slug || slugify(product?.category?.name || '');
@@ -161,7 +162,7 @@ export default function ProductPage() {
   const nextImage = () => setSelectedImageIndex((prev) => (prev + 1) % imagesLen);
   const prevImage = () => setSelectedImageIndex((prev) => (prev - 1 + imagesLen) % imagesLen);
 
-  // Состав (безопасно) — если composition undefined, даём []
+  // Состав (безопасно)
   const compositionItems =
     product?.composition_raw
       ? parseCompositionRaw(product.composition_raw)
@@ -195,165 +196,127 @@ export default function ProductPage() {
 
       <div className="container mx-auto px-4 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Галерея */}
-          <div className="space-y-4">
-            <Card className="relative overflow-hidden aspect-square">
-              <img src={images[selectedImageIndex] || baseImg} alt={product?.name || ''} className="w-full h-full object-cover" />
-              {imagesLen > 1 && (
-                <>
-                  <Button variant="outline" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white" onClick={prevImage}>
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button variant="outline" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white" onClick={nextImage}>
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </>
-              )}
-            </Card>
-
-            {imagesLen > 1 && (
-              <div className="grid grid-cols-5 gap-2">
-                {images.map((image, index) => (
-                  <Card
-                    key={image + index}
-                    className={`cursor-pointer overflow-hidden aspect-square transition-all ${selectedImageIndex === index ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'}`}
-                    onClick={() => setSelectedImageIndex(index)}
-                  >
-                    <img src={image} alt={`${product?.name || ''} ${index + 1}`} className="w-full h-full object-cover" />
-                    {index === 0 && (
-                      <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs px-1 py-0.5 rounded">
-                        Основное
-                      </div>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Инфо о товаре */}
-          <div className="space-y-6">
-            {/* Статус + избранное */}
-            <div className="flex items-center justify-between">
-              <Badge variant={product?.availability_status === 'in_stock' ? 'default' : 'secondary'} className="text-sm">
-                {product?.availability_status === 'in_stock' ? 'В НАЛИЧИИ' : 'НЕТ В НАЛИЧИИ'}
-              </Badge>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleToggleFavorite}
-                  aria-label={isInFavorites ? 'Убрать из избранного' : 'Добавить в избранное'}
-                  className={isInFavorites ? 'bg-destructive text-destructive-foreground' : ''}
-                >
-                  <Heart className={`w-4 h-4 ${isInFavorites ? 'fill-current' : ''}`} />
-                </Button>
-              </div>
-            </div>
-
-            {/* Заголовок */}
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">{(product?.name || '').toUpperCase()}</h1>
-
-            {/* Кол-во + цена + купить */}
+          {/* === ГАЛЕРЕЯ === */}
+          <SectionBoundary name="GALLERY">
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <span className="text-foreground font-medium">КОЛИЧЕСТВО</span>
-                <div className="flex items-center border rounded-lg">
-                  <Button variant="ghost" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="h-10 w-10">
-                    <Minus className="w-4 h-4" />
-                  </Button>
-                  <span className="px-4 py-2 min-w-[60px] text-center">{quantity}</span>
-                  <Button variant="ghost" size="icon" onClick={() => setQuantity(quantity + 1)} className="h-10 w-10">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+              <Card className="relative overflow-hidden aspect-square">
+                <img src={images[selectedImageIndex] || baseImg} alt={product?.name || ''} className="w-full h-full object-cover" />
+                {imagesLen > 1 && (
+                  <>
+                    <Button variant="outline" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white" onClick={prevImage}>
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white" onClick={nextImage}>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+              </Card>
 
-              <div className="flex items-center gap-4">
-                <div className="text-2xl font-bold">{(((product?.price || 0) * quantity) || 0).toLocaleString()} ₽</div>
-                <Button onClick={handleAddToCart} disabled={product?.availability_status !== 'in_stock'} className="flex-1 h-12">
-                  <ShoppingBag className="w-4 h-4 mr-2" />
-                  КУПИТЬ
-                </Button>
-              </div>
-            </div>
-
-            {/* Состав + примечание */}
-            {(compositionItems?.length ?? 0) > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-semibold text-foreground">СОСТАВ</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {compositionItems.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full" />
-                      <span className="text-muted-foreground">
-                        {item.name}{typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
-                      </span>
-                    </div>
+              {imagesLen > 1 && (
+                <div className="grid grid-cols-5 gap-2">
+                  {images.map((image, index) => (
+                    <Card
+                      key={image + index}
+                      className={`cursor-pointer overflow-hidden aspect-square transition-all ${selectedImageIndex === index ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'}`}
+                      onClick={() => setSelectedImageIndex(index)}
+                    >
+                      <img src={image} alt={`${product?.name || ''} ${index + 1}`} className="w-full h-full object-cover" />
+                      {index === 0 && (
+                        <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs px-1 py-0.5 rounded">
+                          Основное
+                        </div>
+                      )}
+                    </Card>
                   ))}
                 </div>
+              )}
+            </div>
+          </SectionBoundary>
 
-                {product?.show_substitution_note && (
-                  <p className="mt-2 text-sm text-green-700">
-                    {(product?.substitution_note_text && product.substitution_note_text.trim()) ||
-                      'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
-                  </p>
-                )}
+          {/* === ИНФО === */}
+          <SectionBoundary name="INFO">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <Badge variant={product?.availability_status === 'in_stock' ? 'default' : 'secondary'} className="text-sm">
+                  {product?.availability_status === 'in_stock' ? 'В НАЛИЧИИ' : 'НЕТ В НАЛИЧИИ'}
+                </Badge>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleToggleFavorite}
+                    aria-label={isInFavorites ? 'Убрать из избранного' : 'Добавить в избранное'}
+                    className={isInFavorites ? 'bg-destructive text-destructive-foreground' : ''}
+                  >
+                    <Heart className={`w-4 h-4 ${isInFavorites ? 'fill-current' : ''}`} />
+                  </Button>
+                </div>
               </div>
-            )}
 
-            {/* Аккордеоны */}
-            <Accordion type="single" collapsible className="w-full">
-              {(product?.description || product?.detailed_description) && (
-                <AccordionItem value="description">
-                  <AccordionTrigger className="text-left font-medium">ОПИСАНИЕ</AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground space-y-2">
-                    {product?.description && <p className="whitespace-pre-line">{product.description}</p>}
-                    {product?.detailed_description && <p className="whitespace-pre-line">{product.detailed_description}</p>}
-                  </AccordionContent>
-                </AccordionItem>
-              )}
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">{(product?.name || '').toUpperCase()}</h1>
 
-              {product?.gift_info && (
-                <AccordionItem value="gift">
-                  <AccordionTrigger className="text-left font-medium">ПОДАРОК К КАЖДОМУ ЗАКАЗУ</AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">{product.gift_info}</AccordionContent>
-                </AccordionItem>
-              )}
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <span className="text-foreground font-medium">КОЛИЧЕСТВО</span>
+                  <div className="flex items-center border rounded-lg">
+                    <Button variant="ghost" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="h-10 w-10">
+                      <Minus className="w-4 h-4" />
+                    </Button>
+                    <span className="px-4 py-2 min-w-[60px] text-center">{quantity}</span>
+                    <Button variant="ghost" size="icon" onClick={() => setQuantity(quantity + 1)} className="h-10 w-10">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
 
-              {product?.size_info && (
-                <AccordionItem value="size">
-                  <AccordionTrigger className="text-left font-medium">РАЗМЕРЫ</AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
-                    <p className="whitespace-pre-line">{product.size_info}</p>
-                  </AccordionContent>
-                </AccordionItem>
-              )}
+                <div className="flex items-center gap-4">
+                  <div className="text-2xl font-bold">{(((product?.price || 0) * quantity) || 0).toLocaleString()} ₽</div>
+                  <Button onClick={handleAddToCart} disabled={product?.availability_status !== 'in_stock'} className="flex-1 h-12">
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    КУПИТЬ
+                  </Button>
+                </div>
+              </div>
 
-              {product?.delivery_info && (
-                <AccordionItem value="delivery">
-                  <AccordionTrigger className="text-left font-medium">ДОСТАВКА</AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">{product.delivery_info}</AccordionContent>
-                </AccordionItem>
-              )}
+              {( (product?.composition_raw && parseCompositionRaw(product.composition_raw)?.length) ||
+                 (parseFromArray(asArray(product?.composition))?.length) ) ? (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">СОСТАВ</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(
+                      product?.composition_raw
+                        ? parseCompositionRaw(product.composition_raw)
+                        : parseFromArray(asArray(product?.composition))
+                    ).map((item) => (
+                      <div key={item.name} className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-primary rounded-full" />
+                        <span className="text-muted-foreground">
+                          {item.name}{typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
 
-              {product?.care_instructions && (
-                <AccordionItem value="care">
-                  <AccordionTrigger className="text-left font-medium">КАК УХАЖИВАТЬ ЗА ЦВЕТАМИ</AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
-                    <p className="whitespace-pre-line">{product.care_instructions}</p>
-                  </AccordionContent>
-                </AccordionItem>
-              )}
-            </Accordion>
+                  {product?.show_substitution_note && (
+                    <p className="mt-2 text-sm text-green-700">
+                      {(product?.substitution_note_text && product.substitution_note_text.trim()) ||
+                        'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </SectionBoundary>
+        </div>
+
+        {/* === РЕКОМЕНДАЦИИ === */}
+        <SectionBoundary name="RECOMMENDATIONS">
+          <div className="container mx-auto px-4">
+            {product?.id ? <ProductRecommendations productId={String(product.id)} /> : null}
           </div>
-        </div>
-
-        {/* Рекомендации — только если есть корректный id */}
-        <div className="container mx-auto px-4">
-          {product?.id ? <ProductRecommendations productId={String(product.id)} /> : null}
-        </div>
+        </SectionBoundary>
       </div>
     </div>
   );
