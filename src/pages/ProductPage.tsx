@@ -12,50 +12,60 @@ import { useFavorites } from '@/context/FavoritesContext';
 import { toast } from '@/hooks/use-toast';
 
 import { useProduct } from '@/hooks/useProduct';
+import { useProductBySlug } from '@/hooks/useProductBySlug';
 import { parseCompositionRaw, parseFromArray } from '@/utils/parseComposition';
 
 const asArray = <T,>(v: T[] | T | null | undefined): T[] => (Array.isArray(v) ? v : v ? [v] : []);
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function ProductPage() {
-  const { id: idParam, productSlug } = useParams<{ id?: string; categorySlug?: string; productSlug?: string }>();
+  const { id: idParam, categorySlug, productSlug } = useParams<{
+    id?: string;
+    categorySlug?: string;
+    productSlug?: string;
+  }>();
   const [sp] = useSearchParams();
   const navigate = useNavigate();
 
-  // Извлекаем id из "...-<uuid>" в slug (если пришли через /catalog/:cat/:slug-<id>)
+  // если productSlug оканчивается на -<uuid>, извлекаем id
   const idFromSlug = useMemo(() => {
     if (!productSlug) return '';
     const m = productSlug.match(UUID_RE);
     return m ? m[0] : '';
   }, [productSlug]);
 
-  // Грузим ТОЛЬКО по id (никаких запросов по slug — это и было источником падений)
   const effectiveId = idParam || idFromSlug || '';
-  const { data: product, isLoading, error } = useProduct(effectiveId);
+
+  // --- Загрузка: по id ИЛИ по slug ---
+  const {
+    data: productById,
+    isLoading: loadingById,
+    error: errorById,
+  } = useProduct(effectiveId);
+
+  // безопасно: в хук передаём строки, а не undefined; включаем только если id нет, но есть slug
+  const {
+    data: productBySlug,
+    isLoading: loadingBySlug,
+    error: errorBySlug,
+  } = !effectiveId && productSlug
+    ? useProductBySlug(categorySlug ?? '', productSlug)
+    : { data: null, isLoading: false, error: null } as const;
+
+  // если есть id — берём по id; иначе — по slug
+  const product = productById ?? productBySlug;
+  const isLoading = loadingById || loadingBySlug;
+  const error = errorById || errorBySlug;
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
 
-  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [effectiveId]);
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [effectiveId, categorySlug, productSlug]);
 
   const debugOn = sp.get('debug') === '1' || (typeof window !== 'undefined' && localStorage.getItem('debugProductPage') === '1');
-  if (debugOn) {
-    // eslint-disable-next-line no-console
-    console.log('[ProductPage dbg]', { idParam, productSlug, effectiveId, product, isLoading, error });
-  }
-
-  if (!effectiveId) {
-    return (
-      <div className="min-h-screen bg-[#fff8ea]">
-        <div className="container mx-auto px-4 py-12 text-center">
-          <div className="text-2xl font-bold mb-4">Нет id товара в URL</div>
-          <Button onClick={() => navigate('/catalog')}>В каталог</Button>
-        </div>
-      </div>
-    );
-  }
+  if (debugOn) console.log('[ProductPage dbg]', { idParam, categorySlug, productSlug, effectiveId, productById, productBySlug, isLoading, error });
 
   if (isLoading) {
     return (
@@ -105,7 +115,7 @@ export default function ProductPage() {
       colors: [],
       size: 'medium',
       occasion: [],
-      cartQuantity: quantity,
+      // cartQuantity НЕ добавляем — у CartContext тип Flower
     } as any);
     toast({ title: 'Добавлено в корзину', description: `${product.name} (${quantity} шт.) добавлен в корзину` });
   };
@@ -298,5 +308,4 @@ export default function ProductPage() {
   );
 }
 
-// важно: не забудь импорт
 import { ProductRecommendations } from '@/components/ProductRecommendations';
