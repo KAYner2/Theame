@@ -28,6 +28,31 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
 
   return (
     <div className="relative overflow-hidden bg-[#ffe9c3]">
+      {/* === хвостики скругления сверху слева/справа === */}
+      <div
+        aria-hidden
+        className="
+          absolute top-0 left-0 z-20
+          w-4 h-8
+          -translate-y-[7px]
+          bg-white
+          rounded-br-[22px]
+          pointer-events-none
+        "
+      />
+      <div
+        aria-hidden
+        className="
+          absolute top-0 right-0 z-20
+          w-4 h-8
+          -translate-y-[7px]
+          bg-white
+          rounded-bl-[22px]
+          pointer-events-none
+        "
+      />
+      {/* === /хвостики === */}
+
       {/* ДЕКОР-ЦВЕТЫ — за контентом */}
       {flowerLeftSrc && (
         <img
