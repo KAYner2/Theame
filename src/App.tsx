@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
+import { DevErrorBoundary } from "@/components/DevErrorBoundary";
 import Home from "./pages/Home";
 import Catalog from "./pages/Catalog";
 import ProductPage from "./pages/ProductPage";
@@ -36,35 +36,37 @@ const App = () => (
           <Sonner position="bottom-right" richColors closeButton />
 
           <BrowserRouter>
-            <YandexMetrikaListener />
-            <Header />
+            {/* Оборачиваем ВСЁ приложение в ErrorBoundary */}
+            <DevErrorBoundary>
+              <YandexMetrikaListener />
+              <Header />
 
-            {/* Никаких фиксированных «хвостиков» здесь быть не должно */}
-            <main className="min-h-screen">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/catalog" element={<Catalog />} />
-                <Route path="/favorites" element={<Favorites />} />
-                <Route path="/catalog/:productSlug" element={<ProductPage />} />
-                <Route path="/catalog/:categorySlug/:productSlug" element={<ProductPage />} />
-                <Route path="/product/:id" element={<ProductPage />} />
-                <Route path="/cart" element={<CartPage />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/public-offer" element={<PublicOffer />} />
-                <Route path="/success" element={<PaymentSuccess />} />
-                <Route path="/payment-error" element={<PaymentError />} />
-                <Route path="/success" element={<Navigate to="/payment-success" replace />} />
-                <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
-                <Route path="/test-sort" element={<SortableTest />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
+              <main className="min-h-screen">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/catalog" element={<Catalog />} />
+                  <Route path="/favorites" element={<Favorites />} />
+                  <Route path="/catalog/:productSlug" element={<ProductPage />} />
+                  <Route path="/catalog/:categorySlug/:productSlug" element={<ProductPage />} />
+                  <Route path="/product/:id" element={<ProductPage />} />
+                  <Route path="/cart" element={<CartPage />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/public-offer" element={<PublicOffer />} />
+                  <Route path="/success" element={<PaymentSuccess />} />
+                  <Route path="/payment-error" element={<PaymentError />} />
+                  <Route path="/success" element={<Navigate to="/payment-success" replace />} />
+                  <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
+                  <Route path="/test-sort" element={<SortableTest />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
 
-            <Footer />
-            <WhatsAppFloat />
+              <Footer />
+              <WhatsAppFloat />
+            </DevErrorBoundary>
           </BrowserRouter>
         </FavoritesProvider>
       </CartProvider>
