@@ -19,10 +19,13 @@ export function Marquee({
           <a
             key={i}
             href={href}
-            className="py-2 px-8 text-sm uppercase tracking-wide hover:opacity-90 transition-opacity"
+            className="py-2 px-8 text-sm uppercase tracking-wide hover:opacity-90 transition-opacity inline-flex items-center"
           >
             {t}
-            <span aria-hidden className="mx-6">•</span>
+            {/* аккуратный кружок-разделитель */}
+            <span className="mx-6 inline-flex items-center">
+              <span className="block w-2 h-2 rounded-full bg-current" aria-hidden />
+            </span>
           </a>
         ))}
       </div>
