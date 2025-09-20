@@ -1,4 +1,3 @@
-// src/components/FeaturedProducts.tsx
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
@@ -15,7 +14,7 @@ export function FeaturedProducts() {
 
   if (isLoading) {
     return (
-      <section className="relative isolate py-20 bg-background">
+      <section className="relative isolate py-20 bg-[#fff8ea]">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-12">Букеты недели</h2>
           <div className="text-center">
@@ -28,7 +27,7 @@ export function FeaturedProducts() {
 
   if (error) {
     return (
-      <section className="relative isolate py-20 bg-background">
+      <section className="relative isolate py-20 bg-[#fff8ea]">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-12">Букеты недели</h2>
           <div className="text-center">
@@ -46,7 +45,7 @@ export function FeaturedProducts() {
   };
 
   return (
-    <section className="relative isolate py-20 bg-background">
+    <section className="relative isolate py-20 bg-[#fff8ea]">
       <div className="container mx-auto px-4">
         <h2 className="text-4xl font-bold text-center mb-12">Букеты недели</h2>
 
@@ -66,7 +65,7 @@ export function FeaturedProducts() {
                       style={{ backgroundImage: `url(${product.image || '/placeholder.svg'})` }}
                     />
                   </CardContent>
-                  <CardFooter className="flex justify-between items-center p-2 sm:p-3 lg:p-4 bg-background">
+                  <CardFooter className="flex justify-between items-center p-2 sm:p-3 lg:p-4 bg-[#fff8ea]">
                     <div>
                       <h3 className="font-semibold text-xs sm:text-sm lg:text-sm mb-1 line-clamp-1">
                         {product.name}
@@ -80,7 +79,7 @@ export function FeaturedProducts() {
                       variant="default"
                       className="h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
                       onClick={(e) => {
-                        e.preventDefault(); // не уходим со страницы при клике по кнопке
+                        e.preventDefault();
                         handleAddToCart(product);
                       }}
                       aria-label="Добавить в корзину"

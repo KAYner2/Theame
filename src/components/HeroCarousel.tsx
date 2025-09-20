@@ -35,7 +35,7 @@ export function HeroCarousel() {
     return () => stop();
   }, [api]);
 
-  const sectionClass = "relative isolate bg-background py-6 md:py-8";
+  const sectionClass = "relative isolate bg-[#fff8ea] py-6 md:py-8";
 
   if (isLoading || !slides?.length) {
     return (
@@ -97,13 +97,13 @@ export function HeroCarousel() {
           </CarouselContent>
         </Carousel>
 
-        {/* Кнопки навигации — фон по токену, не хардкод */}
+        {/* Кнопки — тот же фон, что и страница */}
         <button
           type="button"
           onClick={handlePrev}
           aria-label="Предыдущий слайд"
           className="absolute left-2 md:left-5 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10 md:w-12 md:h-12 
-                     bg-background text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
+                     bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
                      border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#819570]/40"
         >
           ‹
@@ -114,7 +114,7 @@ export function HeroCarousel() {
           onClick={handleNext}
           aria-label="Следующий слайд"
           className="absolute right-2 md:right-5 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10 md:w-12 md:h-12 
-                     bg-background text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
+                     bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
                      border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#819570]/40"
         >
           ›
