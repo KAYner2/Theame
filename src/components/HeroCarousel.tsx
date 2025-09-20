@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import type { EmblaPluginType } from "embla-carousel";
 import {
   Carousel,
   CarouselContent,
@@ -12,74 +11,79 @@ import Autoplay from "embla-carousel-autoplay";
 
 export function HeroCarousel() {
   const { data: slides, isLoading } = useHeroSlides();
-
-  // Патч типов, чтобы не ругался TS при расхождении версий
-  const autoplay = useRef(
-    Autoplay({ delay: 5000, stopOnInteraction: false }) as unknown as EmblaPluginType
+  const plugin = useRef(
+    Autoplay({ delay: 5000, stopOnInteraction: false })
   );
 
-  // Скелетон — той же высоты, что и слайды
   if (isLoading || !slides || slides.length === 0) {
     return (
-      <section className="relative bg-[#fff8ea]">
-        <div className="h-[calc(100vh-84px)] min-h-[520px] flex items-center justify-center">
-          <div className="w-full max-w-4xl mx-4 h-[420px] bg-muted rounded-3xl animate-pulse" />
-        </div>
+      <section className="h-screen relative overflow-hidden flex items-center justify-center">
+        <div className="w-full max-w-4xl mx-auto px-4 h-[400px] bg-muted rounded-3xl animate-pulse" />
       </section>
     );
   }
 
   return (
-    <section className="relative bg-[#fff8ea]">
-      <Carousel
-        plugins={[autoplay.current]}
-        opts={{ loop: true, align: "start", duration: 25 }}
-        className="h-[calc(100vh-84px)] min-h-[520px]"
-      >
-        <CarouselContent className="h-full">
-          {slides.map((slide) => (
-            <CarouselItem key={slide.id} className="h-full">
-              <div className="relative h-full w-full overflow-hidden">
-                {/* фон-картинка */}
-                <div
-                  className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                  style={{ backgroundImage: `url(${slide.image_url})` }}
-                />
-                {/* лёгкий градиент для читаемости (почти незаметный) */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/10 pointer-events-none" />
+    <section className="py-16 bg-muted/30">
+      <div className="container mx-auto px-4">
+        <Carousel 
+          plugins={[plugin.current]}
+          className="w-full"
+        >
+          <CarouselContent>
+            {slides.map((slide) => (
+              <CarouselItem key={slide.id}>
+                <div className="relative h-[450px] rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br from-slate-900 to-slate-700">
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                    style={{ backgroundImage: `url(${slide.image_url})` }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+                  </div>
+                  
+                  <div className="relative z-10 h-full flex items-center px-8">
+                    <div className="max-w-xl">
+                      {slide.title && (
+                        <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight">
+                          {slide.title}
+                        </h1>
+                      )}
+                      {slide.subtitle && (
+                        <p className="text-lg md:text-xl text-white/90 mb-6">
+                          {slide.subtitle}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center text-white/80">
+                        <div className="w-5 h-5 rounded-full border-2 border-white/60 mr-3 flex items-center justify-center">
+                          <div className="w-2 h-2 bg-white/60 rounded-full animate-pulse" />
+                        </div>
+                        <span className="text-sm uppercase tracking-wider">
+                          Доставляем от 30 минут
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-                {/* контент (если нужен) */}
-                <div className="relative z-10 h-full flex items-center px-6 md:px-10">
-                  <div className="max-w-xl">
-                    {slide.title && (
-                      <h2 className="text-2xl md:text-4xl font-semibold text-[#2f3b2f] drop-shadow-[0_1px_0_rgba(255,255,255,0.6)] mb-2">
-                        {slide.title}
-                      </h2>
-                    )}
-                    {slide.subtitle && (
-                      <p className="text-sm md:text-base text-[#2f3b2f]/80 drop-shadow-[0_1px_0_rgba(255,255,255,0.6)]">
-                        {slide.subtitle}
-                      </p>
-                    )}
+                  {/* Slide indicators */}
+                  <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                    {slides.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`w-2 h-2 rounded-full ${
+                          slides.indexOf(slide) === index
+                            ? 'bg-white'
+                            : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
                   </div>
                 </div>
-              </div>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-
-        {/* стрелки: круглая подложка #fff8ea, стрелка #819570 */}
-        <CarouselPrevious
-          className="left-3 md:left-5 top-1/2 -translate-y-1/2 rounded-full w-10 h-10 md:w-12 md:h-12 
-                     bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
-                     border-0 focus-visible:ring-2 focus-visible:ring-[#819570]/40"
-        />
-        <CarouselNext
-          className="right-3 md:right-5 top-1/2 -translate-y-1/2 rounded-full w-10 h-10 md:w-12 md:h-12 
-                     bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
-                     border-0 focus-visible:ring-2 focus-visible:ring-[#819570]/40"
-        />
-      </Carousel>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
     </section>
   );
 }
