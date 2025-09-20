@@ -1,4 +1,3 @@
-// src/components/FeaturedProducts.tsx
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
@@ -7,14 +6,6 @@ import { ShoppingCart } from 'lucide-react';
 import { useHomepageProducts } from '@/hooks/useProducts';
 import { useCart } from '@/context/CartContext';
 import type { Flower } from '@/types/flower';
-
-function safeCloseOverlays() {
-  // Сбрасываем любые локапы скролла/оверлеи, если что-то залипло
-  document.documentElement.style.removeProperty('overflow');
-  document.body.style.removeProperty('overflow');
-  // Закрываем модалки/порталы, которые слушают Escape
-  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-}
 
 export function FeaturedProducts() {
   const [showAll, setShowAll] = useState(false);
@@ -60,17 +51,11 @@ export function FeaturedProducts() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {displayedProducts.map((product) => {
-            // Переходим ТОЛЬКО по id, без слагов
+            // ВСЕГДА ведём на /product/:id — это стабильно
             const to = `/product/${product.id}`;
 
             return (
-              <Link
-                key={product.id}
-                to={to}
-                reloadDocument        // ← hotfix: полная перезагрузка страницы товара
-                onClick={safeCloseOverlays}
-                aria-label={product.name}
-              >
+              <Link key={product.id} to={to} aria-label={product.name}>
                 <Card className="group overflow-hidden border-0 shadow-soft hover:shadow-elegant transition-all duration-300">
                   <CardContent className="p-0">
                     <div
@@ -92,7 +77,7 @@ export function FeaturedProducts() {
                       variant="default"
                       className="h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
                       onClick={(e) => {
-                        e.preventDefault(); // не уходим со страницы при клике по кнопке
+                        e.preventDefault();
                         handleAddToCart(product);
                       }}
                       aria-label="Добавить в корзину"
