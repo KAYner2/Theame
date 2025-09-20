@@ -47,44 +47,44 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
       )}
 
       {/* ПРАВЫЙ ИНФО-БЛОК — ВНЕ container, чтобы прижать к правому краю секции */}
-      <div className="hidden md:block absolute top-4 right-4 z-20 text-[#819570] text-xs leading-snug tracking-wide text-right">
-        <div>Режим работы: с 09:00 до 21:00</div>
-        <div>Доставка букетов ~45 минут</div>
+<div className="hidden md:block absolute top-5 right-6 z-20 text-[#819570] text-[13px] lg:text-sm leading-snug tracking-wide text-right">
+  <div className="font-medium">Режим работы: с 09:00 до 21:00</div>
+  <div>Доставка букетов ~45 минут</div>
 
-        <div className="mt-2 flex items-center justify-end gap-3">
-          <a
-            href="https://www.instagram.com/theame.flowers"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Instagram"
-            className="inline-flex"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-              <path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5Z" stroke="#819570" strokeWidth="1.5" />
-              <circle cx="12" cy="12" r="3.5" stroke="#819570" strokeWidth="1.5" />
-              <circle cx="17.5" cy="6.5" r="1" fill="#819570" />
-            </svg>
-          </a>
+  <div className="mt-2.5 flex items-center justify-end gap-3.5">
+    <a
+      href="https://www.instagram.com/theame.flowers"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Instagram"
+      className="inline-flex"
+    >
+      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+        <path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5Z" stroke="#819570" strokeWidth="1.5" />
+        <circle cx="12" cy="12" r="3.5" stroke="#819570" strokeWidth="1.5" />
+        <circle cx="17.5" cy="6.5" r="1" fill="#819570" />
+      </svg>
+    </a>
 
-          <a
-            href="https://t.me/the_ame_flowers"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Telegram"
-            className="inline-flex"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-              <path d="M21.7 3.3L2.8 10.6c-.9.35-.88 1.66.04 1.97l4.73 1.62 1.83 4.87c.34.9 1.59.97 2 .11l2.52-5.01 4.8-7.68c.53-.85-.3-1.88-1.52-1.58Z" stroke="#819570" strokeWidth="1.5" strokeLinejoin="round" />
-            </svg>
-          </a>
+    <a
+      href="https://t.me/the_ame_flowers"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Telegram"
+      className="inline-flex"
+    >
+      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+        <path d="M21.7 3.3L2.8 10.6c-.9.35-.88 1.66.04 1.97l4.73 1.62 1.83 4.87c.34.9 1.59.97 2 .11l2.52-5.01 4.8-7.68c.53-.85-.3-1.88-1.52-1.58Z" stroke="#819570" strokeWidth="1.5" strokeLinejoin="round" />
+      </svg>
+    </a>
 
-          <Link to="/favorites" aria-label="Избранное" className="inline-flex">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-              <path d="M12 21s-7-4.35-9.5-8.21C.83 10.03 2.2 6.5 5.6 6.5c2.05 0 3.4 1.22 4 2.22.6-1 1.95-2.22 4-2.22 3.4 0 4.77 3.53 3.1 6.29C19 16.65 12 21 12 21Z" stroke="#819570" strokeWidth="1.5" strokeLinejoin="round" />
-            </svg>
-          </Link>
-        </div>
-      </div>
+    <Link to="/favorites" aria-label="Избранное" className="inline-flex">
+      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+        <path d="M12 21s-7-4.35-9.5-8.21C.83 10.03 2.2 6.5 5.6 6.5c2.05 0 3.4 1.22 4 2.22.6-1 1.95-2.22 4-2.22 3.4 0 4.77 3.53 3.1 6.29C19 16.65 12 21 12 21Z" stroke="#819570" strokeWidth="1.5" strokeLinejoin="round" />
+      </svg>
+    </Link>
+  </div>
+</div>
 
       {/* КОНТЕНТ */}
       <div className="relative z-10 container mx-auto px-4 md:px-10 lg:px-16 xl:px-24">
@@ -137,7 +137,7 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
           </nav>
 
           {/* Мобильная версия инфо-блока */}
-          <div className="md:hidden mt-2 text-[#819570] text-xs leading-snug tracking-wide text-center">
+          <div className="md:hidden mt-2 text-[#819570] text-sm leading-snug tracking-wide text-center">
             <div>Режим работы: с 09:00 до 21:00</div>
             <div>Доставка букетов ~45 минут</div>
             <div className="mt-2 flex items-center justify-center gap-4">
@@ -175,12 +175,17 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
         </div>
       </div>
 
-{/* Выемка/полукруг снизу — ширина как у героя, без container */}
+{/* Выемка/полукруг снизу — чуть шире, чтобы «дотянуться» до краёв */}
 <div className="pointer-events-none absolute inset-x-0 bottom-[-1px] z-10">
-  {/* Подгони отступы под те, что у белого блока-героя (обычно mx-4 md:mx-10 lg:mx-16 xl:mx-24) */}
+  {/* те же горизонтальные отступы, что у героя */}
   <div className="mx-4 md:mx-10 lg:mx-16 xl:mx-24">
-    {/* Сделал выемку менее глубокой и радиус под блок ниже */}
-    <div className="h-[18px] md:h-[20px] bg-white rounded-t-[24px]" />
+    {/* делаем элемент шире родителя на 8px и сдвигаем влево на 4px,
+        чтобы получить +4px с каждой стороны */}
+    <div className="
+      h-[16px] md:h-[18px]
+      bg-white rounded-t-[24px]
+      w-[calc(100%+8px)] -ml-[4px]
+    " />
   </div>
 </div>
     </div>
