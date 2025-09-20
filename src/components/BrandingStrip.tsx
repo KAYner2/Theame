@@ -11,34 +11,30 @@ const normalize = (name: string) => {
 };
 
 type Props = {
-  /** Опциональные изображения цветов по углам (PNG/SVG с прозрачностью) */
+  /** PNG/SVG без фона */
   flowerLeftSrc?: string;
   flowerRightSrc?: string;
 };
 
-export function BrandingStrip({
-  flowerLeftSrc,
-  flowerRightSrc,
-}: Props) {
+export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
   const { data: categories = [], isLoading, error } = useCategories();
   const { search } = useLocation();
   const params = new URLSearchParams(search);
   const active = params.get("category");
 
-  // убираем дубли по имени
   const unique = Array.from(
     new Map(categories.map((c) => [normalize(c.name), c])).values()
   );
 
   return (
-    <div className="relative bg-[#ffe9c3]">
-      {/* Декор-цветы по углам (не мешают кликам) */}
+    <div className="relative overflow-hidden bg-[#ffe9c3]">
+      {/* ДЕКОР-ЦВЕТЫ — за контентом */}
       {flowerLeftSrc && (
         <img
           src={flowerLeftSrc}
           alt=""
           aria-hidden
-          className="pointer-events-none select-none hidden md:block absolute left-2 top-0 h-24 lg:h-32"
+          className="pointer-events-none select-none hidden md:block absolute left-0 md:left-3 top-2 md:top-1 h-24 md:h-32 lg:h-40 z-0"
         />
       )}
       {flowerRightSrc && (
@@ -46,56 +42,61 @@ export function BrandingStrip({
           src={flowerRightSrc}
           alt=""
           aria-hidden
-          className="pointer-events-none select-none hidden md:block absolute right-2 top-0 h-24 lg:h-32"
+          className="pointer-events-none select-none hidden md:block absolute right-0 md:right-3 top-2 md:top-1 h-24 md:h-32 lg:h-40 z-0"
         />
       )}
 
-      <div className="container mx-auto px-4">
-        {/* ЛОГО-ТЕКСТ */}
-        <div className="py-6 text-center">
-          <Link to="/" className="block" style={{ fontFamily: "Forum, serif" }}>
-            <span className="text-[#819570] tracking-wide text-5xl md:text-6xl">
-              The Áme
-            </span>
-          </Link>
-        </div>
-
-        {/* КАТЕГОРИИ — чипсы */}
-        <nav className="pb-5">
-          <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-            {isLoading &&
-              Array.from({ length: 8 }).map((_, i) => (
-                <span
-                  key={i}
-                  className="h-9 w-28 rounded-full bg-[#fff4e0] animate-pulse"
-                  aria-hidden
-                />
-              ))}
-
-            {!isLoading && !error && unique.map((c) => {
-              const name = normalize(c.name);
-              const slug = slugify(name);
-
-              const base =
-                "rounded-full px-5 py-2 text-sm transition-colors border";
-              const inactive =
-                "text-[#819570] bg-[#fff4e0] hover:bg-white border-transparent";
-              const activeCls =
-                "text-[#819570] bg-white border-[#819570]";
-
-              return (
-                <Link
-                  key={c.id}
-                  to={`/catalog?category=${slug}`}
-                  className={`${base} ${active === slug ? activeCls : inactive}`}
-                  aria-label={`Категория ${name}`}
-                >
-                  {name}
-                </Link>
-              );
-            })}
+      {/* КОНТЕНТ — потолще плашка + отступы, чтобы цветы не наезжали */}
+      <div className="relative z-10 container mx-auto px-4 md:px-10 lg:px-16 xl:px-24">
+        {/* делаем заметно толще, чтобы напоминало реф и влезли цветы */}
+        <div className="pt-8 pb-6 md:pt-12 md:pb-8">
+          {/* ЛОГО-ТЕКСТ */}
+          <div className="text-center" style={{ fontFamily: "Forum, serif" }}>
+            <Link to="/" className="block">
+              <span className="text-[#819570] tracking-wide text-5xl md:text-7xl">
+                The Áme
+              </span>
+            </Link>
           </div>
-        </nav>
+
+          {/* КАТЕГОРИИ — тонкие овальные чипсы */}
+          <nav className="mt-5 md:mt-6 pb-6">
+            <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3.5">
+              {isLoading &&
+                Array.from({ length: 10 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="h-8 w-24 rounded-full bg-[#fff4e0] animate-pulse"
+                    aria-hidden
+                  />
+                ))}
+
+              {!isLoading && !error &&
+                unique.map((c) => {
+                  const name = normalize(c.name);
+                  const slug = slugify(name);
+
+                  const base =
+                    "rounded-full border transition-colors px-4 sm:px-5 py-1.5 text-xs sm:text-sm";
+                  const inactive =
+                    "text-[#819570] bg-[#fff4e0] hover:bg-white border-transparent";
+                  const activeCls =
+                    "text-[#819570] bg-white border-[#819570]";
+
+                  return (
+                    <Link
+                      key={c.id}
+                      to={`/catalog?category=${slug}`}
+                      className={`${base} ${active === slug ? activeCls : inactive}`}
+                      aria-label={`Категория ${name}`}
+                    >
+                      {name}
+                    </Link>
+                  );
+                })}
+            </div>
+          </nav>
+        </div>
       </div>
     </div>
   );
