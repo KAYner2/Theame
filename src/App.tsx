@@ -39,45 +39,7 @@ const App = () => (
             <YandexMetrikaListener />
             <Header />
 
-            {/* === Боковые декоративные «хвостики» === */}
-            <div
-              aria-hidden
-              className="
-                pointer-events-none fixed top-0 left-0
-                w-4 h-10 bg-[#ffe9c3]
-                rounded-br-full
-                z-40
-              "
-            />
-            <div
-              aria-hidden
-              className="
-                pointer-events-none fixed bottom-0 left-0
-                w-4 h-10 bg-[#ffe9c3]
-                rounded-tr-full
-                z-40
-              "
-            />
-            <div
-              aria-hidden
-              className="
-                pointer-events-none fixed top-0 right-0
-                w-4 h-10 bg-[#ffe9c3]
-                rounded-bl-full
-                z-40
-              "
-            />
-            <div
-              aria-hidden
-              className="
-                pointer-events-none fixed bottom-0 right-0
-                w-4 h-10 bg-[#ffe9c3]
-                rounded-tl-full
-                z-40
-              "
-            />
-            {/* === /хвостики === */}
-
+            {/* Никаких фиксированных «хвостиков» здесь быть не должно */}
             <main className="min-h-screen">
               <Routes>
                 <Route path="/" element={<Home />} />
