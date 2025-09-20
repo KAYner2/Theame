@@ -49,7 +49,7 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
       {/* КОНТЕНТ — потолще плашка + отступы, чтобы цветы не наезжали */}
       <div className="relative z-10 container mx-auto px-4 md:px-10 lg:px-16 xl:px-24">
         {/* ПРАВЫЙ ИНФО-БЛОК — часть этой секции */}
-        <div className="hidden md:block absolute top-4 right-4 text-[#819570] text-xs leading-snug tracking-wide text-right">
+        <div className="hidden md:block fixed top-[calc(84px+16px)] right-6 text-[#819570] text-xs leading-snug tracking-wide text-right">
           <div>Режим работы: с 09:00 до 21:00</div>
           <div>Доставка букетов ~45 минут</div>
 
