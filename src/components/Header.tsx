@@ -83,39 +83,19 @@ export const Header = () => {
 
 return (
   <header className="relative z-50">
-    {/* 1) Бегущая строка — липкая у самого верха */}
-    <div className="sticky top-0 z-50">
+    {/* 1) Бегущая строка — всегда сверху */}
+    <div className="sticky top-0 z-[60]">
       <Marquee
         text="осень за окном"
         href="https://theame.ru/catalog?category=sezon-podsolnuhov"
       />
     </div>
 
-    {/* 2) Блок под дорогой (лого + категории) — тоже липкий, сразу под дорогой */}
-    {/* top-10 = 40px = высота "дороги" (если изменишь высоту, поменяй и это) */}
-    <div className="sticky top-10 z-40">
-      <BrandingStrip />
-    </div>
-
-    {/* 3) Твой текущий хедер (пока остаётся обычным и скроллится) */}
-    <div className="bg-header-bg border-b border-border">
+    {/* 2) Твоя плашка навигации БЕЗ логотипа — тоже всегда на виду */}
+    {/* top-10 = 40px — высота Марки. Если в Marquee h-10 не стоит, добавь (или поменяй это значение). */}
+    <div className="sticky top-10 z-[55] bg-[#ffe9c3]">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Логотип */}
-          <Link to="/" className="flex items-center gap-2">
-            <img
-              src={logoUrl}
-              alt="The Áme"
-              className="h-8 w-8 md:h-9 md:w-9 object-contain"
-            />
-            <div className="flex flex-col items-center leading-tight">
-              <span className="text-2xl font-bold text-primary">The Áme</span>
-              <span className="text-sm font-light tracking-wide text-primary">
-                ЦВЕТЫ х ЧУВСТВА
-              </span>
-            </div>
-          </Link>
-
+        <div className="flex items-center justify-between h-14">
           {/* Навигация для десктопа */}
           <nav className="hidden md:flex items-center space-x-1">
             <NavLink to="/">Главная</NavLink>
@@ -227,7 +207,6 @@ return (
               </SheetTrigger>
 
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                {/* свайп для закрытия (вправо) */}
                 <div
                   className="h-full touch-pan-y"
                   onTouchStart={onTouchStart}
@@ -244,27 +223,13 @@ return (
                   </SheetHeader>
 
                   <nav className="flex flex-col space-y-3 mt-6">
-                    <NavLink
-                      to="/"
-                      className="w-full text-left h-12 flex items-center"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
+                    <NavLink to="/" className="w-full text-left h-12 flex items-center" onClick={() => setIsMenuOpen(false)}>
                       Главная
                     </NavLink>
-
-                    <NavLink
-                      to="/catalog"
-                      className="w-full text-left h-12 flex items-center"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
+                    <NavLink to="/catalog" className="w-full text-left h-12 flex items-center" onClick={() => setIsMenuOpen(false)}>
                       Каталог
                     </NavLink>
-
-                    <NavLink
-                      to="/favorites"
-                      className="w-full text-left h-12 flex items-center"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
+                    <NavLink to="/favorites" className="w-full text-left h-12 flex items-center" onClick={() => setIsMenuOpen(false)}>
                       <span className="flex items-center gap-2">
                         Избранное
                         {favoritesState.itemCount > 0 && (
@@ -274,20 +239,10 @@ return (
                         )}
                       </span>
                     </NavLink>
-
-                    <NavLink
-                      to="/about"
-                      className="w-full text-left h-12 flex items-center"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
+                    <NavLink to="/about" className="w-full text-left h-12 flex items-center" onClick={() => setIsMenuOpen(false)}>
                       О нас
                     </NavLink>
-
-                    <NavLink
-                      to="/contact"
-                      className="w-full text-left h-12 flex items-center"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
+                    <NavLink to="/contact" className="w-full text-left h-12 flex items-center" onClick={() => setIsMenuOpen(false)}>
                       Контакты
                     </NavLink>
                   </nav>
@@ -298,6 +253,9 @@ return (
         </div>
       </div>
     </div>
+
+    {/* 3) Большая плашка (лого The Áme + чипсы категорий) — обычная секция ниже */}
+    <BrandingStrip />
   </header>
 );
 };
