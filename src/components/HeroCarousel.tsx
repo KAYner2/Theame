@@ -3,8 +3,6 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { useHeroSlides } from "@/hooks/useHeroSlides";
@@ -27,7 +25,6 @@ export function HeroCarousel() {
     if (!api) return;
     stop();
     timerRef.current = window.setInterval(() => {
-      // loop: true обеспечит мягкий переход с последнего на первый
       api.scrollNext();
     }, AUTOPLAY_MS);
   };
@@ -50,6 +47,18 @@ export function HeroCarousel() {
     );
   }
 
+  const handlePrev = () => {
+    stop();
+    api?.scrollPrev();
+    start();
+  };
+
+  const handleNext = () => {
+    stop();
+    api?.scrollNext();
+    start();
+  };
+
   return (
     <section className={sectionClass}>
       <div
@@ -62,9 +71,9 @@ export function HeroCarousel() {
         <Carousel
           setApi={setApi}
           opts={{
-            loop: true,        // бесконечно
-            align: "start",    // самый предсказуемый вариант для 1-слайд вью
-            duration: 20,      // плавность
+            loop: true,
+            align: "start",
+            duration: 20,
           }}
           className="w-full"
         >
@@ -86,30 +95,30 @@ export function HeroCarousel() {
               </CarouselItem>
             ))}
           </CarouselContent>
-
-          {/* Стрелки: сбрасываем и перезапускаем таймер после ручного шага */}
-          <CarouselPrevious
-            onClick={() => {
-              stop();
-              // сам скролл сделает внутренний обработчик кнопки
-              start();
-            }}
-            className="left-2 md:left-5 top-1/2 -translate-y-1/2 rounded-full w-10 h-10 md:w-12 md:h-12 
-                       bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
-                       border-0 focus-visible:ring-2 focus-visible:ring-[#819570]/40"
-            aria-label="Предыдущий слайд"
-          />
-          <CarouselNext
-            onClick={() => {
-              stop();
-              start();
-            }}
-            className="right-2 md:right-5 top-1/2 -translate-y-1/2 rounded-full w-10 h-10 md:w-12 md:h-12 
-                       bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
-                       border-0 focus-visible:ring-2 focus-visible:ring-[#819570]/40"
-            aria-label="Следующий слайд"
-          />
         </Carousel>
+
+        {/* Наши кнопки — вызывают Embla API напрямую */}
+        <button
+          type="button"
+          onClick={handlePrev}
+          aria-label="Предыдущий слайд"
+          className="absolute left-2 md:left-5 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10 md:w-12 md:h-12 
+                     bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
+                     border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#819570]/40"
+        >
+          ‹
+        </button>
+
+        <button
+          type="button"
+          onClick={handleNext}
+          aria-label="Следующий слайд"
+          className="absolute right-2 md:right-5 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10 md:w-12 md:h-12 
+                     bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
+                     border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#819570]/40"
+        >
+          ›
+        </button>
       </div>
     </section>
   );
