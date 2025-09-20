@@ -66,6 +66,7 @@ export const Header = () => {
       </div>
 
       {/* 2) Плашка навигации — фикс под дорогой, на всю ширину */}
+      {/* top-9 = 36px (высота дороги). Убедись, что в Marquee стоит h-9 */}
       <div className="fixed inset-x-0 top-9 z-[55] bg-[#ffe9c3]">
         <div className="w-full h-12 flex items-center">
           {/* Слева: кнопка МЕНЮ */}
@@ -169,10 +170,10 @@ export const Header = () => {
             </Sheet>
           </div>
 
-          {/* Справа: CTA + корзина + инфо-блок + иконки */}
+          {/* Справа: CTA + корзина (верх), ниже инфо и иконки */}
           <div className="ml-auto pr-4">
             <div className="flex flex-col items-end gap-1.5 text-[#819570]">
-              {/* верхняя строка: CTA + корзина */}
+              {/* ВЕРХ: «Заказать букет» + корзина */}
               <div className="flex items-center gap-4">
                 <a
                   href="https://wa.me/message/XQDDWGSEL35LP1"
@@ -199,13 +200,13 @@ export const Header = () => {
                 </Button>
               </div>
 
-              {/* инфо-блок */}
+              {/* ИНФО-БЛОК: 2 строки */}
               <div className="text-xs leading-snug tracking-wide text-right">
                 <div>Режим работы: с 09:00 до 21:00</div>
                 <div>Доставка букетов ~45 минут</div>
               </div>
 
-              {/* иконки под инфо-блоком */}
+              {/* ИКОНКИ: Instagram, Telegram, Избранное */}
               <div className="flex items-center gap-3 pt-0.5">
                 <a
                   href="https://www.instagram.com/theame.flowers"
@@ -230,7 +231,7 @@ export const Header = () => {
                   className="inline-flex"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                    <path d="M21.7 3.3L2.8 10.6c-.9.35-.88 1.66.04 1.97l4.73 1.62 1.83 4.87c.34.9 1.59.97 2.0.11l2.52-5.01 4.8-7.68c.53-.85-.3-1.88-1.52-1.58Z" stroke="#819570" strokeWidth="1.5" strokeLinejoin="round" />
+                    <path d="M21.7 3.3L2.8 10.6c-.9.35-.88 1.66.04 1.97l4.73 1.62 1.83 4.87c.34.9 1.59.97 2 .11l2.52-5.01 4.8-7.68c.53-.85-.3-1.88-1.52-1.58Z" stroke="#819570" strokeWidth="1.5" strokeLinejoin="round" />
                   </svg>
                 </a>
 
