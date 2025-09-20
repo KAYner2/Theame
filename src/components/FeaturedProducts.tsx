@@ -1,4 +1,3 @@
-// src/components/FeaturedProducts.tsx
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
@@ -7,6 +6,7 @@ import { ShoppingCart } from 'lucide-react';
 import { useHomepageProducts } from '@/hooks/useProducts';
 import { useCart } from '@/context/CartContext';
 import type { Flower } from '@/types/flower';
+import { slugify } from '@/utils/slugify';
 
 export function FeaturedProducts() {
   const [showAll, setShowAll] = useState(false);
@@ -45,12 +45,21 @@ export function FeaturedProducts() {
     addToCart(product);
   };
 
-  const buildUrl = (p: Flower) => {
-    // красивый URL + надёжность через id в конце
-    if (p.categorySlug && p.slug) {
-      return `/catalog/${p.categorySlug}/${p.slug}-${p.id}`;
+  // надёжный генератор «красивого» URL
+  const buildUrl = (p: any) => {
+    const catSlug =
+      p.categorySlug ||
+      p.category_slug ||
+      p.category?.slug ||
+      (p.category?.name ? slugify(p.category.name) : '');
+
+    const prodSlug = p.slug || (p.name ? slugify(p.name) : '');
+
+    // 1) красивый URL без id — ProductPage умеет грузить по slug
+    if (catSlug && prodSlug) {
+      return `/catalog/${catSlug}/${prodSlug}`;
     }
-    // запасной вариант
+    // 2) если чего-то нет, fallback на стабильный id
     return `/product/${p.id}`;
   };
 
