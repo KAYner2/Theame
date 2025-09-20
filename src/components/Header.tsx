@@ -56,9 +56,10 @@ export const Header = () => {
       {/* 1) Дорога */}
       <div className="fixed inset-x-0 top-0 z-[60]">
         <Marquee
-          text="осенняя коллекция"
-          href="https://theame.ru/catalog?category=sezon-podsolnuhov"
-        />
+  text="осенняя коллекция"
+  href="https://theame.ru/catalog?category=sezon-podsolnuhov"
+  speed={18} // чем меньше число, тем быстрее (секунд за один цикл)
+/>
       </div>
 
       {/* 2) Верхняя плашка */}
@@ -104,9 +105,6 @@ export const Header = () => {
                           <Link to="/" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">Главная</Link>
                         </li>
                         <li>
-                          <Link to="/catalog" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">Каталог</Link>
-                        </li>
-                        <li>
                           <Link to="/about" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">О нас</Link>
                         </li>
                         <li>
@@ -121,7 +119,7 @@ export const Header = () => {
                       </div>
                       <ul className="space-y-2">
                         <li>
-                          <Link to="/catalog" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">Каталог (все)</Link>
+                          <Link to="/catalog" onClick={() => setIsMenuOpen(false)} className="hover:opacity-80">Каталог</Link>
                         </li>
                         {uniqueCats.map((c) => {
                           const name = normalize(c.name);
