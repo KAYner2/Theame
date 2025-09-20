@@ -15,10 +15,10 @@ export function Marquee({
   const content = [...row, ...row];
 
 return (
-  <div className="w-full overflow-hidden bg-[#819570] text-white h-10 flex items-center">
+  <div className="w-full overflow-hidden bg-[#819570] text-white h-9 flex items-center">
     <div
       className="flex items-center whitespace-nowrap animate-marquee"
-      style={{ ["--marquee-duration" as any]: `${speed}s` }}
+      style={{ ["--marquee-duration" as any]: `${speed}s` }} // если используешь var
     >
         {content.map((t, i) => (
           <div key={i} className="flex items-center">
