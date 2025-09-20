@@ -182,7 +182,10 @@ export const Header = () => {
       <div className="h-[84px]" />
 
       {/* 4) Бренд-плашка */}
-      <BrandingStrip />
+      <BrandingStrip
+  flowerLeftSrc="/branding/flower-left.png"
+  flowerRightSrc="/branding/flower-right.png"
+/>
     </header>
   );
 };
