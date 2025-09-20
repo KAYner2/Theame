@@ -56,7 +56,7 @@ export const Header = () => {
       {/* 1) Дорога */}
       <div className="fixed inset-x-0 top-0 z-[60]">
         <Marquee
-          text="осень за окном"
+          text="осенняя коллекция"
           href="https://theame.ru/catalog?category=sezon-podsolnuhov"
         />
       </div>
