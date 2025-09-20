@@ -196,13 +196,13 @@ export const Header = () => {
           <div className="ml-auto flex items-center gap-3 md:gap-4 pr-2">
             {/* Текстовая кнопка: Заказать букет */}
             <a
-              href="https://wa.me/message/XQDDWGSEL35LP1"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm font-medium text-[#819570] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#819570] rounded"
-            >
-              Заказать букет
-            </a>
+  href="https://wa.me/message/XQDDWGSEL35LP1"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="uppercase text-base font-medium text-[#819570] hover:underline tracking-wide mr-4"
+>
+  Заказать букет
+</a>
 
             {/* Корзина */}
             <Button
