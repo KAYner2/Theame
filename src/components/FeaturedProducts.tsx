@@ -45,17 +45,25 @@ export function FeaturedProducts() {
     addToCart(product);
   };
 
+// Красивые ссылки БЕЗ id.
+// Если нормальной категории нет или она равна "catalog", используем короткий путь /catalog/:slug
 const buildUrl = (p: any) => {
   const cat =
     p.categorySlug ||
     p.category_slug ||
     p.category?.slug ||
     (p.category?.name ? slugify(p.category.name) : "") ||
-    "catalog";
+    "";
 
-  const prod = (p.slug || slugify(p.name || "product")) + "-" + p.id;
+  const prod = p.slug || slugify(p.name || "product");
 
-  return `/catalog/${cat}/${prod}`;
+  // Есть валидная категория (и не "catalog") → /catalog/:category/:slug
+  if (cat && cat.toLowerCase() !== "catalog") {
+    return `/catalog/${cat}/${prod}`;
+  }
+
+  // Иначе короткий красивый путь → /catalog/:slug
+  return `/catalog/${prod}`;
 };
 
   return (
