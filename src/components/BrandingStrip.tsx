@@ -175,11 +175,12 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
         </div>
       </div>
 
-      {/* Выемка/полукруг снизу */}
-      {/* Делает аккуратный «укус» по нижнему краю, совпадая с отступами контейнера */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
-  <div className="container mx-auto px-4 md:px-10 lg:px-16 xl:px-24">
-    <div className="h-8 md:h-10 bg-white rounded-t-[36px]" />
+{/* Выемка/полукруг снизу — ширина как у героя, без container */}
+<div className="pointer-events-none absolute inset-x-0 bottom-[-1px] z-10">
+  {/* Подгони отступы под те, что у белого блока-героя (обычно mx-4 md:mx-10 lg:mx-16 xl:mx-24) */}
+  <div className="mx-4 md:mx-10 lg:mx-16 xl:mx-24">
+    {/* Сделал выемку менее глубокой и радиус под блок ниже */}
+    <div className="h-[18px] md:h-[20px] bg-white rounded-t-[24px]" />
   </div>
 </div>
     </div>
