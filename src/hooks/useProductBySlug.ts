@@ -1,34 +1,30 @@
-// src/hooks/useProductBySlug.ts
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Product } from '@/types/database';
 
 export const useProductBySlug = (categorySlug: string | undefined, productSlug: string) => {
+  const cat = categorySlug ?? '';          // защита от undefined
+  const slug = productSlug ?? '';
+
   return useQuery({
-    queryKey: ['product-by-slug', categorySlug ?? null, productSlug],
-    enabled: Boolean(productSlug),
+    queryKey: ['product-by-slug', cat, slug],
+    enabled: Boolean(slug),                 // не дергаем запрос без slug
     queryFn: async (): Promise<Product | null> => {
       const { data, error } = await (supabase as any)
         .from('products_with_categories')
         .select('*')
-        .eq('slug', productSlug)
+        .eq('slug', slug)
         .eq('is_active', true)
         .maybeSingle();
 
-      console.log('[useProductBySlug] slug=', productSlug, 'categorySlug=', categorySlug, 'data=', data, 'error=', error);
+      console.log('[useProductBySlug] slug=', slug, 'categorySlug=', cat, 'data=', data, 'error=', error);
 
-      if (error) {
-        console.error('[useProductBySlug] Supabase error:', error);
-        throw error;
-      }
-      if (!data) {
-        console.warn('[useProductBySlug] No product found for slug', productSlug);
-        return null;
-      }
+      if (error) throw error;
+      if (!data) return null;
 
       const catSlug = data.category?.slug || null;
-      if (categorySlug && catSlug && catSlug !== categorySlug) {
-        console.warn('[useProductBySlug] Category mismatch: expected', categorySlug, 'got', catSlug);
+      if (cat && catSlug && catSlug !== cat) {
+        console.warn('[useProductBySlug] Category mismatch: expected', cat, 'got', catSlug);
         return null;
       }
 

@@ -1,19 +1,28 @@
 import { useProductRecommendations } from '@/hooks/useRecommendations';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '@/context/CartContext';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { slugify } from '@/utils/slugify';
 
 interface ProductRecommendationsProps {
   productId: string;
 }
 
+const asArray = <T,>(v: T[] | null | undefined): T[] => (Array.isArray(v) ? v : []);
+
 export function ProductRecommendations({ productId }: ProductRecommendationsProps) {
-  const { data: recommendations, isLoading } = useProductRecommendations(productId);
+  const { data, isLoading } = useProductRecommendations(productId || '');
+  const recommendations = asArray<any>(data);
   const { addToCart } = useCart();
 
   if (isLoading) {
@@ -37,7 +46,7 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
     );
   }
 
-  if (!recommendations || recommendations.length === 0) {
+  if (recommendations.length === 0) {
     return (
       <section className="py-8">
         <div className="container mx-auto px-4">
@@ -65,15 +74,12 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
       occasion: [],
       cartQuantity: 1,
     };
-
     addToCart(cartItem);
-    toast.success(`${product.name} добавлен в корзину`);
+    toast({ title: 'Добавлено в корзину', description: `${product.name} добавлен в корзину` });
   };
 
-  // helper для красивой ссылки
   const buildUrl = (p: any) => {
-    const catSlug =
-      p?.category?.slug || slugify(p?.category?.name || '') || 'catalog';
+    const catSlug = p?.category?.slug || slugify(p?.category?.name || '') || 'catalog';
     const prodSlug = p?.slug || slugify(p?.name || '');
     return `/catalog/${catSlug}/${prodSlug}-${p.id}`;
   };
@@ -85,18 +91,12 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
       </h2>
 
       <div className="relative">
-        <Carousel
-          opts={{ align: 'start', loop: false }}
-          className="w-full"
-        >
+        <Carousel opts={{ align: 'start', loop: false }} className="w-full">
           <CarouselContent className="-ml-2 md:-ml-4">
             {recommendations.map((product: any) => {
               const url = buildUrl(product);
               return (
-                <CarouselItem
-                  key={product.id}
-                  className="pl-2 md:pl-4 basis-1/2 md:basis-1/5"
-                >
+                <CarouselItem key={product.id} className="pl-2 md:pl-4 basis-1/2 md:basis-1/5">
                   <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300">
                     <Link to={url} className="block">
                       <div className="aspect-square overflow-hidden">
@@ -137,9 +137,7 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
                       </div>
 
                       {product.category && (
-                        <div className="text-xs text-muted-foreground">
-                          {product.category.name}
-                        </div>
+                        <div className="text-xs text-muted-foreground">{product.category.name}</div>
                       )}
                     </CardContent>
                   </Card>

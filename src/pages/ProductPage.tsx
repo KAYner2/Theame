@@ -1,4 +1,3 @@
-// src/pages/ProductPage.tsx
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 
@@ -17,11 +16,10 @@ import { toast } from '@/hooks/use-toast';
 import { ProductRecommendations } from '@/components/ProductRecommendations';
 import { parseCompositionRaw, parseFromArray } from '@/utils/parseComposition';
 
-// хелпер, чтобы ничего не падало при undefined/null
 const asArray = <T,>(v: T[] | T | null | undefined): T[] =>
   Array.isArray(v) ? v : v ? [v] : [];
 
-// UUID (для распознавания "...-<uuid>" в productSlug)
+// UUID в конце слага
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function ProductPage() {
@@ -39,7 +37,7 @@ export default function ProductPage() {
     return m ? m[0] : '';
   }, [productSlug]);
 
-  // --- Режимы загрузки ---
+  // режимы загрузки
   const shouldLoadById = Boolean(idFromSlug || idParam);
   const realId = idFromSlug || idParam || '';
 
@@ -50,15 +48,15 @@ export default function ProductPage() {
   const effectiveCategorySlug =
     categorySlug && categorySlug.toLowerCase() !== 'catalog' ? categorySlug : undefined;
 
-  // вызываем useProductBySlug только если грузим по slug
+  // ВАЖНО: передаём в хук пустую строку вместо undefined
   const { data: productBySlug, isLoading: loadingBySlug, error: errorBySlug } =
     !shouldLoadById && productSlug
-      ? useProductBySlug(effectiveCategorySlug, productSlug)
+      ? useProductBySlug(effectiveCategorySlug ?? '', productSlug)
       : { data: null, isLoading: false, error: null } as const;
 
   const isLoading = loadingById || loadingBySlug;
   const error = errorById || errorBySlug;
-  const product = productBySlug ?? productById; // приоритет slug
+  const product = productBySlug ?? productById;
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -70,13 +68,11 @@ export default function ProductPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [idParam, categorySlug, productSlug]);
 
-  // Канонический URL (защита от пустых значений)
+  // Канонический URL
   useEffect(() => {
     if (!isLoading && product) {
       let catSlugFinal = product?.category?.slug || slugify(product?.category?.name || '');
-      if (!catSlugFinal || catSlugFinal.toLowerCase() === 'catalog') {
-        catSlugFinal = '';
-      }
+      if (!catSlugFinal || catSlugFinal.toLowerCase() === 'catalog') catSlugFinal = '';
       const prodSlugFinal = product?.slug || slugify(product?.name || '');
 
       const canonical = catSlugFinal
@@ -118,8 +114,7 @@ export default function ProductPage() {
   const baseImg = product?.image_url || '/placeholder.svg';
   const gallery = asArray<string>(product?.gallery_urls);
   const images = [baseImg, ...gallery].filter(Boolean) as string[];
-  const availableImages = images.length ? images : [baseImg];
-  const imagesLen = availableImages.length;
+  const imagesLen = images.length || 1;
 
   const handleAddToCart = () => {
     const cartItem = {
@@ -166,7 +161,7 @@ export default function ProductPage() {
   const nextImage = () => setSelectedImageIndex((prev) => (prev + 1) % imagesLen);
   const prevImage = () => setSelectedImageIndex((prev) => (prev - 1 + imagesLen) % imagesLen);
 
-  // Состав (безопасно) — если composition undefined, в утилу даём []
+  // Состав (безопасно) — если composition undefined, даём []
   const compositionItems =
     product?.composition_raw
       ? parseCompositionRaw(product.composition_raw)
@@ -203,7 +198,7 @@ export default function ProductPage() {
           {/* Галерея */}
           <div className="space-y-4">
             <Card className="relative overflow-hidden aspect-square">
-              <img src={availableImages[selectedImageIndex]} alt={product?.name || ''} className="w-full h-full object-cover" />
+              <img src={images[selectedImageIndex] || baseImg} alt={product?.name || ''} className="w-full h-full object-cover" />
               {imagesLen > 1 && (
                 <>
                   <Button variant="outline" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white" onClick={prevImage}>
@@ -218,7 +213,7 @@ export default function ProductPage() {
 
             {imagesLen > 1 && (
               <div className="grid grid-cols-5 gap-2">
-                {availableImages.map((image, index) => (
+                {images.map((image, index) => (
                   <Card
                     key={image + index}
                     className={`cursor-pointer overflow-hidden aspect-square transition-all ${selectedImageIndex === index ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'}`}
@@ -355,9 +350,9 @@ export default function ProductPage() {
           </div>
         </div>
 
-        {/* Рекомендации */}
+        {/* Рекомендации — только если есть корректный id */}
         <div className="container mx-auto px-4">
-          <ProductRecommendations productId={product.id} />
+          {product?.id ? <ProductRecommendations productId={String(product.id)} /> : null}
         </div>
       </div>
     </div>
