@@ -81,17 +81,21 @@ export function HeroCarousel() {
             {slides.map((slide, idx) => (
               <CarouselItem key={slide.id} className="basis-full">
                 <div className="w-full flex items-center justify-center">
-                  <div className="relative w-[96%] md:w-[94%] lg:w-[92%] h-[46vh] md:h-[54vh] lg:h-[60vh] max-h-[820px] rounded-3xl overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.18)] will-change-transform">
-                    <img
-                      src={slide.image_url}
-                      alt={slide.title ?? "Слайд"}
-                      className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
-                      loading={idx === 0 ? "eager" : "lazy"}
-                      decoding="async"
-                      draggable={false}
-                    />
-                  </div>
-                </div>
+  {/* Внешний слой — только тень и форма */}
+  <div className="relative w-[96%] md:w-[94%] lg:w-[92%] h-[46vh] md:h-[54vh] lg:h-[60vh] max-h-[820px] rounded-3xl shadow-[0_12px_32px_rgba(0,0,0,0.14)]">
+    {/* Внутренний слой — клип с радиусом */}
+    <div className="absolute inset-0 rounded-3xl overflow-hidden">
+      <img
+        src={slide.image_url}
+        alt={slide.title ?? "Слайд"}
+        className="w-full h-full object-cover select-none pointer-events-none"
+        loading={idx === 0 ? "eager" : "lazy"}
+        decoding="async"
+        draggable={false}
+      />
+    </div>
+  </div>
+</div>
               </CarouselItem>
             ))}
           </CarouselContent>
