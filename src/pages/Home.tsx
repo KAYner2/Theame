@@ -11,7 +11,7 @@ import {
   Gift
 } from 'lucide-react';
 import { HeroCarousel } from '../components/HeroCarousel';
-// import { CategorySection } from '../components/CategorySection'; // ← удалено
+// import { CategorySection } from '../components/CategorySection';
 import { FeaturedProducts } from '../components/FeaturedProducts';
 import { ReviewsSection } from '../components/ReviewsSection';
 import { WelcomeBonusModal } from '../components/WelcomeBonusModal';
@@ -22,45 +22,29 @@ export default function Home() {
   }, []);
 
   const features = [
-    {
-      icon: <Flower className="w-8 h-8 text-primary" />,
-      title: "Свежие цветы",
-      description: "Только самые свежие и качественные цветы от лучших поставщиков"
-    },
-    {
-      icon: <Truck className="w-8 h-8 text-nature-green" />,
-      title: "Быстрая доставка",
-      description: "Доставляем по всему большому Сочи от 30 минут"
-    },
-    {
-      icon: <Heart className="w-8 h-8 text-nature-pink" />,
-      title: "Индивидуальный подход",
-      description: "Поможем подобрать идеальный букет для любого случая"
-    },
-    {
-      icon: <Shield className="w-8 h-8 text-nature-coral" />,
-      title: "Гарантия качества",
-      description: "Гарантируем свежесть и качество всех наших цветов"
-    }
+    { icon: <Flower className="w-8 h-8 text-primary" />, title: "Свежие цветы", description: "Только самые свежие и качественные цветы от лучших поставщиков" },
+    { icon: <Truck className="w-8 h-8 text-nature-green" />, title: "Быстрая доставка", description: "Доставляем по всему большому Сочи от 30 минут" },
+    { icon: <Heart className="w-8 h-8 text-nature-pink" />, title: "Индивидуальный подход", description: "Поможем подобрать идеальный букет для любого случая" },
+    { icon: <Shield className="w-8 h-8 text-nature-coral" />, title: "Гарантия качества", description: "Гарантируем свежесть и качество всех наших цветов" },
   ];
 
   const stats = [
     { number: "2500+", label: "Довольных клиентов", icon: <Users className="w-6 h-6" /> },
     { number: "5000+", label: "Доставленных букетов", icon: <Gift className="w-6 h-6" /> },
     { number: "24/7", label: "Круглосуточная поддержка", icon: <Clock className="w-6 h-6" /> },
-    { number: "4.9", label: "Средняя оценка", icon: <Star className="w-6 h-6" /> }
+    { number: "4.9", label: "Средняя оценка", icon: <Star className="w-6 h-6" /> },
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--page-bg)]">
+    <div className="min-h-screen bg-background">
       <WelcomeBonusModal />
       <HeroCarousel />
-      {/* <CategorySection /> ← удалено */}
+      {/* <CategorySection /> */}
       <FeaturedProducts />
       <ReviewsSection />
 
       {/* Features Section */}
-      <section className="py-20 bg-muted/30">
+      <section className="py-20 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-foreground mb-4">

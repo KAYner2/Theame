@@ -1,16 +1,12 @@
 import { Marquee } from "./Marquee";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { BrandingStrip } from "./BrandingStrip";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { useCategories } from "@/hooks/useCategories";
 import { slugify } from "@/utils/slugify";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "./ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { ShoppingCart, Menu } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useFavorites } from "../context/FavoritesContext";
@@ -18,7 +14,13 @@ import { useFavorites } from "../context/FavoritesContext";
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { state } = useCart();
-  const { state: favoritesState } = useFavorites();
+  const { state: favoritesState } = useFavorites(); // оставил как было, даже если пока не используешь
+  const location = useLocation();
+
+  // ГЛАВНЫЙ ФИКС: закрываем боковое меню/оверлей при любой навигации
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
 
   const normalize = (name: string) => {
     if (!name) return "";
@@ -56,10 +58,10 @@ export const Header = () => {
       {/* 1) Дорога */}
       <div className="fixed inset-x-0 top-0 z-[60]">
         <Marquee
-  text="осенняя коллекция"
-  href="https://theame.ru/catalog?category=sezon-podsolnuhov"
-  speed={18} // чем меньше число, тем быстрее (секунд за один цикл)
-/>
+          text="осенняя коллекция"
+          href="https://theame.ru/catalog?category=sezon-podsolnuhov"
+          speed={18}
+        />
       </div>
 
       {/* 2) Верхняя плашка */}
@@ -183,9 +185,9 @@ export const Header = () => {
 
       {/* 4) Бренд-плашка */}
       <BrandingStrip
-  flowerLeftSrc="/branding/flower-left.png"
-  flowerRightSrc="/branding/flower-right.png"
-/>
+        flowerLeftSrc="/branding/flower-left.png"
+        flowerRightSrc="/branding/flower-right.png"
+      />
     </header>
   );
 };

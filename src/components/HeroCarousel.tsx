@@ -35,7 +35,7 @@ export function HeroCarousel() {
     return () => stop();
   }, [api]);
 
-  const sectionClass = "relative isolate bg-[var(--page-bg)] py-6 md:py-8";
+  const sectionClass = "relative isolate bg-background py-6 md:py-8";
 
   if (isLoading || !slides?.length) {
     return (
@@ -70,44 +70,40 @@ export function HeroCarousel() {
       >
         <Carousel
           setApi={setApi}
-          opts={{
-            loop: true,
-            align: "start",
-            duration: 20,
-          }}
+          opts={{ loop: true, align: "start", duration: 20 }}
           className="w-full"
         >
           <CarouselContent>
             {slides.map((slide, idx) => (
               <CarouselItem key={slide.id} className="basis-full">
                 <div className="w-full flex items-center justify-center">
-  {/* Внешний слой — только тень и форма */}
-  <div className="relative w-[96%] md:w-[94%] lg:w-[92%] h-[46vh] md:h-[54vh] lg:h-[60vh] max-h-[820px] rounded-3xl shadow-[0_12px_32px_rgba(0,0,0,0.14)]">
-    {/* Внутренний слой — клип с радиусом */}
-    <div className="absolute inset-0 rounded-3xl overflow-hidden">
-      <img
-        src={slide.image_url}
-        alt={slide.title ?? "Слайд"}
-        className="w-full h-full object-cover select-none pointer-events-none"
-        loading={idx === 0 ? "eager" : "lazy"}
-        decoding="async"
-        draggable={false}
-      />
-    </div>
-  </div>
-</div>
+                  {/* Внешний слой — тень и форма */}
+                  <div className="relative w-[96%] md:w-[94%] lg:w-[92%] h-[46vh] md:h-[54vh] lg:h-[60vh] max-h-[820px] rounded-3xl shadow-[0_12px_32px_rgba(0,0,0,0.14)]">
+                    {/* Внутренний слой — клип по радиусу */}
+                    <div className="absolute inset-0 rounded-3xl overflow-hidden">
+                      <img
+                        src={slide.image_url}
+                        alt={slide.title ?? "Слайд"}
+                        className="w-full h-full object-cover select-none pointer-events-none"
+                        loading={idx === 0 ? "eager" : "lazy"}
+                        decoding="async"
+                        draggable={false}
+                      />
+                    </div>
+                  </div>
+                </div>
               </CarouselItem>
             ))}
           </CarouselContent>
         </Carousel>
 
-        {/* Наши кнопки — вызывают Embla API напрямую */}
+        {/* Кнопки навигации — фон по токену, не хардкод */}
         <button
           type="button"
           onClick={handlePrev}
           aria-label="Предыдущий слайд"
           className="absolute left-2 md:left-5 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10 md:w-12 md:h-12 
-                     bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
+                     bg-background text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
                      border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#819570]/40"
         >
           ‹
@@ -118,7 +114,7 @@ export function HeroCarousel() {
           onClick={handleNext}
           aria-label="Следующий слайд"
           className="absolute right-2 md:right-5 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10 md:w-12 md:h-12 
-                     bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
+                     bg-background text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
                      border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#819570]/40"
         >
           ›
