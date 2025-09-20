@@ -1,26 +1,42 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  type CarouselApi,
 } from "@/components/ui/carousel";
 import { useHeroSlides } from "@/hooks/useHeroSlides";
-import Autoplay from "embla-carousel-autoplay";
 
 export function HeroCarousel() {
   const { data: slides, isLoading } = useHeroSlides();
+  const [api, setApi] = useState<CarouselApi | null>(null);
+  const timerRef = useRef<number | null>(null);
 
-  // Если версии Embla ещё не выровнены — оставь any, чтобы не ловить конфликт типов
-  const autoplay = useRef<any>(
-    Autoplay({
-      delay: 5000,
-      stopOnInteraction: true,      // <— ключевой фикс «прыжка на 2»
-      stopOnMouseEnter: true,       // приятнее для UX
-      // playOnInit: true (по умолчанию и так true)
-    })
-  );
+  const AUTOPLAY_MS = 4500;
+
+  const stop = () => {
+    if (timerRef.current !== null) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const start = () => {
+    if (!api) return;
+    stop();
+    timerRef.current = window.setInterval(() => {
+      // loop: true обеспечит мягкий переход с последнего на первый
+      api.scrollNext();
+    }, AUTOPLAY_MS);
+  };
+
+  useEffect(() => {
+    if (!api) return;
+    start();
+    return () => stop();
+  }, [api]);
 
   const sectionClass = "relative bg-white py-6 md:py-8";
 
@@ -36,14 +52,19 @@ export function HeroCarousel() {
 
   return (
     <section className={sectionClass}>
-      <div className="relative z-10">
+      <div
+        className="relative z-10"
+        onMouseEnter={stop}
+        onMouseLeave={start}
+        onTouchStart={stop}
+        onTouchEnd={start}
+      >
         <Carousel
-          plugins={[autoplay.current]}
+          setApi={setApi}
           opts={{
-            loop: true,                 // бесконечная прокрутка
-            align: "center",            // центр — визуально мягче на один-слайдовом режиме
-            slidesToScroll: 1,
-            duration: 20,               // плавность анимации
+            loop: true,        // бесконечно
+            align: "start",    // самый предсказуемый вариант для 1-слайд вью
+            duration: 20,      // плавность
           }}
           className="w-full"
         >
@@ -57,6 +78,7 @@ export function HeroCarousel() {
                       alt={slide.title ?? "Слайд"}
                       className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
                       loading={idx === 0 ? "eager" : "lazy"}
+                      decoding="async"
                       draggable={false}
                     />
                   </div>
@@ -65,16 +87,23 @@ export function HeroCarousel() {
             ))}
           </CarouselContent>
 
-          {/* Стрелки. Сбрасываем таймер автоплея после ручного шага */}
+          {/* Стрелки: сбрасываем и перезапускаем таймер после ручного шага */}
           <CarouselPrevious
-            onClick={() => autoplay.current?.reset()}
+            onClick={() => {
+              stop();
+              // сам скролл сделает внутренний обработчик кнопки
+              start();
+            }}
             className="left-2 md:left-5 top-1/2 -translate-y-1/2 rounded-full w-10 h-10 md:w-12 md:h-12 
                        bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
                        border-0 focus-visible:ring-2 focus-visible:ring-[#819570]/40"
             aria-label="Предыдущий слайд"
           />
           <CarouselNext
-            onClick={() => autoplay.current?.reset()}
+            onClick={() => {
+              stop();
+              start();
+            }}
             className="right-2 md:right-5 top-1/2 -translate-y-1/2 rounded-full w-10 h-10 md:w-12 md:h-12 
                        bg-[#fff8ea] text-[#819570] shadow-sm hover:shadow-md hover:bg-[#fff2d6]
                        border-0 focus-visible:ring-2 focus-visible:ring-[#819570]/40"
