@@ -2,31 +2,40 @@
 export function Marquee({
   text = "осень за окном",
   href,
-  duplicates = 10, // сколько раз повторить фразу в одной дорожке
+  duplicates = 10,
+  speed = 20,           // секунды на цикл (быстрее чем 28)
 }: {
   text?: string;
   href: string;
   duplicates?: number;
+  speed?: number;
 }) {
-  // повторяем фразу много раз и дублируем дорожку второй раз для бесшовного цикла
+  // формируем дорожку и дублируем для бесшовности
   const row = Array.from({ length: duplicates }, () => text);
   const content = [...row, ...row];
 
   return (
     <div className="w-full overflow-hidden bg-[#819570] text-white">
-      <div className="flex whitespace-nowrap animate-marquee motion-reduce:animate-none hover:[animation-play-state:paused]">
+      {/* убрал hover-паузу; задаём скорость через CSS var */}
+      <div
+        className="flex items-center whitespace-nowrap animate-marquee"
+        style={{ ["--marquee-duration" as any]: `${speed}s` }}
+      >
         {content.map((t, i) => (
-          <a
-            key={i}
-            href={href}
-            className="py-2 px-8 text-sm uppercase tracking-wide hover:opacity-90 transition-opacity inline-flex items-center"
-          >
-            {t}
-            {/* аккуратный кружок-разделитель */}
-            <span className="mx-6 inline-flex items-center">
-              <span className="block w-2 h-2 rounded-full bg-current" aria-hidden />
+          <div key={i} className="flex items-center">
+            {/* кликабельна вся фраза */}
+            <a
+              href={href}
+              className="py-2 px-8 text-sm uppercase tracking-wide hover:opacity-90 transition-opacity"
+            >
+              {t}
+            </a>
+
+            {/* КРУЖОК-РАЗДЕЛИТЕЛЬ строго между фразами */}
+            <span className="mx-6 inline-flex items-center justify-center" aria-hidden>
+              <span className="block w-2 h-2 rounded-full bg-current" />
             </span>
-          </a>
+          </div>
         ))}
       </div>
     </div>
