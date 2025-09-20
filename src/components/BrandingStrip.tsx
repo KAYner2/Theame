@@ -28,31 +28,6 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
 
   return (
     <div className="relative overflow-hidden bg-[#ffe9c3]">
-      {/* === хвостики скругления сверху слева/справа === */}
-      <div
-  aria-hidden
-  className="
-    absolute bottom-0 left-0 z-20
-    w-4 h-8
-    translate-y-[7px]           /* чуть уводим вниз за предел секции */
-    bg-white
-    rounded-tr-[22px]           /* для левого — скругление сверху справа */
-    pointer-events-none
-  "
-/>
-<div
-  aria-hidden
-  className="
-    absolute bottom-0 right-0 z-20
-    w-4 h-8
-    translate-y-[7px]           /* тоже вниз */
-    bg-white
-    rounded-tl-[22px]           /* для правого — скругление сверху слева */
-    pointer-events-none
-  "
-/>
-      {/* === /хвостики === */}
-
       {/* ДЕКОР-ЦВЕТЫ — за контентом */}
       {flowerLeftSrc && (
         <img
@@ -199,6 +174,34 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ↓↓↓ ХВОСТИКИ-СКРУГЛЕНИЯ ВНИЗУ (как на рефе) ↓↓↓ */}
+      <div
+        aria-hidden
+        className="
+          pointer-events-none absolute inset-x-0 bottom-0 h-0 z-30
+        "
+      >
+        {/* левый полукруг */}
+        <div
+          className="
+            absolute -bottom-[18px] -left-[18px]
+            w-[36px] h-[36px] bg-white
+            rounded-tr-[36px]
+            shadow-[0_-6px_14px_rgba(0,0,0,0.10)]
+          "
+        />
+        {/* правый полукруг */}
+        <div
+          className="
+            absolute -bottom-[18px] -right-[18px]
+            w-[36px] h-[36px] bg-white
+            rounded-tl-[36px]
+            shadow-[0_-6px_14px_rgba(0,0,0,0.10)]
+          "
+        />
+      </div>
+      {/* ↑↑↑ /ХВОСТИКИ ↑↑↑ */}
     </div>
   );
 }
