@@ -32,23 +32,31 @@ export const Footer = () => {
           <div>
             <h3 className="text-lg font-semibold text-[#7e7e7e] mb-4">Навигация</h3>
             <nav className="space-y-2">
-              {[
-                { to: '/', label: 'Главная' },
-                { to: '/catalog', label: 'Каталог' },
-                { to: '/about', label: 'О нас' },
-                { to: '/contact', label: 'Контакты' },
-                { to: '/cart', label: 'Корзина' },
-                { to: '/privacy', label: 'Политика конфиденциальности' },
-                { to: '/public-offer', label: 'Публичная оферта' },
-              ].map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className="block text-[#7e7e7e] hover:text-black transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              <Link to="/" className="block text-[#7e7e7e] hover:text-black transition-colors">
+                Главная
+              </Link>
+              <Link to="/catalog" className="block text-[#7e7e7e] hover:text-black transition-colors">
+                Каталог
+              </Link>
+              <Link to="/about" className="block text-[#7e7e7e] hover:text-black transition-colors">
+                О нас
+              </Link>
+              <Link to="/contact" className="block text-[#7e7e7e] hover:text-black transition-colors">
+                Контакты
+              </Link>
+              <Link to="/cart" className="block text-[#7e7e7e] hover:text-black transition-colors">
+                Корзина
+              </Link>
+              {/* 👇 новый пункт сразу после "Корзина" */}
+              <Link to="/delivery" className="block text-[#7e7e7e] hover:text-black transition-colors">
+                Доставка
+              </Link>
+              <Link to="/privacy" className="block text-[#7e7e7e] hover:text-black transition-colors">
+                Политика конфиденциальности
+              </Link>
+              <Link to="/public-offer" className="block text-[#7e7e7e] hover:text-black transition-colors">
+                Публичная оферта
+              </Link>
             </nav>
           </div>
 

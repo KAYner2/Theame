@@ -18,6 +18,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentError from "./pages/PaymentError";
 import NotFound from "./pages/NotFound";
 import Favorites from "./pages/Favorites";
+import Delivery from "./pages/Delivery"; // 👈 добавлен импорт
 
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
@@ -53,6 +54,7 @@ const App = () => (
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/contact" element={<Contact />} />
+                  <Route path="/delivery" element={<Delivery />} /> {/* 👈 новый роут */}
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/public-offer" element={<PublicOffer />} />
                   <Route path="/success" element={<PaymentSuccess />} />
