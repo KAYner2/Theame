@@ -1,68 +1,16 @@
-import logoUrl from '@/assets/logo.png';
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { PhoneInput } from './PhoneInput';
-import { validatePhoneNumber, getCleanPhoneNumber } from '@/lib/phone';
 import { 
   Phone, 
   Mail, 
   MapPin, 
   Clock,
-  Send,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from './ui/use-toast';
 
 export const Footer = () => {
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubscribe = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phone.trim() || !name.trim() || !validatePhoneNumber(phone)) {
-      toast({
-        title: "Ошибка",
-        description: "Пожалуйста, заполните все поля корректно",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from('newsletter_subscriptions')
-        .insert({
-          phone: getCleanPhoneNumber(phone),
-          name: name.trim()
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Спасибо за подписку!",
-        description: "Мы будем присылать вам новости о новых букетах.",
-      });
-      setPhone('');
-      setName('');
-    } catch (error) {
-      toast({
-        title: "Ошибка",
-        description: "Произошла ошибка при подписке. Попробуйте снова.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <footer className="bg-card border-t">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* Логотип и описание */}
           <div className="flex flex-col items-start text-left space-y-4">
             <div className="flex flex-col items-center leading-tight">
@@ -74,6 +22,11 @@ export const Footer = () => {
             <p className="text-muted-foreground">
               Премиальные букеты из Сочи, вдохновлённые французской эстетикой. 
               Дарим не просто цветы — передаём чувства, стиль и настроение.
+            </p>
+
+            {/* Копирайт, поджатый к описанию */}
+            <p className="text-muted-foreground text-sm mt-2">
+              2025 © The Áme
             </p>
           </div>
 
@@ -126,49 +79,11 @@ export const Footer = () => {
               </div>
             </div>
           </div>
-
-          {/* Подписка на рассылку */}
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-4">Подписка на рассылку</h3>
-            <p className="text-muted-foreground mb-4">
-              Получайте новости о новых букетах и специальных предложениях
-            </p>
-            <form onSubmit={handleSubscribe} className="space-y-3">
-              <Input
-                type="text"
-                placeholder="Ваше имя"
-                className="w-full"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-              <PhoneInput
-                placeholder="+7 (999) 123-45-67"
-                className="w-full"
-                value={phone}
-                onChange={setPhone}
-                required
-              />
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-primary hover:bg-gradient-secondary"
-                disabled={isLoading}
-              >
-                <Send className="w-4 h-4 mr-2" />
-                {isLoading ? 'Подписываемся...' : 'Подписаться'}
-              </Button>
-            </form>
-          </div>
         </div>
 
-        {/* Нижняя часть */}
+        {/* Нижняя часть — только ссылки */}
         <div className="border-t pt-8 mt-8">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="text-center md:text-left">
-              <p className="text-muted-foreground text-sm">
-                © 2025 The Áme. Все права защищены.
-              </p>
-            </div>
             <div className="flex flex-wrap gap-4 text-sm">
               <Link to="/privacy" className="text-muted-foreground hover:text-primary transition-colors">
                 Политика конфиденциальности
