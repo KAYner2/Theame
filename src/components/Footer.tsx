@@ -1,11 +1,28 @@
 import { Link } from 'react-router-dom';
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
+import { useCategories } from '@/hooks/useCategories';
+import { slugify } from '@/utils/slugify';
 
 export const Footer = () => {
+  // берём категории так же, как в Header
+  const { data: categories = [] } = useCategories();
+
+  const normalize = (name: string) => {
+    if (!name) return '';
+    const s = name.trim();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+
+  // уникальные категории по названию
+  const uniqueCats = Array.from(
+    new Map(categories.map((c: any) => [normalize(c.name), c])).values()
+  );
+
   return (
     <footer className="bg-white border-t">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        {/* стало 4 колонки на десктопе */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* ЛОГО + СЛОГАН (Forum, слева — как раньше) */}
           <div className="flex flex-col items-start text-left space-y-3">
             <div className="leading-tight" style={{ fontFamily: 'Forum, serif' }}>
@@ -28,7 +45,7 @@ export const Footer = () => {
             <p className="text-[#7e7e7e] text-sm">2025 © The Áme</p>
           </div>
 
-          {/* НАВИГАЦИЯ + ПОЛИТИКА/ОФЕРТА */}
+          {/* НАВИГАЦИЯ */}
           <div>
             <h3 className="text-lg font-semibold text-[#7e7e7e] mb-4">Навигация</h3>
             <nav className="space-y-2">
@@ -47,7 +64,6 @@ export const Footer = () => {
               <Link to="/cart" className="block text-[#7e7e7e] hover:text-black transition-colors">
                 Корзина
               </Link>
-              {/* 👇 новый пункт сразу после "Корзина" */}
               <Link to="/delivery" className="block text-[#7e7e7e] hover:text-black transition-colors">
                 Доставка
               </Link>
@@ -57,6 +73,29 @@ export const Footer = () => {
               <Link to="/public-offer" className="block text-[#7e7e7e] hover:text-black transition-colors">
                 Публичная оферта
               </Link>
+            </nav>
+          </div>
+
+          {/* МАГАЗИН (категории из хедера) */}
+          <div>
+            <h3 className="text-lg font-semibold text-[#7e7e7e] mb-4">Магазин</h3>
+            <nav className="space-y-2">
+              <Link to="/catalog" className="block text-[#7e7e7e] hover:text-black transition-colors">
+                Каталог
+              </Link>
+              {uniqueCats.map((c: any) => {
+                const name = normalize(c.name);
+                const slug = slugify(name);
+                return (
+                  <Link
+                    key={c.id ?? slug}
+                    to={`/catalog?category=${slug}`}
+                    className="block text-[#7e7e7e] hover:text-black transition-colors"
+                  >
+                    {name}
+                  </Link>
+                );
+              })}
             </nav>
           </div>
 
