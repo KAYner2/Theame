@@ -24,13 +24,13 @@ export const Footer = () => {
               Дарим не просто цветы — передаём чувства, стиль и настроение.
             </p>
 
-            {/* Копирайт, поджатый к описанию */}
+            {/* Копирайт */}
             <p className="text-muted-foreground text-sm mt-2">
               2025 © The Áme
             </p>
           </div>
 
-          {/* Навигация */}
+          {/* Навигация + ссылки */}
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-4">Навигация</h3>
             <nav className="space-y-2">
@@ -48,6 +48,14 @@ export const Footer = () => {
               </Link>
               <Link to="/cart" className="block text-muted-foreground hover:text-primary transition-colors">
                 Корзина
+              </Link>
+
+              {/* Добавляем Политику и Оферту */}
+              <Link to="/privacy" className="block text-muted-foreground hover:text-primary transition-colors">
+                Политика конфиденциальности
+              </Link>
+              <Link to="/public-offer" className="block text-muted-foreground hover:text-primary transition-colors">
+                Публичная оферта
               </Link>
             </nav>
           </div>
@@ -80,20 +88,7 @@ export const Footer = () => {
             </div>
           </div>
         </div>
-
-        {/* Нижняя часть — только ссылки */}
-        <div className="border-t pt-8 mt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="flex flex-wrap gap-4 text-sm">
-              <Link to="/privacy" className="text-muted-foreground hover:text-primary transition-colors">
-                Политика конфиденциальности
-              </Link>
-              <Link to="/public-offer" className="text-muted-foreground hover:text-primary transition-colors">
-                Публичная оферта
-              </Link>
-            </div>
-          </div>
-        </div>
+        {/* Нижний блок полностью удалён */}
       </div>
     </footer>
   );
