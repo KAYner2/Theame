@@ -6,7 +6,6 @@ import { FlowerCard } from './FlowerCard';
 import { Flower } from '../types/flower';
 
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import { Slider } from './ui/slider';
 import {
   Select,
@@ -19,7 +18,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
   DropdownMenuLabel,
 } from './ui/dropdown-menu';
 
@@ -106,8 +104,9 @@ export const FlowerCatalog = () => {
   const [selectedColor, setSelectedColor] = useState('all');
   const [selectedComposition, setSelectedComposition] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
-  const [sortBy, setSortBy] =
-    useState<'popularity' | 'price-asc' | 'price-desc' | 'name' | 'newest'>('popularity');
+
+  // ✔ сортировка: только две опции из ТЗ
+  const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc'>('price-asc');
 
   // управление открытием для desktop-меню и mobile-sheet раздельно
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -199,33 +198,15 @@ export const FlowerCatalog = () => {
       return true;
     });
 
+    // ✔ только две сортировки
     switch (sortBy) {
-      case 'price-asc':
-        filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-        break;
       case 'price-desc':
         filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
         break;
-      case 'name':
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
+      case 'price-asc':
+      default:
+        filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
         break;
-      case 'newest': {
-        filtered.sort((a, b) => {
-          const A = products.find((p) => String(p.id) === String(a.id))?.sort_order ?? 0;
-          const B = products.find((p) => String(p.id) === String(b.id))?.sort_order ?? 0;
-          return B - A;
-        });
-        break;
-      }
-      case 'popularity':
-      default: {
-        filtered.sort((a, b) => {
-          const A = products.find((p) => String(p.id) === String(a.id))?.sort_order ?? 0;
-          const B = products.find((p) => String(p.id) === String(b.id))?.sort_order ?? 0;
-          return A - B;
-        });
-        break;
-      }
     }
 
     return filtered;
@@ -381,7 +362,7 @@ export const FlowerCatalog = () => {
             <SheetTrigger asChild>
               <Button variant="outline" className="h-10">
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
-                КАТЕГОРИИ
+                ФИЛЬТРЫ
               </Button>
             </SheetTrigger>
             <SheetContent
@@ -435,27 +416,24 @@ export const FlowerCatalog = () => {
           </Sheet>
         </div>
 
-        {/* ---- DESKTOP: DropdownMenu как был, с аккуратными высотами ---- */}
+        {/* ---- DESKTOP: DropdownMenu ---- */}
         <div className="hidden md:block">
           <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="h-10">
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
-                КАТЕГОРИИ
+                ФИЛЬТРЫ
               </Button>
             </DropdownMenuTrigger>
 
-            {/* Попап: контент прокручивается, футер фиксирован */}
             <DropdownMenuContent
               className="w-[22rem] p-0 max-h-[85dvh] flex flex-col"
               align="start"
             >
-              {/* Контентная часть */}
               <div className="flex-1 overflow-auto p-4">
                 {FiltersInner}
               </div>
 
-              {/* Футер */}
               <div
                 className="border-t bg-popover px-4 py-4"
                 style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
@@ -490,34 +468,20 @@ export const FlowerCatalog = () => {
           </DropdownMenu>
         </div>
 
-        {/* Сортировка (общая) */}
+        {/* Сортировка — только цена */}
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-          <SelectTrigger className="min-w-[180px] w-auto">
+          <SelectTrigger className="min-w-[220px] w-auto">
             <ArrowUpDown className="mr-2 h-4 w-4" />
-            <SelectValue />
+            <SelectValue placeholder="Сортировка" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="popularity">По популярности</SelectItem>
             <SelectItem value="price-asc">По возрастанию цены</SelectItem>
             <SelectItem value="price-desc">По убыванию цены</SelectItem>
-            <SelectItem value="name">По названию</SelectItem>
-            <SelectItem value="newest">По новизне</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Статистика */}
-      <div className="mb-6 flex items-center justify-between text-sm text-muted-foreground">
-        <div>Найдено: {filteredFlowers.length} из {flowers.length}</div>
-        <div className="flex gap-2">
-          <Badge variant="secondary">
-            В наличии: {flowers.filter((f) => f.inStock).length}
-          </Badge>
-          <Badge variant="outline">
-            Нет в наличии: {flowers.filter((f) => !f.inStock).length}
-          </Badge>
-        </div>
-      </div>
+      {/* ⛔ Блок «найдено товаров / в наличии / нет в наличии» — удалён по ТЗ */}
 
       {/* Каталог */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 sm:gap-6 lg:gap-6">
@@ -541,7 +505,7 @@ export const FlowerCatalog = () => {
               setSelectedColor('all');
               setSelectedComposition('all');
               setPriceRange(absolutePriceBounds);
-              setSortBy('popularity');
+              setSortBy('price-asc'); // ✔ обновлено
               setSearchParams((prev) => {
                 prev.delete('category');
                 return prev;
