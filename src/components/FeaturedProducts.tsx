@@ -40,35 +40,28 @@ export function FeaturedProducts() {
 
   const displayedProducts: Flower[] = showAll ? homepageProducts : homepageProducts.slice(0, 12);
 
-  // Красивые ссылки БЕЗ id.
-  // Если нормальной категории нет или она равна "catalog", используем короткий путь /catalog/:slug
   const buildUrl = (p: any) => {
     const cat =
       p.categorySlug ||
       p.category_slug ||
       p.category?.slug ||
-      (p.category?.name ? slugify(p.category.name) : "") ||
-      "";
-
-    const prod = p.slug || slugify(p.name || "product");
-
-    if (cat && cat.toLowerCase() !== "catalog") {
-      return `/catalog/${cat}/${prod}`;
-    }
-    return `/catalog/${prod}`;
+      (p.category?.name ? slugify(p.category.name) : '') ||
+      '';
+    const prod = p.slug || slugify(p.name || 'product');
+    return cat && cat.toLowerCase() !== 'catalog'
+      ? `/catalog/${cat}/${prod}`
+      : `/catalog/${prod}`;
   };
 
-  const handleAddToCart = (product: Flower) => {
-    addToCart(product);
-  };
+  const handleAddToCart = (product: Flower) => addToCart(product);
 
   return (
     <section className="relative isolate py-20 bg-[#fff8ea]">
       <div className="container mx-auto px-4">
         <h2 className="text-4xl font-bold text-center mb-12">Букеты недели</h2>
 
-        {/* 2 на телефоне, 4 на десктопе */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+        {/* 2 на мобиле / 4 на десктопе, крупные карточки */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
           {displayedProducts.map((product) => {
             const to = buildUrl(product);
             const priceText = product.price
@@ -78,13 +71,12 @@ export function FeaturedProducts() {
             return (
               <Card
                 key={product.id}
-                className="overflow-hidden border-0 rounded-2xl shadow-soft hover:shadow-lg transition-shadow duration-300 bg-white"
+                className="overflow-hidden border border-black/5 rounded-3xl bg-white shadow-sm hover:shadow-md transition-shadow"
               >
-                {/* Кликабельно ведёт на страницу товара */}
                 <Link to={to} aria-label={product.name} className="block">
                   <CardContent className="p-0">
-                    {/* БОЛЬШОЕ ИЗОБРАЖЕНИЕ 4:5, на всю ширину */}
-                    <div className="relative w-full overflow-hidden">
+                    {/* КРУПНОЕ ИЗОБРАЖЕНИЕ 4:5 */}
+                    <div className="relative overflow-hidden rounded-2xl m-2">
                       <div className="aspect-[4/5]">
                         <img
                           src={product.image || '/placeholder.svg'}
@@ -95,13 +87,13 @@ export function FeaturedProducts() {
                       </div>
                     </div>
 
-                    {/* ТЕКСТ */}
-                    <div className="px-3 sm:px-4 pt-3 sm:pt-4">
-                      <h3 className="text-sm sm:text-base font-medium leading-snug line-clamp-2">
+                    {/* Текст */}
+                    <div className="px-4 pt-1">
+                      <h3 className="text-[15px] md:text-base font-medium leading-snug line-clamp-2">
                         {product.name}
                       </h3>
-                      <div className="mt-1 sm:mt-1.5">
-                        <span className="text-base sm:text-lg font-semibold">
+                      <div className="mt-1">
+                        <span className="text-base md:text-lg font-semibold">
                           {priceText}
                         </span>
                       </div>
@@ -109,14 +101,14 @@ export function FeaturedProducts() {
                   </CardContent>
                 </Link>
 
-                {/* КНОПКА-ПИЛЮЛЯ «В КОРЗИНУ» */}
-                <div className="px-3 sm:px-4 pb-3 sm:pb-4">
+                {/* Компактная овальная кнопка, НЕ на всю ширину */}
+                <div className="px-4 pb-4 pt-3">
                   <Button
                     onClick={(e) => {
-                      e.preventDefault(); // не переходить по ссылке
+                      e.preventDefault();
                       handleAddToCart(product);
                     }}
-                    className="w-full rounded-full h-11 sm:h-12 text-base sm:text-lg font-semibold bg-rose-600 hover:bg-rose-700 text-white"
+                    className="rounded-full px-6 h-10 text-sm md:text-base font-semibold bg-[#819570] hover:bg-[#6f7f5f] text-white"
                   >
                     В КОРЗИНУ
                   </Button>
@@ -129,9 +121,8 @@ export function FeaturedProducts() {
         {!showAll && homepageProducts.length > 12 && (
           <div className="text-center mt-12">
             <Button
-              size="lg"
               onClick={() => setShowAll(true)}
-              className="rounded-full px-8 h-12 text-base font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-soft"
+              className="rounded-full px-8 h-11 text-base font-semibold bg-[#819570] hover:bg-[#6f7f5f] text-white shadow"
             >
               Показать ещё
             </Button>
