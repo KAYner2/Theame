@@ -483,16 +483,16 @@ export const FlowerCatalog = () => {
 
       {/* ⛔ Блок «найдено товаров / в наличии / нет в наличии» — удалён по ТЗ */}
 
-      {/* Каталог */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-        {filteredFlowers.map((flower) => (
-          <FlowerCard
-            key={flower.id}
-            flower={flower}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        ))}
-      </div>
+{/* Каталог */}
+<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+  {filteredFlowers.map((flower) => (
+    <FlowerCard
+      key={flower.id}
+      flower={flower}
+      onToggleFavorite={handleToggleFavorite}
+    />
+  ))}
+</div>
 
       {/* Пустой результат */}
       {filteredFlowers.length === 0 && (
