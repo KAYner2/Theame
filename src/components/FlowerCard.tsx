@@ -55,16 +55,14 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
   return (
     <div className="group relative">
       <Link to={productUrl} aria-label={flower.name} className="block">
-        {/* 📸 Фото — без рамок, скруглённое */}
-        <div className="relative overflow-hidden rounded-2xl">
-          <div className="aspect-[4/5]">
-            <img
-              src={flower.image}
-              alt={flower.name}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
-            />
-          </div>
+        {/* 📸 Фото — квадрат 1:1, без рамок/теней, со скруглением */}
+        <div className="relative overflow-hidden rounded-2xl aspect-square">
+          <img
+            src={flower.image}
+            alt={flower.name}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+          />
         </div>
 
         {/* 📝 Название и цена */}
@@ -72,6 +70,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
           <h3 className="text-sm md:text-base font-normal leading-snug text-gray-800 line-clamp-2">
             {flower.name}
           </h3>
+
           <div className="mt-1 flex items-center justify-between">
             <span className="text-base md:text-lg font-semibold text-gray-900">
               {flower.price.toLocaleString()} ₽
@@ -84,21 +83,21 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
                 e.stopPropagation();
                 handleToggleFavorite();
               }}
+              aria-pressed={isInFavorites}
               className={`p-2 rounded-full transition-all duration-200 ${
                 isInFavorites
                   ? 'bg-destructive text-destructive-foreground'
                   : 'bg-muted hover:bg-destructive hover:text-destructive-foreground'
               }`}
+              title={isInFavorites ? 'Убрать из избранного' : 'Добавить в избранное'}
             >
-              <Heart
-                className={`w-4 h-4 ${isInFavorites ? 'fill-current' : ''}`}
-              />
+              <Heart className={`w-4 h-4 ${isInFavorites ? 'fill-current' : ''}`} />
             </button>
           </div>
         </div>
       </Link>
 
-      {/* 🛒 Кнопка В корзину */}
+      {/* 🛒 Кнопка В корзину — овальная, как в каталоге */}
       <div className="mt-2 px-1">
         <Button
           onClick={(e) => {
