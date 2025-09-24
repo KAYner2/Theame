@@ -484,7 +484,7 @@ export const FlowerCatalog = () => {
       {/* ⛔ Блок «найдено товаров / в наличии / нет в наличии» — удалён по ТЗ */}
 
 {/* Каталог */}
-<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+<div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
   {filteredFlowers.map((flower) => (
     <FlowerCard
       key={flower.id}
