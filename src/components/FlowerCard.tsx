@@ -6,7 +6,7 @@ import { Heart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useToast } from '../hooks/use-toast';
-import { buildProductUrl } from '@/utils/buildProductUrl'; // 👈 общий конструктор ссылки
+import { buildProductUrl } from '@/utils/buildProductUrl';
 import { Button } from './ui/button';
 
 interface FlowerCardProps {
@@ -46,7 +46,6 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
     onToggleFavorite?.(flower);
   };
 
-  // ✅ Единый “топовый” URL
   const productUrl = buildProductUrl({
     id: flower.id,
     name: flower.name,
@@ -58,9 +57,9 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
   return (
     <div className="group relative">
       <Link to={productUrl}>
-        <Card className="overflow-hidden bg-primary-soft/30 border border-primary/10 hover:shadow-soft transition-all duration-300 hover:scale-[1.02] rounded-2xl h-full flex flex-col">
+        <Card className="overflow-hidden border border-primary/10 hover:shadow-soft transition-all duration-300 hover:scale-[1.02] rounded-2xl h-full flex flex-col">
           {/* Фото */}
-          <div className="relative aspect-square overflow-hidden rounded-t-2xl">
+          <div className="relative h-96 overflow-hidden rounded-t-2xl">
             <img
               src={flower.image}
               alt={flower.name}
@@ -76,56 +75,54 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
           </div>
 
           {/* Контент */}
-          <div className="p-4 flex-1 flex flex-col">
-            <h3 className="font-medium text-foreground text-sm mb-4 line-clamp-2 leading-relaxed uppercase flex-1">
+          <div className="p-4 flex flex-col flex-1">
+            <h3 className="font-medium text-foreground text-base mb-2 line-clamp-2 leading-relaxed">
               {flower.name}
             </h3>
 
-            <div className="mt-auto">
-              <span className="block text-lg font-bold text-foreground mb-3">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-lg font-bold text-foreground">
                 {flower.price.toLocaleString()} ₽
               </span>
 
-              {/* 👉 Кнопка «В корзину» */}
-              <Button
+              {/* Кнопка избранного (иконка) */}
+              <button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  handleAddToCart();
+                  handleToggleFavorite();
                 }}
-                disabled={!flower.inStock}
-                className="
-                  w-full h-11
-                  bg-[#819570] text-white
-                  hover:bg-white hover:text-[#819570] hover:border hover:border-[#819570]
-                  transition-colors
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                "
+                className={`p-2 rounded-full transition-all duration-200 ${
+                  isInFavorites
+                    ? 'bg-destructive text-destructive-foreground'
+                    : 'bg-muted hover:bg-destructive hover:text-destructive-foreground'
+                }`}
               >
-                {flower.inStock ? 'В корзину' : 'Нет в наличии'}
-              </Button>
+                <Heart
+                  className={`w-4 h-4 ${isInFavorites ? 'fill-current' : ''}`}
+                />
+              </button>
             </div>
 
-            {/* Кнопка избранного */}
-            <button
+            {/* Кнопка «В корзину» */}
+            <Button
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                handleToggleFavorite();
+                handleAddToCart();
               }}
-              className={`mt-3 p-2 w-full rounded-md text-center transition-all duration-200 ${
-                isInFavorites
-                  ? 'bg-destructive text-destructive-foreground'
-                  : 'bg-muted hover:bg-destructive hover:text-destructive-foreground'
-              }`}
+              disabled={!flower.inStock}
+              className="
+                w-full h-11
+                bg-[#E30613] text-white font-semibold
+                hover:bg-white hover:text-[#E30613] hover:border hover:border-[#E30613]
+                transition-colors
+                disabled:opacity-50 disabled:cursor-not-allowed
+                rounded-b-2xl
+              "
             >
-              <Heart
-                className={`inline-block w-4 h-4 mr-1 ${
-                  isInFavorites ? 'fill-current' : ''
-                }`}
-              />
-              {isInFavorites ? 'Убрать из избранного' : 'В избранное'}
-            </button>
+              {flower.inStock ? 'В корзину' : 'Нет в наличии'}
+            </Button>
           </div>
         </Card>
       </Link>
