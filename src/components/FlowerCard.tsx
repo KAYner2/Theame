@@ -57,7 +57,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
     <div className="group relative">
       <Link to={productUrl} className="block">
         {/* Фото */}
-        <div className="relative h-[460px] overflow-hidden">
+        <div className="relative h-[500px] overflow-hidden rounded-2xl">
           <img
             src={flower.image}
             alt={flower.name}
@@ -74,33 +74,15 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
 
         {/* Контент */}
         <div className="mt-4 space-y-3">
-          <h3 className="font-medium text-foreground text-base line-clamp-2 leading-relaxed">
+          {/* Название */}
+          <h3 className="text-foreground text-base font-normal leading-relaxed">
             {flower.name}
           </h3>
 
-          <div className="flex items-center justify-between">
-            <span className="text-lg font-bold text-foreground">
-              {flower.price.toLocaleString()} ₽
-            </span>
-
-            {/* Кнопка избранного */}
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleToggleFavorite();
-              }}
-              className={`p-2 rounded-full transition-all duration-200 ${
-                isInFavorites
-                  ? 'bg-destructive text-destructive-foreground'
-                  : 'bg-muted hover:bg-destructive hover:text-destructive-foreground'
-              }`}
-            >
-              <Heart
-                className={`w-4 h-4 ${isInFavorites ? 'fill-current' : ''}`}
-              />
-            </button>
-          </div>
+          {/* Цена */}
+          <p className="text-lg font-semibold text-foreground">
+            {flower.price.toLocaleString()} ₽
+          </p>
 
           {/* Кнопка В корзину */}
           <Button
