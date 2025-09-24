@@ -59,7 +59,7 @@ export function FeaturedProducts() {
       <div className="container mx-auto px-4">
         <h2 className="text-4xl font-bold text-center mb-12">Букеты недели</h2>
 
-        {/* 2 на мобиле / 4 на десктопе, крупные карточки */}
+        {/* 2 на мобиле / 4 на десктопе */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
           {displayedProducts.map((product) => {
             const to = buildUrl(product);
@@ -70,9 +70,9 @@ export function FeaturedProducts() {
             return (
               <div key={product.id} className="group">
                 <Link to={to} aria-label={product.name} className="block">
-                  {/* Фото */}
+                  {/* Фото — КВАДРАТ */}
                   <div className="relative overflow-hidden rounded-2xl">
-                    <div className="aspect-[4/5]">
+                    <div className="aspect-square">
                       <img
                         src={product.image || '/placeholder.svg'}
                         alt={product.name}
