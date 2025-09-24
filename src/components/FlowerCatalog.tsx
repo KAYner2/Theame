@@ -220,7 +220,7 @@ export const FlowerCatalog = () => {
 
   if (productsLoading || categoriesLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full max-w-[1600px] mx-auto px-6 py-8">
         <div className="text-center">
           <h1 className="mb-4 text-4xl font-bold text-foreground">Каталог цветов и букетов</h1>
           <p className="text-lg text-muted-foreground">Загрузка каталога...</p>
@@ -231,7 +231,7 @@ export const FlowerCatalog = () => {
 
   if (productsError || categoriesError) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full max-w-[1600px] mx-auto px-6 py-8">
         <div className="text-center">
           <h1 className="mb-4 text-4xl font-bold text-foreground">Каталог цветов и букетов</h1>
           <p className="text-destructive">Ошибка загрузки каталога</p>
@@ -346,7 +346,7 @@ export const FlowerCatalog = () => {
   );
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="w-full max-w-[1600px] mx-auto px-6 py-8">
       {/* Заголовок */}
       <div className="mb-8 text-center">
         <h1 className="mb-4 text-3xl font-bold text-foreground md:text-4xl">
@@ -484,7 +484,7 @@ export const FlowerCatalog = () => {
       {/* ⛔ Блок «найдено товаров / в наличии / нет в наличии» — удалён по ТЗ */}
 
       {/* Каталог */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 sm:gap-6 lg:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
         {filteredFlowers.map((flower) => (
           <FlowerCard
             key={flower.id}

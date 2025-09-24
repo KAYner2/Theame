@@ -60,11 +60,11 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
         <Card className="overflow-hidden border border-primary/10 hover:shadow-soft transition-all duration-300 hover:scale-[1.02] rounded-2xl h-full flex flex-col">
           {/* Фото */}
           <div className="relative h-[420px] overflow-hidden rounded-t-2xl">
-            <img
-              src={flower.image}
-              alt={flower.name}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            />
+  <img
+    src={flower.image}
+    alt={flower.name}
+    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+  />
             {!flower.inStock && (
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                 <Badge variant="destructive" className="text-white">
