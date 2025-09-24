@@ -20,7 +20,6 @@ export default function Delivery() {
   ];
 
   return (
-    // только фон страницы: был bg-white → стал песочный
     <div className="min-h-screen bg-[#fff8ea]">
       {/* Hero */}
       <section className="py-16 md:py-20">
