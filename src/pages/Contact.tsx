@@ -1,74 +1,58 @@
 import { useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import {
-  MapPin,
-  Phone,
-  Mail,
-  Clock,
-  MessageCircle
-} from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, MessageCircle } from 'lucide-react';
+
+type ContactItem = {
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  title: string;
+  details: string[];
+};
 
 export default function Contact() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const contactInfo = [
-    {
-      icon: <MapPin className="w-6 h-6 text-primary" />,
-      title: "Адрес",
-      details: ["Г. Сочи, Донская, 10а", "ост. Заводская"]
-    },
-    {
-      icon: <Phone className="w-6 h-6 text-nature-green" />,
-      title: "Телефон",
-      details: ["+7 (993) 932-60-95"]
-    },
-    {
-      icon: <Mail className="w-6 h-6 text-nature-coral" />,
-      title: "Email",
-      details: ["theame123@mail.ru"]
-    },
-    {
-      icon: <Clock className="w-6 h-6 text-nature-lavender" />,
-      title: "Часы работы",
-      details: ["Пн-Вс: 9:00 - 21:00"]
-    }
+  const contactInfo: ContactItem[] = [
+    { Icon: MapPin, title: 'Адрес', details: ['Г. Сочи, Донская, 10а', 'ост. Заводская'] },
+    { Icon: Phone, title: 'Телефон', details: ['+7 (993) 932-60-95'] },
+    { Icon: Mail, title: 'Email', details: ['theame123@mail.ru'] },
+    { Icon: Clock, title: 'Часы работы', details: ['Пн-Вс: 9:00 - 21:00'] },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="py-20 bg-gradient-hero text-hero-green">
+    // единый песочный фон
+    <div className="min-h-screen bg-[#fff8ea]">
+      {/* Hero — без градиента и отдельного фона */}
+      <section className="py-16 sm:py-20">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-5xl font-bold mb-6 text-hero-green">
-            Контакты
-          </h1>
-          <p className="text-xl text-hero-green/80 max-w-3xl mx-auto">
-            Мы всегда готовы помочь вам выбрать идеальный букет или ответить на любые вопросы. 
+          <h1 className="text-4xl sm:text-5xl font-bold mb-4 text-[#819570]">Контакты</h1>
+          <p className="text-base sm:text-lg max-w-3xl mx-auto text-[#819570]">
+            Мы всегда готовы помочь вам выбрать идеальный букет или ответить на любые вопросы.
             Свяжитесь с нами удобным для вас способом.
           </p>
         </div>
       </section>
 
       {/* Контактная информация */}
-      <section className="py-20">
+      <section className="py-16 sm:py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-            {contactInfo.map((item, index) => (
-              <Card key={index} className="bg-gradient-card border-0 shadow-soft hover:shadow-elegant transition-all duration-300">
+            {contactInfo.map(({ Icon, title, details }, idx) => (
+              <Card
+                key={idx}
+                className="border-0 shadow-soft hover:shadow-elegant transition-all duration-300 rounded-xl bg-white/60"
+              >
                 <CardContent className="p-6 text-center">
-                  <div className="mb-4 flex justify-center">
-                    {item.icon}
+                  <div className="mb-4 flex justify-center text-[#819570]">
+                    <Icon className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-semibold text-foreground mb-4">
-                    {item.title}
-                  </h3>
+                  <h3 className="text-lg font-semibold mb-4 text-[#819570]">{title}</h3>
                   <div className="space-y-2">
-                    {item.details.map((detail, detailIndex) => (
-                      <p key={detailIndex} className="text-muted-foreground">
-                        {detail}
+                    {details.map((d, i) => (
+                      <p key={i} className="text-[#819570]">
+                        {d}
                       </p>
                     ))}
                   </div>
@@ -77,13 +61,13 @@ export default function Contact() {
             ))}
           </div>
 
-          {/* Две колонки: слева — Написать нам, справа — Карта. Без блока доставки */}
+          {/* Две колонки: слева — Написать нам, справа — Карта */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-stretch">
             {/* Написать нам */}
-            <Card className="bg-gradient-card border-0 shadow-soft h-full">
+            <Card className="border-0 shadow-soft rounded-xl bg-white/60 h-full">
               <CardHeader>
-                <CardTitle className="text-2xl text-foreground flex items-center">
-                  <MessageCircle className="w-6 h-6 mr-2 text-primary" />
+                <CardTitle className="text-2xl flex items-center text-[#819570]">
+                  <MessageCircle className="w-6 h-6 mr-2" />
                   Написать нам
                 </CardTitle>
               </CardHeader>
@@ -127,10 +111,10 @@ export default function Contact() {
             </Card>
 
             {/* Карта и дополнительная информация */}
-            <Card className="bg-gradient-card border-0 shadow-soft h-full">
+            <Card className="border-0 shadow-soft rounded-xl bg-white/60 h-full">
               <CardHeader>
-                <CardTitle className="text-2xl text-foreground flex items-center">
-                  <MapPin className="w-6 h-6 mr-2 text-primary" />
+                <CardTitle className="text-2xl flex items-center text-[#819570]">
+                  <MapPin className="w-6 h-6 mr-2" />
                   Как нас найти
                 </CardTitle>
               </CardHeader>
@@ -147,23 +131,18 @@ export default function Contact() {
                     />
                   </div>
                   <div className="space-y-3">
-                    <div className="flex items-start space-x-3">
-                      <MapPin className="w-5 h-5 text-primary mt-0.5" />
+                    <div className="flex items-start space-x-3 text-[#819570]">
+                      <MapPin className="w-5 h-5 mt-0.5" />
                       <div>
-                        <p className="font-medium text-foreground">Адрес</p>
-                        <p className="text-muted-foreground">
-                          Г. Сочи, Донская, 10а<br />
-                          ост. Заводская
-                        </p>
+                        <p className="font-medium">Адрес</p>
+                        <p className="">Г. Сочи, Донская, 10а<br />ост. Заводская</p>
                       </div>
                     </div>
-                    <div className="flex items-start space-x-3">
-                      <Clock className="w-5 h-5 text-primary mt-0.5" />
+                    <div className="flex items-start space-x-3 text-[#819570]">
+                      <Clock className="w-5 h-5 mt-0.5" />
                       <div>
-                        <p className="font-medium text-foreground">Режим работы</p>
-                        <p className="text-muted-foreground">
-                          Пн-Вс: 9:00 - 21:00<br />
-                        </p>
+                        <p className="font-medium">Режим работы</p>
+                        <p className="">Пн-Вс: 9:00 - 21:00</p>
                       </div>
                     </div>
                   </div>
