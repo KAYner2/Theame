@@ -14,33 +14,33 @@ export function ReviewsSection() {
     []
   );
 
+  const SectionShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <section className="py-20 bg-transparent">
+      <div className="container mx-auto px-4">
+        {children}
+      </div>
+    </section>
+  );
+
   if (isLoading) {
     return (
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-12">
-            Клиенты о нас
-          </h2>
-          <div className="text-center">
-            <p className="text-muted-foreground">Загрузка отзывов...</p>
-          </div>
+      <SectionShell>
+        <h2 className="text-4xl font-bold text-center mb-12">Клиенты о нас</h2>
+        <div className="text-center">
+          <p className="text-muted-foreground">Загрузка отзывов...</p>
         </div>
-      </section>
+      </SectionShell>
     );
   }
 
   if (error) {
     return (
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-12">
-            Клиенты о нас
-          </h2>
-          <div className="text-center">
-            <p className="text-destructive">Ошибка загрузки отзывов</p>
-          </div>
+      <SectionShell>
+        <h2 className="text-4xl font-bold text-center mb-12">Клиенты о нас</h2>
+        <div className="text-center">
+          <p className="text-destructive">Ошибка загрузки отзывов</p>
         </div>
-      </section>
+      </SectionShell>
     );
   }
 
@@ -64,37 +64,30 @@ export function ReviewsSection() {
   );
 
   return (
-    <section className="py-20 bg-muted/30">
-      <div className="container mx-auto px-4">
-        <h2 className="text-4xl font-bold text-center mb-12">
-          Клиенты о нас
-        </h2>
-        
-        {isMobile ? (
-          <Carousel
-            opts={{
-              align: "start",
-              loop: true,
-            }}
-            plugins={[autoplayPlugin]}
-            className="w-full"
-          >
-            <CarouselContent className="-ml-2 md:-ml-4">
-              {reviews.slice(0, 4).map((review) => (
-                <CarouselItem key={review.id} className="pl-2 md:pl-4 basis-4/5">
-                  <ReviewCard review={review} />
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-          </Carousel>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+    <SectionShell>
+      <h2 className="text-4xl font-bold text-center mb-12">Клиенты о нас</h2>
+
+      {isMobile ? (
+        <Carousel
+          opts={{ align: 'start', loop: true }}
+          plugins={[autoplayPlugin]}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-2 md:-ml-4">
             {reviews.slice(0, 4).map((review) => (
-              <ReviewCard key={review.id} review={review} />
+              <CarouselItem key={review.id} className="pl-2 md:pl-4 basis-4/5">
+                <ReviewCard review={review} />
+              </CarouselItem>
             ))}
-          </div>
-        )}
-      </div>
-    </section>
+          </CarouselContent>
+        </Carousel>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {reviews.slice(0, 4).map((review) => (
+            <ReviewCard key={review.id} review={review} />
+          ))}
+        </div>
+      )}
+    </SectionShell>
   );
 }
