@@ -195,169 +195,154 @@ export default function ProductPage() {
             )}
           </div>
 
-          {/* Инфо */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-end">
-              {/* Только избранное */}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  if (isFav) {
-                    removeFromFavorites(product.id);
-                    toast({
-                      title: 'Удалено из избранного',
-                      description: `${product.name} удален из избранного`,
-                    });
-                  } else {
-                    addToFavorites({
-                      id: product.id,
-                      name: product.name,
-                      price: product.price || 0,
-                      image: product.image_url || '/placeholder.svg',
-                      description: product.description || '',
-                      category: product.category?.name || 'Разное',
-                      inStock: product.is_active,
-                      quantity: 1,
-                      colors: [],
-                      size: 'medium',
-                      occasion: [],
-                    } as any);
-                    toast({
-                      title: 'Добавлено в избранное',
-                      description: `${product.name} добавлен в избранное`,
-                    });
-                  }
-                }}
-                aria-label={
-                  isFav ? 'Убрать из избранного' : 'Добавить в избранное'
-                }
-                className={isFav ? 'bg-destructive text-destructive-foreground' : ''}
-              >
-                <Heart
-                  className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`}
-                />
-              </Button>
-            </div>
+{/* Инфо */}
+<div className="space-y-6">
+  {/* Название */}
+  <h1 className="text-2xl md:text-3xl font-bold text-[#819570]">
+    {(product?.name || '').toUpperCase()}
+  </h1>
 
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-              {(product?.name || '').toUpperCase()}
-            </h1>
+  {/* Цена под названием */}
+  <div className="text-2xl font-bold text-[#819570]">
+    {(product?.price || 0).toLocaleString()} ₽
+  </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="text-2xl font-bold">
-                  {(product?.price || 0).toLocaleString()} ₽
-                </div>
-                <Button
-                  onClick={handleAddToCart}
-                  disabled={product?.availability_status !== 'in_stock'}
-                  className="flex-1 h-12"
-                >
-                  <ShoppingBag className="w-4 h-4 mr-2" />
-                  КУПИТЬ
-                </Button>
-              </div>
-            </div>
+  {/* Кнопка + сердечко (как в каталоге: компактная, овальная) */}
+  <div className="flex items-center gap-3">
+    <Button
+      onClick={handleAddToCart}
+      disabled={product?.availability_status !== 'in_stock'}
+      className="h-10 rounded-full px-6 text-sm font-medium"
+    >
+      <ShoppingBag className="w-4 h-4 mr-2" />
+      Добавить в корзину
+    </Button>
 
-            {/* Состав */}
-            {(compositionItems?.length ?? 0) > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-semibold text-foreground">СОСТАВ</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {compositionItems.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full" />
-                      <span className="text-muted-foreground">
-                        {item.name}
-                        {typeof item.qty === 'number'
-                          ? ` — ${item.qty} шт.`
-                          : ''}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+    <Button
+      variant="outline"
+      size="icon"
+      aria-label={isFav ? 'Убрать из избранного' : 'Добавить в избранное'}
+      onClick={() => {
+        if (isFav) {
+          removeFromFavorites(product.id);
+          toast({
+            title: 'Удалено из избранного',
+            description: `${product.name} удален из избранного`,
+          });
+        } else {
+          addToFavorites({
+            id: product.id,
+            name: product.name,
+            price: product.price || 0,
+            image: product.image_url || '/placeholder.svg',
+            description: product.description || '',
+            category: product.category?.name || 'Разное',
+            inStock: product.is_active,
+            quantity: 1,
+            colors: [],
+            size: 'medium',
+            occasion: [],
+          } as any);
+          toast({
+            title: 'Добавлено в избранное',
+            description: `${product.name} добавлен в избранное`,
+          });
+        }
+      }}
+      className={`h-10 w-10 rounded-full ${isFav ? 'bg-destructive text-destructive-foreground' : ''}`}
+    >
+      <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+    </Button>
+  </div>
 
-                {product?.show_substitution_note && (
-                  <p className="mt-2 text-sm text-green-700">
-                    {(product?.substitution_note_text &&
-                      product.substitution_note_text.trim()) ||
-                      'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
-                  </p>
-                )}
-              </div>
-            )}
+  {/* Состав */}
+  {(compositionItems?.length ?? 0) > 0 && (
+    <div className="space-y-3">
+      <h3 className="font-semibold text-foreground">СОСТАВ</h3>
+      <div className="grid grid-cols-2 gap-2">
+        {compositionItems.map((item) => (
+          <div key={item.name} className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-primary rounded-full" />
+            <span className="text-muted-foreground">
+              {item.name}
+              {typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
+            </span>
+          </div>
+        ))}
+      </div>
 
-            {/* Аккордеоны */}
-            <Accordion type="single" collapsible className="w-full">
-              {(product?.description || product?.detailed_description) && (
-                <AccordionItem value="description">
-                  <AccordionTrigger className="text-left font-medium">
-                    ОПИСАНИЕ
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground space-y-2">
-                    {product?.description && (
-                      <p className="whitespace-pre-line">
-                        {product.description}
-                      </p>
-                    )}
-                    {product?.detailed_description && (
-                      <p className="whitespace-pre-line">
-                        {product.detailed_description}
-                      </p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-              )}
+      {product?.show_substitution_note && (
+        <p className="mt-2 text-sm text-green-700">
+          {(product?.substitution_note_text &&
+            product.substitution_note_text.trim()) ||
+            'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
+        </p>
+      )}
+    </div>
+  )}
 
-              {product?.gift_info && (
-                <AccordionItem value="gift">
-                  <AccordionTrigger className="text-left font-medium">
-                    ПОДАРОК К КАЖДОМУ ЗАКАЗУ
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
-                    {product.gift_info}
-                  </AccordionContent>
-                </AccordionItem>
-              )}
+  {/* Аккордеоны */}
+  <Accordion type="single" collapsible className="w-full">
+    {(product?.description || product?.detailed_description) && (
+      <AccordionItem value="description">
+        <AccordionTrigger className="text-left font-medium">
+          ОПИСАНИЕ
+        </AccordionTrigger>
+        <AccordionContent className="text-muted-foreground space-y-2">
+          {product?.description && (
+            <p className="whitespace-pre-line">{product.description}</p>
+          )}
+          {product?.detailed_description && (
+            <p className="whitespace-pre-line">{product.detailed_description}</p>
+          )}
+        </AccordionContent>
+      </AccordionItem>
+    )}
 
-              {product?.size_info && (
-                <AccordionItem value="size">
-                  <AccordionTrigger className="text-left font-medium">
-                    РАЗМЕРЫ
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
-                    <p className="whitespace-pre-line">
-                      {product.size_info}
-                    </p>
-                  </AccordionContent>
-                </AccordionItem>
-              )}
+    {product?.gift_info && (
+      <AccordionItem value="gift">
+        <AccordionTrigger className="text-left font-medium">
+          ПОДАРОК К КАЖДОМУ ЗАКАЗУ
+        </AccordionTrigger>
+        <AccordionContent className="text-muted-foreground">
+          {product.gift_info}
+        </AccordionContent>
+      </AccordionItem>
+    )}
 
-              {product?.delivery_info && (
-                <AccordionItem value="delivery">
-                  <AccordionTrigger className="text-left font-medium">
-                    ДОСТАВКА
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
-                    {product.delivery_info}
-                  </AccordionContent>
-                </AccordionItem>
-              )}
+    {product?.size_info && (
+      <AccordionItem value="size">
+        <AccordionTrigger className="text-left font-medium">
+          РАЗМЕРЫ
+        </AccordionTrigger>
+        <AccordionContent className="text-muted-foreground">
+          <p className="whitespace-pre-line">{product.size_info}</p>
+        </AccordionContent>
+      </AccordionItem>
+    )}
 
-              {product?.care_instructions && (
-                <AccordionItem value="care">
-                  <AccordionTrigger className="text-left font-medium">
-                    КАК УХАЖИВАТЬ ЗА ЦВЕТАМИ
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
-                    <p className="whitespace-pre-line">
-                      {product.care_instructions}
-                    </p>
-                  </AccordionContent>
-                </AccordionItem>
-              )}
-            </Accordion>
+    {product?.delivery_info && (
+      <AccordionItem value="delivery">
+        <AccordionTrigger className="text-left font-medium">
+          ДОСТАВКА
+        </AccordionTrigger>
+        <AccordionContent className="text-muted-foreground">
+          {product.delivery_info}
+        </AccordionContent>
+      </AccordionItem>
+    )}
+
+    {product?.care_instructions && (
+      <AccordionItem value="care">
+        <AccordionTrigger className="text-left font-medium">
+          КАК УХАЖИВАТЬ ЗА ЦВЕТАМИ
+        </AccordionTrigger>
+        <AccordionContent className="text-muted-foreground">
+          <p className="whitespace-pre-line">{product.care_instructions}</p>
+        </AccordionContent>
+      </AccordionItem>
+    )}
+  </Accordion>
           </div>
         </div>
 
