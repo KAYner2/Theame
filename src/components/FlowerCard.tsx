@@ -59,7 +59,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
       <Link to={productUrl}>
         <Card className="overflow-hidden border border-primary/10 hover:shadow-soft transition-all duration-300 hover:scale-[1.02] rounded-2xl h-full flex flex-col">
           {/* Фото */}
-          <div className="relative h-96 overflow-hidden rounded-t-2xl">
+          <div className="relative h-[420px] overflow-hidden rounded-t-2xl">
             <img
               src={flower.image}
               alt={flower.name}
@@ -75,7 +75,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
           </div>
 
           {/* Контент */}
-          <div className="p-4 flex flex-col flex-1">
+          <div className="p-4">
             <h3 className="font-medium text-foreground text-base mb-2 line-clamp-2 leading-relaxed">
               {flower.name}
             </h3>
@@ -85,7 +85,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
                 {flower.price.toLocaleString()} ₽
               </span>
 
-              {/* Кнопка избранного (иконка) */}
+              {/* Кнопка избранного */}
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -104,7 +104,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
               </button>
             </div>
 
-            {/* Кнопка «В корзину» */}
+            {/* Кнопка В корзину (зелёная, как по ТЗ) */}
             <Button
               onClick={(e) => {
                 e.preventDefault();
@@ -114,11 +114,10 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
               disabled={!flower.inStock}
               className="
                 w-full h-11
-                bg-[#E30613] text-white font-semibold
-                hover:bg-white hover:text-[#E30613] hover:border hover:border-[#E30613]
+                bg-[#819570] text-white
+                hover:bg-white hover:text-[#819570] hover:border hover:border-[#819570]
                 transition-colors
                 disabled:opacity-50 disabled:cursor-not-allowed
-                rounded-b-2xl
               "
             >
               {flower.inStock ? 'В корзину' : 'Нет в наличии'}
