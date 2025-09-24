@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
-import { Card, CardContent } from './ui/card';
 import { useHomepageProducts } from '@/hooks/useProducts';
 import { useCart } from '@/context/CartContext';
 import type { Flower } from '@/types/flower';
@@ -69,40 +68,35 @@ export function FeaturedProducts() {
               : 'По запросу';
 
             return (
-              <Card
-                key={product.id}
-                className="overflow-hidden border border-black/5 rounded-3xl bg-white shadow-sm hover:shadow-md transition-shadow"
-              >
+              <div key={product.id} className="group">
                 <Link to={to} aria-label={product.name} className="block">
-                  <CardContent className="p-0">
-                    {/* КРУПНОЕ ИЗОБРАЖЕНИЕ 4:5 */}
-                    <div className="relative overflow-hidden rounded-2xl m-2">
-                      <div className="aspect-[4/5]">
-                        <img
-                          src={product.image || '/placeholder.svg'}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
+                  {/* Фото */}
+                  <div className="relative overflow-hidden rounded-2xl">
+                    <div className="aspect-[4/5]">
+                      <img
+                        src={product.image || '/placeholder.svg'}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
                     </div>
+                  </div>
 
-                    {/* Текст */}
-                    <div className="px-4 pt-1">
-                      <h3 className="text-[15px] md:text-base font-medium leading-snug line-clamp-2">
-                        {product.name}
-                      </h3>
-                      <div className="mt-1">
-                        <span className="text-base md:text-lg font-semibold">
-                          {priceText}
-                        </span>
-                      </div>
+                  {/* Текст */}
+                  <div className="mt-3 px-1">
+                    <h3 className="text-[15px] md:text-base font-medium leading-snug line-clamp-2">
+                      {product.name}
+                    </h3>
+                    <div className="mt-1">
+                      <span className="text-base md:text-lg font-semibold">
+                        {priceText}
+                      </span>
                     </div>
-                  </CardContent>
+                  </div>
                 </Link>
 
-                {/* Компактная овальная кнопка, НЕ на всю ширину */}
-                <div className="px-4 pb-4 pt-3">
+                {/* Кнопка */}
+                <div className="px-1 pt-3">
                   <Button
                     onClick={(e) => {
                       e.preventDefault();
@@ -113,7 +107,7 @@ export function FeaturedProducts() {
                     В КОРЗИНУ
                   </Button>
                 </div>
-              </Card>
+              </div>
             );
           })}
         </div>
