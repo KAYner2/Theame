@@ -3,7 +3,6 @@ import { useState, useEffect, useMemo } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronLeft, ChevronRight, Heart, ShoppingBag } from 'lucide-react';
 
 import { useCart } from '@/context/CartContext';
@@ -138,220 +137,172 @@ export default function ProductPage() {
     });
   };
 
+  const descriptionText = [
+    product?.description?.trim(),
+    product?.detailed_description?.trim(),
+  ].filter(Boolean).join('\n\n');
+
   return (
     <div className="min-h-screen bg-[#fff8ea]">
       <div className="container mx-auto px-4 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-center">
-{/* Галерея */}
-<div className="space-y-4">
-  <Card
-    className="
-      relative overflow-hidden
-      aspect-[4/3]          /* вместо aspect-square */
-      max-h-[66vh]          /* ограничим по высоте окна */
-      lg:max-h-[60vh]
-      mx-auto
-    "
-  >
-    <img
-      src={images[selectedImageIndex] || baseImg}
-      alt={product?.name || ''}
-      className="w-full h-full object-contain"  /* чтобы фото уменьшалось без обрезки */
-    />
+          {/* Галерея */}
+          <div className="space-y-4">
+            <Card
+              className="
+                relative overflow-hidden
+                aspect-[4/3]
+                max-h-[66vh]
+                lg:max-h-[60vh]
+                mx-auto
+              "
+            >
+              <img
+                src={images[selectedImageIndex] || baseImg}
+                alt={product?.name || ''}
+                className="w-full h-full object-contain"
+              />
 
-    {imagesLen > 1 && (
-      <>
-        <Button
-          variant="outline"
-          size="icon"
-          className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
-          onClick={prevImage}
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
-          onClick={nextImage}
-        >
-          <ChevronRight className="w-4 h-4" />
-        </Button>
-      </>
-    )}
-  </Card>
+              {imagesLen > 1 && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+                    onClick={prevImage}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+                    onClick={nextImage}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
+            </Card>
 
-  {imagesLen > 1 && (
-    <div className="grid grid-cols-5 gap-2">
-      {images.map((src, idx) => (
-        <Card
-          key={src + idx}
-          className={`cursor-pointer overflow-hidden aspect-square transition-all ${
-            selectedImageIndex === idx
-              ? 'ring-2 ring-primary'
-              : 'hover:ring-1 hover:ring-muted-foreground'
-          }`}
-          onClick={() => setSelectedImageIndex(idx)}
-        >
-          <img
-            src={src}
-            alt={`${product?.name || ''} ${idx + 1}`}
-            className="w-full h-full object-cover"
-          />
-        </Card>
-      ))}
-    </div>
-  )}
-</div>
-
-{/* Инфо */}
-<div className="space-y-6 lg:self-center lg:max-w-[560px] lg:mx-auto">
-  {/* Название */}
-  <h1 className="text-2xl md:text-3xl font-bold text-[#819570]">
-    {(product?.name || '').toUpperCase()}
-  </h1>
-
-  {/* Цена под названием */}
-  <div className="text-2xl font-bold text-[#819570]">
-    {(product?.price || 0).toLocaleString()} ₽
-  </div>
-
-  {/* Кнопка + сердечко (как в каталоге: компактная, овальная) */}
-  <div className="flex items-center gap-3">
-    <Button
-      onClick={handleAddToCart}
-      disabled={product?.availability_status !== 'in_stock'}
-      className="h-10 rounded-full px-6 text-sm font-medium"
-    >
-      <ShoppingBag className="w-4 h-4 mr-2" />
-      Добавить в корзину
-    </Button>
-
-    <Button
-      variant="outline"
-      size="icon"
-      aria-label={isFav ? 'Убрать из избранного' : 'Добавить в избранное'}
-      onClick={() => {
-        if (isFav) {
-          removeFromFavorites(product.id);
-          toast({
-            title: 'Удалено из избранного',
-            description: `${product.name} удален из избранного`,
-          });
-        } else {
-          addToFavorites({
-            id: product.id,
-            name: product.name,
-            price: product.price || 0,
-            image: product.image_url || '/placeholder.svg',
-            description: product.description || '',
-            category: product.category?.name || 'Разное',
-            inStock: product.is_active,
-            quantity: 1,
-            colors: [],
-            size: 'medium',
-            occasion: [],
-          } as any);
-          toast({
-            title: 'Добавлено в избранное',
-            description: `${product.name} добавлен в избранное`,
-          });
-        }
-      }}
-      className={`h-10 w-10 rounded-full ${isFav ? 'bg-destructive text-destructive-foreground' : ''}`}
-    >
-      <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
-    </Button>
-  </div>
-
-  {/* Состав */}
-  {(compositionItems?.length ?? 0) > 0 && (
-    <div className="space-y-3">
-      <h3 className="font-semibold text-foreground">СОСТАВ</h3>
-      <div className="grid grid-cols-2 gap-2">
-        {compositionItems.map((item) => (
-          <div key={item.name} className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-primary rounded-full" />
-            <span className="text-muted-foreground">
-              {item.name}
-              {typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
-            </span>
+            {imagesLen > 1 && (
+              <div className="grid grid-cols-5 gap-2">
+                {images.map((src, idx) => (
+                  <Card
+                    key={src + idx}
+                    className={`cursor-pointer overflow-hidden aspect-square transition-all ${
+                      selectedImageIndex === idx
+                        ? 'ring-2 ring-primary'
+                        : 'hover:ring-1 hover:ring-muted-foreground'
+                    }`}
+                    onClick={() => setSelectedImageIndex(idx)}
+                  >
+                    <img
+                      src={src}
+                      alt={`${product?.name || ''} ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
-        ))}
-      </div>
 
-      {product?.show_substitution_note && (
-        <p className="mt-2 text-sm text-green-700">
-          {(product?.substitution_note_text &&
-            product.substitution_note_text.trim()) ||
-            'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
-        </p>
-      )}
-    </div>
-  )}
+          {/* Инфо */}
+          <div className="space-y-6 lg:self-center lg:max-w-[560px] lg:mx-auto">
+            {/* Название */}
+            <h1 className="text-2xl md:text-3xl font-bold text-[#819570]">
+              {(product?.name || '').toUpperCase()}
+            </h1>
 
-  {/* Аккордеоны */}
-  <Accordion type="single" collapsible className="w-full">
-    {(product?.description || product?.detailed_description) && (
-      <AccordionItem value="description">
-        <AccordionTrigger className="text-left font-medium">
-          ОПИСАНИЕ
-        </AccordionTrigger>
-        <AccordionContent className="text-muted-foreground space-y-2">
-          {product?.description && (
-            <p className="whitespace-pre-line">{product.description}</p>
-          )}
-          {product?.detailed_description && (
-            <p className="whitespace-pre-line">{product.detailed_description}</p>
-          )}
-        </AccordionContent>
-      </AccordionItem>
-    )}
+            {/* Цена под названием */}
+            <div className="text-2xl font-bold text-[#819570]">
+              {(product?.price || 0).toLocaleString()} ₽
+            </div>
 
-    {product?.gift_info && (
-      <AccordionItem value="gift">
-        <AccordionTrigger className="text-left font-medium">
-          ПОДАРОК К КАЖДОМУ ЗАКАЗУ
-        </AccordionTrigger>
-        <AccordionContent className="text-muted-foreground">
-          {product.gift_info}
-        </AccordionContent>
-      </AccordionItem>
-    )}
+            {/* Кнопка + сердечко */}
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={handleAddToCart}
+                disabled={product?.availability_status !== 'in_stock'}
+                className="h-10 rounded-full px-6 text-sm font-medium"
+              >
+                <ShoppingBag className="w-4 h-4 mr-2" />
+                Добавить в корзину
+              </Button>
 
-    {product?.size_info && (
-      <AccordionItem value="size">
-        <AccordionTrigger className="text-left font-medium">
-          РАЗМЕРЫ
-        </AccordionTrigger>
-        <AccordionContent className="text-muted-foreground">
-          <p className="whitespace-pre-line">{product.size_info}</p>
-        </AccordionContent>
-      </AccordionItem>
-    )}
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label={isFav ? 'Убрать из избранного' : 'Добавить в избранное'}
+                onClick={() => {
+                  if (isFav) {
+                    removeFromFavorites(product.id);
+                    toast({
+                      title: 'Удалено из избранного',
+                      description: `${product.name} удален из избранного`,
+                    });
+                  } else {
+                    addToFavorites({
+                      id: product.id,
+                      name: product.name,
+                      price: product.price || 0,
+                      image: product.image_url || '/placeholder.svg',
+                      description: product.description || '',
+                      category: product.category?.name || 'Разное',
+                      inStock: product.is_active,
+                      quantity: 1,
+                      colors: [],
+                      size: 'medium',
+                      occasion: [],
+                    } as any);
+                    toast({
+                      title: 'Добавлено в избранное',
+                      description: `${product.name} добавлен в избранное`,
+                    });
+                  }
+                }}
+                className={`h-10 w-10 rounded-full ${isFav ? 'bg-destructive text-destructive-foreground' : ''}`}
+              >
+                <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+              </Button>
+            </div>
 
-    {product?.delivery_info && (
-      <AccordionItem value="delivery">
-        <AccordionTrigger className="text-left font-medium">
-          ДОСТАВКА
-        </AccordionTrigger>
-        <AccordionContent className="text-muted-foreground">
-          {product.delivery_info}
-        </AccordionContent>
-      </AccordionItem>
-    )}
+            {/* Описание — видно сразу, без аккордеона */}
+            {descriptionText ? (
+              <div className="pt-2">
+                <h3 className="font-semibold text-foreground mb-2">ОПИСАНИЕ</h3>
+                <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {descriptionText}
+                </div>
+              </div>
+            ) : null}
 
-    {product?.care_instructions && (
-      <AccordionItem value="care">
-        <AccordionTrigger className="text-left font-medium">
-          КАК УХАЖИВАТЬ ЗА ЦВЕТАМИ
-        </AccordionTrigger>
-        <AccordionContent className="text-muted-foreground">
-          <p className="whitespace-pre-line">{product.care_instructions}</p>
-        </AccordionContent>
-      </AccordionItem>
-    )}
-  </Accordion>
+            {/* Состав (оставляем, как есть) */}
+            {(compositionItems?.length ?? 0) > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">СОСТАВ</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {compositionItems.map((item) => (
+                    <div key={item.name} className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-primary rounded-full" />
+                      <span className="text-muted-foreground">
+                        {item.name}
+                        {typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {product?.show_substitution_note && (
+                  <p className="mt-2 text-sm text-green-700">
+                    {(product?.substitution_note_text &&
+                      product.substitution_note_text.trim()) ||
+                      'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
