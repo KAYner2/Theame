@@ -151,9 +151,9 @@ export default function ProductPage() {
             <Card
               className="
                 relative overflow-hidden
-                aspect-[4/3]
-                max-h-[66vh]
-                lg:max-h-[60vh]
+                aspect-[5/4]          /* повыше и шире, чем 4/3 */
+                max-h-[75vh]         /* основное фото крупнее */
+                lg:max-h-[72vh]
                 mx-auto
               "
             >
@@ -186,11 +186,11 @@ export default function ProductPage() {
             </Card>
 
             {imagesLen > 1 && (
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-6 gap-2">
                 {images.map((src, idx) => (
                   <Card
                     key={src + idx}
-                    className={`cursor-pointer overflow-hidden aspect-square transition-all ${
+                    className={`cursor-pointer overflow-hidden aspect-square h-16 md:h-20 transition-all ${
                       selectedImageIndex === idx
                         ? 'ring-2 ring-primary'
                         : 'hover:ring-1 hover:ring-muted-foreground'
@@ -268,17 +268,7 @@ export default function ProductPage() {
               </Button>
             </div>
 
-            {/* Описание — видно сразу, без аккордеона */}
-            {descriptionText ? (
-              <div className="pt-2">
-                <h3 className="font-semibold text-foreground mb-2">ОПИСАНИЕ</h3>
-                <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {descriptionText}
-                </div>
-              </div>
-            ) : null}
-
-            {/* Состав (оставляем, как есть) */}
+            {/* СОСТАВ — сразу под кнопками */}
             {(compositionItems?.length ?? 0) > 0 && (
               <div className="space-y-3">
                 <h3 className="font-semibold text-foreground">СОСТАВ</h3>
@@ -303,6 +293,15 @@ export default function ProductPage() {
                 )}
               </div>
             )}
+
+            {/* Описание — ниже состава, без заголовка, чуть сдвинуто влево */}
+            {descriptionText ? (
+              <div className="pt-1 md:-ml-1 lg:-ml-2">
+                <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {descriptionText}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
