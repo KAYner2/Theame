@@ -170,10 +170,19 @@ export const Header = () => {
               <Link to="/cart" aria-label="Корзина">
                 <ShoppingCart className="w-5 h-5" />
                 {state.itemCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 text-xs p-0 flex items-center justify-center">
-                    {state.itemCount}
-                  </Badge>
-                )}
+  <Badge
+    className="
+      absolute top-0 right-0
+      h-5 w-5 text-[11px] p-0
+      flex items-center justify-center
+      bg-[#819570] text-white
+      border border-[#ffe9c3] shadow-sm
+      rounded-full
+    "
+  >
+    {state.itemCount}
+  </Badge>
+)}
               </Link>
             </Button>
           </div>
