@@ -357,108 +357,116 @@ export const CheckoutForm = () => {
   };
 
   const onSubmit = async (data: CheckoutFormData) => {
-  // NEW: выбор способа обязателен
-  if (!data.paymentMethod) {
-    toast.error("Выберите способ оплаты");
-    return null;
-  }
-  // NEW: жесткая проверка перед сохранением
-  if (data.paymentMethod === "cash" && data.deliveryType !== "pickup") {
-    toast.error("Оплата наличными доступна только при самовывозе.");
-    return null;
-  }
-
-  console.log("=== НАЧАЛО ОТПРАВКИ ЗАКАЗА ===");
-  console.log("Данные формы:", data);
-  console.log("Состояние корзины:", state);
-
-  setIsSubmitting(true);
-
-  const itemsJson: Json = state.items.map((i) => ({
-    id: i.id,
-    name: i.name,
-    price: i.price,
-    cartQuantity: i.cartQuantity,
-    image: i.image,
-  })) as Json;
-
-  try {
-    // Создаем объект заказа
-    const orderData = {
-      items: itemsJson,
-      total_amount: finalTotal,
-      customer_name: data.customerName,
-      customer_phone: getCleanPhoneNumber(data.customerPhone),
-      delivery_type: data.deliveryType,
-      delivery_date: data.deliveryDate ? format(data.deliveryDate, "yyyy-MM-dd") : null,
-      delivery_time: data.deliveryTime,
-      district: data.district,
-      recipient_name: data.recipientName,
-      recipient_phone: data.recipientPhone ? getCleanPhoneNumber(data.recipientPhone) : null,
-      recipient_address: data.deliveryType === "delivery" ? data.address ?? null : null,
-      card_wishes: data.cardWishes,
-      payment_method: data.paymentMethod,
-      order_comment: data.orderComment,
-      promo_code: appliedDiscount?.code || null,
-      discount_amount: discountAmount,
-      status: "pending",
-      order_status: "new",
-    };
-
-    console.log("Объект заказа для отправки:", orderData);
-
-    // Сохраняем заказ в базу данных
-    const { data: savedOrder, error: orderError } = await supabase
-      .from("orders")
-      .insert([orderData])
-      .select()
-      .single();
-
-    if (orderError) {
-      console.error("Ошибка при сохранении заказа:", orderError);
-      throw new Error(orderError.message);
+    // NEW: выбор способа обязателен
+    if (!data.paymentMethod) {
+      toast.error("Выберите способ оплаты");
+      return;
+    }
+    // NEW: жесткая проверка перед сохранением
+    if (data.paymentMethod === "cash" && data.deliveryType !== "pickup") {
+      toast.error("Оплата наличными доступна только при самовывозе.");
+      return;
     }
 
-    console.log("Заказ успешно сохранен:", savedOrder);
+    console.log("=== НАЧАЛО ОТПРАВКИ ЗАКАЗА ===");
+    console.log("Данные формы:", data);
+    console.log("Состояние корзины:", state);
+    
+    setIsSubmitting(true);
+    
+    const itemsJson: Json = state.items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      price: i.price,
+      cartQuantity: i.cartQuantity,
+      image: i.image,
+    })) as Json; 
 
-    // Сохраняем ID заказа
-    setSavedOrderId(savedOrder.id);
+    try {
+      // Создаем объект заказа
+      const orderData = {
+        items: itemsJson,  // ⬅️ важно: без JSON.stringify
+        total_amount: finalTotal,
+        customer_name: data.customerName,
+        customer_phone: getCleanPhoneNumber(data.customerPhone),
+        delivery_type: data.deliveryType,
+        delivery_date: data.deliveryDate ? format(data.deliveryDate, "yyyy-MM-dd") : null,
+        delivery_time: data.deliveryTime,
+        district: data.district,
+        recipient_name: data.recipientName,
+        recipient_phone: data.recipientPhone ? getCleanPhoneNumber(data.recipientPhone) : null,
+        recipient_address: data.deliveryType === "delivery" ? data.address ?? null : null,
+        card_wishes: data.cardWishes,
+        payment_method: data.paymentMethod,
+        order_comment: data.orderComment,
+        promo_code: appliedDiscount?.code || null,
+        discount_amount: discountAmount,
+        status: "pending",
+        order_status: "new"
+      };
 
-    // Если есть промокод — обновляем usage
-    if (appliedDiscount) {
-      const { data: promoData } = await supabase
-        .from("promo_codes")
-        .select("id, used_count")
-        .eq("code", appliedDiscount.code)
+      console.log("Объект заказа для отправки:", orderData);
+
+      // Сохраняем заказ в базу данных
+      console.log("Отправляем заказ в Supabase...");
+      const { data: savedOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
         .single();
 
-      if (promoData) {
-        await supabase
-          .from("promo_codes")
-          .update({ used_count: promoData.used_count + 1 })
-          .eq("code", appliedDiscount.code);
-
-        await supabase.from("promo_code_usage").insert({
-          promo_code_id: promoData.id,
-          order_id: savedOrder.id,
-          customer_phone: data.customerPhone,
-        });
+      if (orderError) {
+        console.error('Ошибка при сохранении заказа:', orderError);
+        throw new Error(`Ошибка при сохранении заказа: ${orderError.message}`);
       }
+
+      console.log("Заказ успешно сохранен:", savedOrder);
+
+      // Сохраняем ID заказа для виджета оплаты
+      setSavedOrderId(savedOrder.id);
+
+      // Если онлайн-оплата — просто показываем виджет Tinkoff
+      if (data.paymentMethod === "card" || data.paymentMethod === "sbp") {
+        setIsSubmitting(false);
+        return; // Дальше UI сам покажет <TinkoffPaymentButton />
+      }
+
+      // Обновляем счетчик использования промокода
+      if (appliedDiscount) {
+        console.log("Обновляем промокод...");
+        const { data: promoData } = await supabase
+          .from('promo_codes')
+          .select('id, used_count')
+          .eq('code', appliedDiscount.code)
+          .single();
+
+        if (promoData) {
+          await supabase
+            .from('promo_codes')
+            .update({ used_count: promoData.used_count + 1 })
+            .eq('code', appliedDiscount.code);
+
+          await supabase
+            .from('promo_code_usage')
+            .insert({
+              promo_code_id: promoData.id,
+              order_id: savedOrder.id,
+              customer_phone: data.customerPhone
+            });
+        }
+      }
+      
+      console.log("=== ЗАКАЗ УСПЕШНО ОФОРМЛЕН ===");
+      toast.success("Заказ успешно оформлен!");
+      clearCart();
+      
+    } catch (error) {
+      console.error('Ошибка при оформлении заказа:', error);
+      toast.error("Ошибка при оформлении заказа");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    console.log("=== ЗАКАЗ СОХРАНЁН ===");
-
-    // Возвращаем заказ наружу!
-    return savedOrder;
-  } catch (error) {
-    console.error("Ошибка при оформлении заказа:", error);
-    toast.error("Ошибка при оформлении заказа");
-    return null;
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
+  };
 
   return (
     <div className="space-y-8">
@@ -992,84 +1000,69 @@ export const CheckoutForm = () => {
               </div>
               
               {(paymentMethod === "card" || paymentMethod === "sbp") ? (
-  <div className="space-y-4">
-    <Button
-      onClick={async () => {
-        const formData = getValues();
-
-        if (!formData.paymentMethod) {
-          toast.error("Выберите способ оплаты");
-          return;
-        }
-        const validation = checkoutSchema.safeParse(formData);
-        if (!validation.success) {
-          toast.error("Заполните все обязательные поля");
-          return;
-        }
-
-        try {
-          // Сохраняем заказ
-          const order = await onSubmit(formData);
-
-          if (!order?.id) {
-            toast.error("Не удалось создать заказ");
-            return;
-          }
-
-          // И сразу запускаем оплату
-          if (window.PaymentIntegration?.Helpers?.pay) {
-            window.PaymentIntegration.Helpers.pay({
-              amount: toKop(finalTotal),
-              orderId: order.id,
-              customerKey: formData.customerPhone || formData.customerName || order.id,
-              description: `Оплата заказа ${order.id}`,
-              successCallback: () => {
-                toast.success("Оплата прошла успешно!");
-                clearCart();
-                setSavedOrderId(null);
-              },
-              failCallback: () => {
-                toast.error("Ошибка оплаты. Попробуйте ещё раз.");
-              },
-              receipt,
-            });
-          } else {
-            toast.error("Платёжный модуль Tinkoff не загружен");
-          }
-        } catch (err) {
-          console.error(err);
-          toast.error("Ошибка при создании заказа");
-        }
-      }}
-      className="w-full"
-      disabled={isSubmitting}
-    >
-      {isSubmitting ? "Подготавливаем оплату..." : "Оплатить онлайн"}
-    </Button>
-  </div>
-) : (
-  // Для оплаты наличными обычная кнопка
-  <Button
-    onClick={async () => {
-      const formData = getValues();
-      if (!formData.paymentMethod) {
-        toast.error("Выберите способ оплаты");
-        return;
-      }
-      const validation = checkoutSchema.safeParse(formData);
-      if (!validation.success) {
-        toast.error("Заполните все обязательные поля");
-        return;
-      }
-      await onSubmit(formData);
-    }}
-    className="w-full"
-    disabled={isSubmitting}
-  >
-    {isSubmitting ? "Оформляем заказ..." : "Оформить заказ"}
-  </Button>
-)}
-
+                // Для онлайн-оплаты сначала сохраняем заказ, потом показываем виджет
+                <div className="space-y-4">
+                  {!savedOrderId ? (
+                    <Button 
+                      onClick={async () => {
+                        const formData = getValues();
+                        // NEW: явная проверка способа оплаты перед сабмитом
+                        if (!formData.paymentMethod) {
+                          toast.error("Выберите способ оплаты");
+                          return;
+                        }
+                        const validation = checkoutSchema.safeParse(formData);
+                        if (!validation.success) {
+                          toast.error("Заполните все обязательные поля");
+                          return;
+                        }
+                        await onSubmit(formData);
+                      }}
+                      className="w-full"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Подготавливаем оплату..." : "Перейти к оплате"}
+                    </Button>
+                  ) : (
+                    <TinkoffPaymentButton
+                      amount={toKop(finalTotal)} // в копейках
+                      orderId={savedOrderId}
+                      customerName={watch("customerName") || ""}
+                      customerPhone={watch("customerPhone") || ""}
+                      receipt={receipt} // ← передаём чек на бэкенд
+                      onSuccess={() => {
+                        toast.success("Оплата прошла успешно!");
+                        clearCart();
+                        setSavedOrderId(null);
+                      }}
+                      onFail={() => {
+                        toast.error("Ошибка оплаты. Попробуйте ещё раз.");
+                      }}
+                    />
+                  )}
+                </div>
+              ) : (
+                // Для оплаты наличными обычная кнопка
+                <Button 
+                  onClick={async () => {
+                    const formData = getValues();
+                    if (!formData.paymentMethod) {
+                      toast.error("Выберите способ оплаты");
+                      return;
+                    }
+                    const validation = checkoutSchema.safeParse(formData);
+                    if (!validation.success) {
+                      toast.error("Заполните все обязательные поля");
+                      return;
+                    }
+                    await onSubmit(formData);
+                  }}
+                  className="w-full"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Оформляем заказ..." : "Оформить заказ"}
+                </Button>
+              )}
               
               <p className="text-xs text-muted-foreground mt-3">
                 Нажимая на кнопку "Оформить заказ", Вы автоматически соглашаетесь{" "}

@@ -2,12 +2,12 @@
 import { useEffect, useRef, useId } from 'react';
 import { Button } from './ui/button';
 
-interface TinkoffPaymentConfig {
-  amount: number;
+interface TinkoffPaymentButtonProps {
+  amount: number;        // сумма в КОПЕЙКАХ (пример: 800000 = 8000 ₽)
   orderId: string;
   customerName: string;
   customerPhone: string;
-  receipt?: any;
+  receipt?: any;         // <-- добавили проп для чека
   onSuccess?: () => void;
   onFail?: () => void;
 }
@@ -18,57 +18,65 @@ declare global {
       init: (config: any) => Promise<any>;
       Helpers?: any;
     };
-    payWithTinkoff?: (config: TinkoffPaymentConfig) => Promise<void>;
   }
 }
 
-async function getPaymentUrl(cfg: TinkoffPaymentConfig) {
-  const resp = await fetch('/api/tinkoff-init', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      amount: cfg.amount,
-      orderId: cfg.orderId,
-      description: `Оплата заказа ${cfg.orderId}`,
-      customerKey: cfg.customerPhone || cfg.customerName || cfg.orderId,
-      successUrl:
-        typeof window !== 'undefined' ? window.location.origin + '/success' : undefined,
-      failUrl:
-        typeof window !== 'undefined' ? window.location.origin + '/fail' : undefined,
-      receipt: cfg.receipt,
-    }),
-  });
-
-  const text = await resp.text();
-  let data: any;
-  try { data = JSON.parse(text); } catch { data = { error: text }; }
-
-  if (!resp.ok || !data?.paymentUrl) {
-    console.error('Init error payload:', data);
-    throw new Error(data?.error || 'Не удалось получить PaymentURL');
-  }
-  return data.paymentUrl as string;
-}
-
-// глобальная функция оплаты — можно дергать из CheckoutForm
-window.payWithTinkoff = async (cfg: TinkoffPaymentConfig) => {
-  try {
-    const url = await getPaymentUrl(cfg);
-    window.open(url, '_blank');
-  } catch (e) {
-    console.error(e);
-    cfg.onFail?.();
-  }
-};
-
-export const TinkoffPaymentButton = (props: TinkoffPaymentConfig) => {
+export const TinkoffPaymentButton = ({
+  amount,
+  orderId,
+  customerName,
+  customerPhone,
+  receipt,
+  onSuccess,
+  onFail
+}: TinkoffPaymentButtonProps) => {
   const containerId = useId();
   const scriptLoaded = useRef(false);
   const integrationInitialized = useRef(false);
 
+  async function getPaymentUrl() {
+    const resp = await fetch('/api/tinkoff-init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount,
+        orderId,
+        description: `Оплата заказа ${orderId}`,
+        customerKey: customerPhone || customerName || orderId,
+        successUrl:
+          typeof window !== 'undefined' ? window.location.origin + '/success' : undefined,
+        failUrl:
+          typeof window !== 'undefined' ? window.location.origin + '/fail' : undefined,
+        receipt // <-- пробрасываем чек на сервер
+      }),
+    });
+
+    const text = await resp.text();
+    let data: any;
+    try { data = JSON.parse(text); } catch { data = { error: text }; }
+
+    if (!resp.ok || !data?.paymentUrl) {
+  // Печатаем JSON целиком, чтобы увидеть, какой параметр неверный
+  console.error('Init error payload:', data);
+  try {
+    console.error('Init error payload (json):', JSON.stringify(data, null, 2));
+  } catch {}
+
+  // Пробуем собрать понятное сообщение
+  const details =
+    (data?.details && (data.details.Message || data.details.Details)) ||
+    data?.details ||
+    data;
+
+  throw new Error(`${data?.error || 'Не удалось получить PaymentURL'}: ${typeof details === 'string' ? details : JSON.stringify(details)}`);
+}
+    return data.paymentUrl as string;
+  }
+
   useEffect(() => {
     const init = async () => {
       if (integrationInitialized.current) return;
+
       if (!scriptLoaded.current) {
         const script = document.createElement('script');
         script.src = 'https://acq-paymentform-integrationjs.t-static.ru/integration.js';
@@ -83,14 +91,15 @@ export const TinkoffPaymentButton = (props: TinkoffPaymentConfig) => {
               features: {
                 payment: {
                   container: document.getElementById(containerId)!,
-                  paymentStartCallback: async () => await getPaymentUrl(props),
+                  paymentStartCallback: async () => await getPaymentUrl(),
                   config: {
                     status: {
                       changedCallback: (status: string) => {
-                        if (status === 'SUCCESS') props.onSuccess?.();
-                        if (['CANCELED', 'REJECTED', 'PROCESSING_ERROR'].includes(status)) props.onFail?.();
+                        if (status === 'SUCCESS') onSuccess?.();
+                        if (['CANCELED', 'REJECTED', 'PROCESSING_ERROR'].includes(status)) onFail?.();
                       },
                     },
+                    dialog: { closedCallback: () => {} },
                   },
                 },
               },
@@ -98,13 +107,13 @@ export const TinkoffPaymentButton = (props: TinkoffPaymentConfig) => {
             integrationInitialized.current = true;
           } catch (e) {
             console.error('Tinkoff init error:', e);
-            props.onFail?.();
+            onFail?.();
           }
         };
 
         script.onerror = () => {
           console.error('Не удалось загрузить скрипт интеграции Tinkoff');
-          props.onFail?.();
+          onFail?.();
         };
 
         document.head.appendChild(script);
@@ -112,18 +121,24 @@ export const TinkoffPaymentButton = (props: TinkoffPaymentConfig) => {
     };
 
     init();
-  }, [containerId, props]);
+  }, [containerId, amount, orderId, customerName, customerPhone, onSuccess, onFail]);
+
+  const handleFallback = async () => {
+    try {
+      const url = await getPaymentUrl();
+      window.open(url, '_blank');
+    } catch (e) {
+      console.error(e);
+      onFail?.();
+    }
+  };
 
   return (
     <div className="w-full space-y-4">
-      {/* контейнер для виджета */}
+      {/* контейнер для инициализации Tinkoff, скрыт чтобы кнопка не была видна */}
       <div id={containerId} className="hidden" aria-hidden="true" />
       <div className="flex justify-center">
-        <Button
-          onClick={() => window.payWithTinkoff?.(props)}
-          className="w-full max-w-sm"
-          variant="outline"
-        >
+        <Button onClick={handleFallback} className="w-full max-w-sm" variant="outline">
           Оплатить
         </Button>
       </div>
