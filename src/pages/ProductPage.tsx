@@ -141,62 +141,71 @@ export default function ProductPage() {
   return (
     <div className="min-h-screen bg-[#fff8ea]">
       <div className="container mx-auto px-4 pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Галерея */}
-          <div className="space-y-4">
-            <Card className="relative overflow-hidden aspect-square">
-              <img
-                src={images[selectedImageIndex] || baseImg}
-                alt={product?.name || ''}
-                className="w-full h-full object-cover"
-              />
-              {imagesLen > 1 && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
-                    onClick={prevImage}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
-                    onClick={nextImage}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </>
-              )}
-            </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-center">
+{/* Галерея */}
+<div className="space-y-4">
+  <Card
+    className="
+      relative overflow-hidden
+      aspect-[4/3]          /* вместо aspect-square */
+      max-h-[66vh]          /* ограничим по высоте окна */
+      lg:max-h-[60vh]
+      mx-auto
+    "
+  >
+    <img
+      src={images[selectedImageIndex] || baseImg}
+      alt={product?.name || ''}
+      className="w-full h-full object-contain"  /* чтобы фото уменьшалось без обрезки */
+    />
 
-            {imagesLen > 1 && (
-              <div className="grid grid-cols-5 gap-2">
-                {images.map((src, idx) => (
-                  <Card
-                    key={src + idx}
-                    className={`cursor-pointer overflow-hidden aspect-square transition-all ${
-                      selectedImageIndex === idx
-                        ? 'ring-2 ring-primary'
-                        : 'hover:ring-1 hover:ring-muted-foreground'
-                    }`}
-                    onClick={() => setSelectedImageIndex(idx)}
-                  >
-                    <img
-                      src={src}
-                      alt={`${product?.name || ''} ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+    {imagesLen > 1 && (
+      <>
+        <Button
+          variant="outline"
+          size="icon"
+          className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+          onClick={prevImage}
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+          onClick={nextImage}
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </>
+    )}
+  </Card>
+
+  {imagesLen > 1 && (
+    <div className="grid grid-cols-5 gap-2">
+      {images.map((src, idx) => (
+        <Card
+          key={src + idx}
+          className={`cursor-pointer overflow-hidden aspect-square transition-all ${
+            selectedImageIndex === idx
+              ? 'ring-2 ring-primary'
+              : 'hover:ring-1 hover:ring-muted-foreground'
+          }`}
+          onClick={() => setSelectedImageIndex(idx)}
+        >
+          <img
+            src={src}
+            alt={`${product?.name || ''} ${idx + 1}`}
+            className="w-full h-full object-cover"
+          />
+        </Card>
+      ))}
+    </div>
+  )}
+</div>
 
 {/* Инфо */}
-<div className="space-y-6">
+<div className="space-y-6 lg:self-center lg:max-w-[560px] lg:mx-auto">
   {/* Название */}
   <h1 className="text-2xl md:text-3xl font-bold text-[#819570]">
     {(product?.name || '').toUpperCase()}
