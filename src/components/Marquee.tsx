@@ -3,7 +3,7 @@ export function Marquee({
   text = "осенняя коллекция",
   href,
   duplicates = 10,
-  speed = 28,           // секунды на цикл (быстрее чем 28)
+  speed = 28, // секунды на один полный цикл
 }: {
   text?: string;
   href: string;
@@ -14,12 +14,13 @@ export function Marquee({
   const row = Array.from({ length: duplicates }, () => text);
   const content = [...row, ...row];
 
-return (
-  <div className="w-full overflow-hidden bg-[#819570] text-white h-9 flex items-center">
-    <div
-      className="flex items-center whitespace-nowrap animate-marquee"
-      style={{ ["--marquee-duration" as any]: `${speed}s` }} // если используешь var
-    >
+  return (
+    <div className="w-full overflow-hidden bg-[#819570] text-white h-9 flex items-center">
+      <div
+        className="flex items-center whitespace-nowrap animate-marquee"
+        // КЛЮЧЕВОЕ: задаём длительность напрямую
+        style={{ animationDuration: `${speed}s` }}
+      >
         {content.map((t, i) => (
           <div key={i} className="flex items-center">
             {/* кликабельна вся фраза */}
