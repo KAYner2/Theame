@@ -64,22 +64,6 @@ export default function ProductPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [effectiveId, categorySlug, productSlug]);
 
-  const debugOn =
-    sp.get('debug') === '1' ||
-    (typeof window !== 'undefined' &&
-      localStorage.getItem('debugProductPage') === '1');
-  if (debugOn)
-    console.log('[ProductPage dbg]', {
-      idParam,
-      categorySlug,
-      productSlug,
-      effectiveId,
-      productById,
-      productBySlug,
-      isLoading,
-      error,
-    });
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#fff8ea]">
@@ -151,8 +135,8 @@ export default function ProductPage() {
             <Card
               className="
                 relative overflow-hidden
-                aspect-[5/4]          /* повыше и шире, чем 4/3 */
-                max-h-[75vh]         /* основное фото крупнее */
+                aspect-[5/4]
+                max-h-[75vh]
                 lg:max-h-[72vh]
                 mx-auto
               "
@@ -268,10 +252,9 @@ export default function ProductPage() {
               </Button>
             </div>
 
-            {/* СОСТАВ — сразу под кнопками */}
+            {/* СОСТАВ — без заголовка */}
             {(compositionItems?.length ?? 0) > 0 && (
               <div className="space-y-3">
-                <h3 className="font-semibold text-foreground">СОСТАВ</h3>
                 <div className="grid grid-cols-2 gap-2">
                   {compositionItems.map((item) => (
                     <div key={item.name} className="flex items-center gap-2">
@@ -294,7 +277,7 @@ export default function ProductPage() {
               </div>
             )}
 
-            {/* Описание — ниже состава, без заголовка, чуть сдвинуто влево */}
+            {/* Описание — ниже состава, без заголовка */}
             {descriptionText ? (
               <div className="pt-1 md:-ml-1 lg:-ml-2">
                 <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
