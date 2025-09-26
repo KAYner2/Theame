@@ -914,7 +914,7 @@ export const CheckoutForm = () => {
         </div>
 
         {/* Правая колонка - Сводка заказа */}
-        <div className="space-y-6 lg:sticky lg:top-24">
+        <div className="space-y-6 lg:sticky lg:top-24 self-start">
           {/* Промокод */}
           <Card className="bg-[#fff8ea] border border-gray-200">
             <CardContent className="pt-6">
