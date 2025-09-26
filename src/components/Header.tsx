@@ -60,7 +60,7 @@ export const Header = () => {
         <Marquee
           text="осенняя коллекция"
           href="https://theame.ru/catalog?category=osennyaya-kollektsiya"
-          speed={18}
+          speed={24}
         />
       </div>
 
