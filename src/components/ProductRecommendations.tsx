@@ -1,4 +1,3 @@
-import { useProductRecommendations } from '@/hooks/useRecommendations';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,20 +6,50 @@ import { Link } from 'react-router-dom';
 import { useCart } from '@/context/CartContext';
 import { toast } from '@/hooks/use-toast';
 import { slugify } from '@/utils/slugify';
+import { useEffect, useState } from 'react';
 
 interface ProductRecommendationsProps { productId: string; }
 const asArray = <T,>(v: T[] | null | undefined): T[] => (Array.isArray(v) ? v : []);
 
-export function ProductRecommendations({ productId }: ProductRecommendationsProps) {
-  const { data, isLoading, error } = useProductRecommendations(productId || '');
-  const recommendations = asArray<any>(data);
-  const { addToCart } = useCart();
-
-  if (error) {
-    return <div className="py-8 text-center text-sm text-destructive/80">Не удалось загрузить рекомендации</div>;
+// простая утилита перемешки массива
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
   }
+  return a;
+}
 
-  if (isLoading) {
+export function ProductRecommendations({ productId }: ProductRecommendationsProps) {
+  const { addToCart } = useCart();
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        // ⚠️ тут можно заменить на ваш реальный API/хук загрузки всех товаров
+        const res = await fetch('/api/products'); 
+        const data = await res.json();
+
+        const arr = asArray<any>(data);
+        const pool = arr.filter((p) => String(p.id) !== productId); // исключаем текущий товар
+        const random = shuffle(pool).slice(0, 10); // берем случайные 10
+
+        setAllProducts(arr);
+        setRecommendations(random);
+      } catch (e) {
+        console.error('Ошибка загрузки рекомендаций', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProducts();
+  }, [productId]);
+
+  if (loading) {
     return (
       <div className="py-8">
         <h2 className="text-xl font-bold text-foreground mb-6 text-center">С ЭТИМ ТАКЖЕ ПОКУПАЮТ</h2>
@@ -50,25 +79,24 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
     );
   }
 
-const handleAddToCart = (p: any) => {
-  addToCart({
-    id: p.id,
-    name: p.name,
-    price: p.price || 0,
-    image: p.image_url || '/placeholder.svg',   // маппим image_url -> image
-    description: p.description || '',
-    category: p.category?.name || 'Разное',
-    inStock: p.is_active,
-    quantity: 1,                                 // этого достаточно для Flower
-    colors: [],
-    size: 'medium' as const,
-    occasion: [],
-  } as any); // можно убрать as any, если addToCart принимает Flower с такими полями
-  toast({ title: 'Добавлено в корзину', description: `${p.name} добавлен в корзину` });
-};
+  const handleAddToCart = (p: any) => {
+    addToCart({
+      id: p.id,
+      name: p.name,
+      price: p.price || 0,
+      image: p.image_url || '/placeholder.svg',
+      description: p.description || '',
+      category: p.category?.name || 'Разное',
+      inStock: p.is_active,
+      quantity: 1,
+      colors: [],
+      size: 'medium' as const,
+      occasion: [],
+    } as any);
+    toast({ title: 'Добавлено в корзину', description: `${p.name} добавлен в корзину` });
+  };
 
   const buildUrl = (p: any) => {
-    // по желанию можно тоже вести по id: return `/product/${p.id}`;
     const catSlug = p?.category?.slug || slugify(p?.category?.name || '') || 'catalog';
     const prodSlug = p?.slug || slugify(p?.name || '');
     return `/catalog/${catSlug}/${prodSlug}-${p.id}`;
