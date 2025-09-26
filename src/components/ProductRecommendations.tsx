@@ -6,12 +6,12 @@ import { Link } from 'react-router-dom';
 import { useCart } from '@/context/CartContext';
 import { toast } from '@/hooks/use-toast';
 import { slugify } from '@/utils/slugify';
-import { useEffect, useState } from 'react';
+import { useAllProducts } from '@/hooks/useProducts';
 
 interface ProductRecommendationsProps { productId: string; }
 const asArray = <T,>(v: T[] | null | undefined): T[] => (Array.isArray(v) ? v : []);
 
-// простая утилита перемешки массива
+// утилита перемешки
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -23,33 +23,19 @@ function shuffle<T>(arr: T[]): T[] {
 
 export function ProductRecommendations({ productId }: ProductRecommendationsProps) {
   const { addToCart } = useCart();
-  const [allProducts, setAllProducts] = useState<any[]>([]);
-  const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, error } = useAllProducts();
+  const products = asArray<any>(data);
 
-  useEffect(() => {
-    async function loadProducts() {
-      try {
-        // ⚠️ тут можно заменить на ваш реальный API/хук загрузки всех товаров
-        const res = await fetch('/api/products'); 
-        const data = await res.json();
+  // исключаем текущий товар
+  const pool = products.filter((p) => String(p.id) !== productId);
+  // берём случайные 10
+  const recommendations = shuffle(pool).slice(0, 10);
 
-        const arr = asArray<any>(data);
-        const pool = arr.filter((p) => String(p.id) !== productId); // исключаем текущий товар
-        const random = shuffle(pool).slice(0, 10); // берем случайные 10
+  if (error) {
+    return <div className="py-8 text-center text-sm text-destructive/80">Не удалось загрузить рекомендации</div>;
+  }
 
-        setAllProducts(arr);
-        setRecommendations(random);
-      } catch (e) {
-        console.error('Ошибка загрузки рекомендаций', e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadProducts();
-  }, [productId]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="py-8">
         <h2 className="text-xl font-bold text-foreground mb-6 text-center">С ЭТИМ ТАКЖЕ ПОКУПАЮТ</h2>
