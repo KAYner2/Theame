@@ -97,12 +97,17 @@ const checkoutSchema = z.object({
 
 type CheckoutFormData = z.infer<typeof checkoutSchema>;
 
-const timeSlots = [
-  "9:00 - 12:00",
-  "12:00 - 15:00", 
-  "15:00 - 18:00",
-  "18:00 - 21:00"
-];
+/** NEW: генерим почасовые слоты 09:00–10:00 ... 20:00–21:00 */
+const generateTimeSlots = () => {
+  const slots: string[] = [];
+  for (let h = 9; h < 21; h++) {
+    const start = `${String(h).padStart(2, "0")}:00`;
+    const end = `${String(h + 1).padStart(2, "0")}:00`;
+    slots.push(`${start} - ${end}`);
+  }
+  return slots;
+};
+const timeSlots = generateTimeSlots();
 
 const districts = [
   { name: "Центр Сочи", price: 300, freeFrom: 5000 },
@@ -352,6 +357,11 @@ export const CheckoutForm = () => {
   };
 
   const onSubmit = async (data: CheckoutFormData) => {
+    // NEW: выбор способа обязателен
+    if (!data.paymentMethod) {
+      toast.error("Выберите способ оплаты");
+      return;
+    }
     // NEW: жесткая проверка перед сохранением
     if (data.paymentMethod === "cash" && data.deliveryType !== "pickup") {
       toast.error("Оплата наличными доступна только при самовывозе.");
@@ -464,7 +474,7 @@ export const CheckoutForm = () => {
         {/* Левая колонка - Форма */}
         <div className="lg:col-span-2 space-y-8">
           {/* ВАШ ЗАКАЗ */}
-          <Card>
+          <Card className="bg-[#fff8ea] border border-gray-200">
             <CardContent className="pt-6">
               <h2 className="text-lg font-semibold mb-4">ВАШ ЗАКАЗ</h2>
               <div className="space-y-4">
@@ -590,7 +600,7 @@ export const CheckoutForm = () => {
           </Card>
 
           {/* ЗАКАЗЧИК */}
-          <Card>
+          <Card className="bg-[#fff8ea] border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
@@ -629,7 +639,7 @@ export const CheckoutForm = () => {
           </Card>
 
           {/* АДРЕС И ДОСТАВКА */}
-          <Card>
+          <Card className="bg-[#fff8ea] border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
@@ -701,29 +711,22 @@ export const CheckoutForm = () => {
                     </div>
                     <div>
                       <Label htmlFor="deliveryTime">Время *</Label>
-                      <Input
-                        id="deliveryTime"
-                        placeholder="09:00 - 10:00"
-                        value={watch("deliveryTime") || ''}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          const digitsOnly = value.replace(/[^\d]/g, '');
-                          let formatted = '';
-                          if (digitsOnly.length === 0) {
-                            formatted = '';
-                          } else if (digitsOnly.length <= 2) {
-                            formatted = digitsOnly;
-                          } else if (digitsOnly.length <= 4) {
-                            formatted = digitsOnly.slice(0, 2) + ':' + digitsOnly.slice(2);
-                          } else if (digitsOnly.length <= 6) {
-                            formatted = digitsOnly.slice(0, 2) + ':' + digitsOnly.slice(2, 4) + ' - ' + digitsOnly.slice(4);
-                          } else {
-                            formatted = digitsOnly.slice(0, 2) + ':' + digitsOnly.slice(2, 4) + ' - ' + digitsOnly.slice(4, 6) + ':' + digitsOnly.slice(6, 8);
-                          }
-                          setValue("deliveryTime", formatted);
-                        }}
-                        className={errors.deliveryTime ? "border-red-500" : ""}
-                      />
+                      {/* NEW: Select со слотами вместо free text Input */}
+                      <Select
+                        value={watch("deliveryTime") || ""}
+                        onValueChange={(v) => setValue("deliveryTime", v)}
+                      >
+                        <SelectTrigger className={errors.deliveryTime ? "border-red-500" : ""}>
+                          <SelectValue placeholder="Выберите время" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeSlots.map((slot) => (
+                            <SelectItem key={slot} value={slot}>
+                              {slot}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       {errors.deliveryTime && (
                         <p className="text-red-500 text-sm mt-1">Время доставки обязательно</p>
                       )}
@@ -854,7 +857,7 @@ export const CheckoutForm = () => {
           </Card>
 
           {/* СПОСОБЫ ОПЛАТЫ */}
-          <Card>
+          <Card className="bg-[#fff8ea] border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
@@ -911,9 +914,9 @@ export const CheckoutForm = () => {
         </div>
 
         {/* Правая колонка - Сводка заказа */}
-        <div className="space-y-6">
+        <div className="space-y-6 lg:sticky lg:top-24">
           {/* Промокод */}
-          <Card>
+          <Card className="bg-[#fff8ea] border border-gray-200">
             <CardContent className="pt-6">
               <h3 className="font-semibold mb-4">ЕСТЬ ПРОМОКОД?</h3>
               <div className="space-y-3">
@@ -959,7 +962,7 @@ export const CheckoutForm = () => {
           </Card>
 
           {/* Итого */}
-          <Card>
+          <Card className="bg-[#fff8ea] border border-gray-200">
             <CardContent className="pt-6">
               <h3 className="font-semibold mb-4">Итого</h3>
               <div className="space-y-2 mb-4">
@@ -985,7 +988,7 @@ export const CheckoutForm = () => {
                 {appliedDiscount && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>Скидка ({appliedDiscount.code})</span>
-                    <span>-{discountAmount.toLocaleString()} ₽</span>
+                    <span>-{(calculateDiscount(state.total, appliedDiscount)).toLocaleString()} ₽</span>
                   </div>
                 )}
                 
@@ -1003,6 +1006,11 @@ export const CheckoutForm = () => {
                     <Button 
                       onClick={async () => {
                         const formData = getValues();
+                        // NEW: явная проверка способа оплаты перед сабмитом
+                        if (!formData.paymentMethod) {
+                          toast.error("Выберите способ оплаты");
+                          return;
+                        }
                         const validation = checkoutSchema.safeParse(formData);
                         if (!validation.success) {
                           toast.error("Заполните все обязательные поля");
@@ -1017,7 +1025,7 @@ export const CheckoutForm = () => {
                     </Button>
                   ) : (
                     <TinkoffPaymentButton
-                      amount={finalTotalKop} // в копейках
+                      amount={toKop(finalTotal)} // в копейках
                       orderId={savedOrderId}
                       customerName={watch("customerName") || ""}
                       customerPhone={watch("customerPhone") || ""}
@@ -1038,6 +1046,10 @@ export const CheckoutForm = () => {
                 <Button 
                   onClick={async () => {
                     const formData = getValues();
+                    if (!formData.paymentMethod) {
+                      toast.error("Выберите способ оплаты");
+                      return;
+                    }
                     const validation = checkoutSchema.safeParse(formData);
                     if (!validation.success) {
                       toast.error("Заполните все обязательные поля");
