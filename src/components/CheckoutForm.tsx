@@ -735,11 +735,11 @@ export const CheckoutForm = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="address">Адрес *</Label>
+                      <Label htmlFor="address">Полный адрес доставки *</Label>
                       <AddressAutocomplete
                         value={watch("address")}
                         onChange={(value) => setValue("address", value)}
-                        placeholder="Введите улицу и номер дома"
+                        placeholder="Например: донская 10а, кв34, этаж5"
                         error={!!errors.address}
                       />
                       {errors.address && (
