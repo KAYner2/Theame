@@ -123,15 +123,23 @@ export const TinkoffPaymentButton = ({
     init();
   }, [containerId, amount, orderId, customerName, customerPhone, onSuccess, onFail]);
 
-  const handleFallback = async () => {
-    try {
-      const url = await getPaymentUrl();
-      window.open(url, '_blank');
-    } catch (e) {
-      console.error(e);
-      onFail?.();
+const handleFallback = async () => {
+  // сразу открываем окно синхронно — Safari не блокирует
+  const newWindow = window.open('', '_blank');
+
+  try {
+    const url = await getPaymentUrl();
+    if (newWindow) {
+      newWindow.location.href = url; // подставляем ссылку в уже открытое окно
     }
-  };
+  } catch (e) {
+    console.error(e);
+    onFail?.();
+    if (newWindow) {
+      newWindow.close(); // если ошибка — закрываем пустое окно
+    }
+  }
+};
 
   return (
     <div className="w-full space-y-4">
