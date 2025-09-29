@@ -244,14 +244,6 @@ React.useEffect(() => {
           />
         </div>
         <div>
-          <Label htmlFor="description">Описание</Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          />
-        </div>
-        <div>
           <Label htmlFor="image">Изображение</Label>
           <Input
             id="image"
@@ -290,14 +282,9 @@ React.useEffect(() => {
   const ProductForm = ({ product }: { product?: Product }) => {
     const [formData, setFormData] = useState({
       name: product?.name || '',
-      description: product?.description || '',
       detailed_description: product?.detailed_description || '',
-      care_instructions: product?.care_instructions || '',
       composition: (product?.composition_raw ?? (product?.composition?.join(', ') ?? '')),
-      colors: product?.colors?.join(', ') || '',
-      gift_info: product?.gift_info || '',
       guarantee_info: product?.guarantee_info || '',
-      delivery_info: product?.delivery_info || '',
       size_info: product?.size_info || '',
       availability_status: (product?.availability_status ?? 'in_stock') as AvailabilityStatus,
       price: product?.price || 0,
@@ -341,9 +328,6 @@ const data = {
 
   // ✅ нормализованный массив для фильтров/поиска (без "шт", "x5", и дублей)
   composition: normalizeComposition(formData.composition),
-
-  // ✅ цвета — просто разбиваем и делаем первую букву заглавной
-  colors: splitItems(formData.colors).map(capitalizeFirst),
 
   image_url: imageUrl,
   gallery_urls: galleryUrls,
@@ -418,29 +402,12 @@ const data = {
             />
           </div>
           <div>
-            <Label htmlFor="description">Краткое описание</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
-          <div>
             <Label htmlFor="detailed_description">Подробное описание</Label>
             <Textarea
               id="detailed_description"
               value={formData.detailed_description}
               onChange={(e) => setFormData({ ...formData, detailed_description: e.target.value })}
               rows={4}
-            />
-          </div>
-          <div>
-            <Label htmlFor="care_instructions">Уход</Label>
-            <Textarea
-              id="care_instructions"
-              value={formData.care_instructions}
-              onChange={(e) => setFormData({ ...formData, care_instructions: e.target.value })}
-              rows={3}
             />
           </div>
           <div>
@@ -483,37 +450,6 @@ const data = {
     />
   </div>
 )}
-          <div>
-            <Label htmlFor="colors">Цвета (через запятую)</Label>
-            <Textarea
-              id="colors"
-              value={formData.colors}
-              onChange={(e) => setFormData({ 
-                ...formData, 
-                colors: e.target.value
-              })}
-              placeholder="Красный, Белый, Розовый"
-              rows={2}
-            />
-          </div>
-          <div>
-            <Label htmlFor="gift_info">Информация о подарке</Label>
-            <Textarea
-              id="gift_info"
-              value={formData.gift_info}
-              onChange={(e) => setFormData({ ...formData, gift_info: e.target.value })}
-              rows={2}
-            />
-          </div>
-          <div>
-            <Label htmlFor="delivery_info">Доставка</Label>
-            <Textarea
-              id="delivery_info"
-              value={formData.delivery_info}
-              onChange={(e) => setFormData({ ...formData, delivery_info: e.target.value })}
-              rows={2}
-            />
-          </div>
           <div>
             <Label htmlFor="size_info">Размеры</Label>
             <Input
