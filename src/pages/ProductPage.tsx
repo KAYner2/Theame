@@ -14,8 +14,6 @@ import { useProductBySlug } from '@/hooks/useProductBySlug';
 import { parseCompositionRaw, parseFromArray } from '@/utils/parseComposition';
 import { ProductRecommendations } from '@/components/ProductRecommendations';
 
-import type { Product, ProductVariant } from '@/types/database';
-
 const asArray = <T,>(v: T[] | T | null | undefined): T[] =>
   Array.isArray(v) ? v : v ? [v] : [];
 
@@ -54,28 +52,13 @@ export default function ProductPage() {
       ? useProductBySlug(categorySlug ?? '', productSlug)
       : { data: null, isLoading: false, error: null } as const;
 
-  const product = productById ?? productBySlug as Product | null;
+  const product = productById ?? productBySlug;
   const isLoading = loadingById || loadingBySlug;
   const error = errorById || errorBySlug;
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const { addToCart } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
-
-  // 🆕 активный вариант
-  const variants = (product?.product_variants ?? []) as ProductVariant[];
-  const [activeVariant, setActiveVariant] = useState<ProductVariant | null>(
-    variants.length > 0 ? variants[0] : null
-  );
-
-  // обновляем activeVariant при смене товара
-  useEffect(() => {
-    if (variants.length > 0) {
-      setActiveVariant(variants[0]);
-    } else {
-      setActiveVariant(null);
-    }
-  }, [product?.id]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -114,28 +97,23 @@ export default function ProductPage() {
 
   const isFav = isFavorite(product.id);
 
-  // 🆕 цена и состав по варианту
-  const effectivePrice = activeVariant
-    ? activeVariant.price
-    : (product?.price || 0);
-
-  const compositionItems = activeVariant?.composition
-    ? parseCompositionRaw(activeVariant.composition)
-    : product?.composition_raw
-      ? parseCompositionRaw(product.composition_raw)
-      : parseFromArray(asArray(product?.composition));
+  const compositionItems = product?.composition_raw
+    ? parseCompositionRaw(product.composition_raw)
+    : parseFromArray(asArray(product?.composition));
 
   const handleAddToCart = () => {
     addToCart({
       id: product.id,
-      variantId: activeVariant?.id ?? null,
-      name: product.name + (activeVariant ? ` (${activeVariant.name})` : ''),
-      price: effectivePrice,
+      name: product.name,
+      price: product.price || 0,
       image: product.image_url || '/placeholder.svg',
       description: product.description || '',
       category: product.category?.name || 'Разное',
       inStock: product.is_active,
       quantity: 1,
+      colors: [],
+      size: 'medium',
+      occasion: [],
     } as any);
     toast({
       title: 'Добавлено в корзину',
@@ -221,27 +199,10 @@ export default function ProductPage() {
               {(product?.name || '').toUpperCase()}
             </h1>
 
-            {/* Цена */}
+            {/* Цена под названием */}
             <div className="text-2xl font-bold text-[#819570]">
-              {effectivePrice.toLocaleString()} ₽
+              {(product?.price || 0).toLocaleString()} ₽
             </div>
-
-            {/* 🆕 Варианты */}
-            {variants.length > 1 && (
-              <div className="flex gap-2 flex-wrap">
-                {variants.map((v) => (
-                  <Button
-                    key={v.id}
-                    variant={activeVariant?.id === v.id ? 'default' : 'outline'}
-                    size="sm"
-                    className="rounded-full px-4"
-                    onClick={() => setActiveVariant(v)}
-                  >
-                    {v.name}
-                  </Button>
-                ))}
-              </div>
-            )}
 
             {/* Кнопка + сердечко */}
             <div className="flex items-center gap-3">
@@ -268,14 +229,16 @@ export default function ProductPage() {
                   } else {
                     addToFavorites({
                       id: product.id,
-                      variantId: activeVariant?.id ?? null,
-                      name: product.name + (activeVariant ? ` (${activeVariant.name})` : ''),
-                      price: effectivePrice,
+                      name: product.name,
+                      price: product.price || 0,
                       image: product.image_url || '/placeholder.svg',
                       description: product.description || '',
                       category: product.category?.name || 'Разное',
                       inStock: product.is_active,
                       quantity: 1,
+                      colors: [],
+                      size: 'medium',
+                      occasion: [],
                     } as any);
                     toast({
                       title: 'Добавлено в избранное',
@@ -289,7 +252,7 @@ export default function ProductPage() {
               </Button>
             </div>
 
-            {/* СОСТАВ */}
+            {/* СОСТАВ — без заголовка */}
             {(compositionItems?.length ?? 0) > 0 && (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
@@ -314,7 +277,7 @@ export default function ProductPage() {
               </div>
             )}
 
-            {/* Описание */}
+            {/* Описание — ниже состава, без заголовка */}
             {descriptionText ? (
               <div className="pt-1 md:-ml-1 lg:-ml-2">
                 <div className="text-muted-foreground leading-relaxed whitespace-pre-line">

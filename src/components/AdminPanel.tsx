@@ -27,7 +27,6 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DndContext, useSensors, useSensor, MouseSensor, TouchSensor } from "@dnd-kit/core";
 import { slugify } from "@/utils/slugify";
-import type { ProductVariant } from '@/types/database'; // 👈 добавляем сюда
 
 // --- helpers: нормализация списка цветов ---
 const splitItems = (input: string) =>
@@ -280,13 +279,6 @@ React.useEffect(() => {
     );
   };
 
-type VariantDraft = {
-  id: string;
-  name: string;
-  price: number;
-  composition: string;
-};
-
   const ProductForm = ({ product }: { product?: Product }) => {
     const [formData, setFormData] = useState({
       name: product?.name || '',
@@ -298,13 +290,6 @@ type VariantDraft = {
       price: product?.price || 0,
       category_ids: product?.category_ids ?? (product?.category_id ? [product.category_id] : []),
       image_url: product?.image_url || '',
-      use_variants: !!product?.product_variants?.length,   // включаем режим, если есть варианты
-      product_variants: (product?.product_variants?.map(v => ({
-  id: v.id,
-  name: v.name,
-  price: v.price,
-  composition: v.composition || '',
-})) ?? []) as VariantDraft[], // список вариантов
       gallery_urls: product?.gallery_urls || [],
       is_featured: product?.is_featured ?? false,
       is_active: product?.is_active ?? true,
@@ -336,29 +321,25 @@ type VariantDraft = {
 
 // СБОР ПОЛЕЙ ТОВАРА (без категорий!)
 const data = {
-  name: formData.name,
-  detailed_description: formData.detailed_description,
+  ...formData,
+
+  // 🔥 сырой ввод для страницы товара (с "шт")
   composition_raw: formData.composition,
+
+  // ✅ нормализованный массив для фильтров/поиска (без "шт", "x5", и дублей)
   composition: normalizeComposition(formData.composition),
-  guarantee_info: formData.guarantee_info,
-  size_info: formData.size_info,
-  availability_status: formData.availability_status,
-  price: formData.price,
+
   image_url: imageUrl,
   gallery_urls: galleryUrls,
+
   slug: slugify(formData.name),
+
   show_substitution_note: formData.show_substitution_note,
   substitution_note_text: formData.substitution_note_text,
-  is_featured: formData.is_featured,
-  is_active: formData.is_active,
-  show_on_homepage: formData.show_on_homepage,
-  sort_order: formData.sort_order,
 };
 
         // категории нельзя отправлять в таблицу products — убираем поле из payload
         delete (data as any).category_ids;
-        delete (data as any).product_variants;
-        delete (data as any).use_variants;
 
         let savedProductId = product?.id as string | undefined;
 
@@ -376,31 +357,6 @@ const data = {
           productId: String(savedProductId!),
           categoryIds: formData.category_ids,
         });
-
-        // 3) Сохраняем ВАРИАНТЫ (если включен режим)
-if (formData.use_variants) {
-  // удаляем старые варианты у этого товара
-  await (supabase.from as any)("product_variants")
-    .delete()
-    .eq("product_id", savedProductId);
-
-  // готовим новые варианты
-  const variantsToInsert = (formData.product_variants || [])
-    .filter(v => v.name && v.price > 0)
-    .map((v, i) => ({
-      product_id: savedProductId,
-      name: v.name,
-      price: v.price,
-      composition: v.composition,
-      sort_order: i,
-    }));
-
-  // вставляем новые
-  if (variantsToInsert.length > 0) {
-    await (supabase.from as any)("product_variants").insert(variantsToInsert);
-  }
-}
-        
 
         // 3) Сбрасываем форму/диалог
         setIsDialogOpen(false);
@@ -526,106 +482,15 @@ if (formData.use_variants) {
             </Select>
           </div>
           <div>
-    <Label htmlFor="price">Цена</Label>
-    <Input
-      id="price"
-      type="number"
-      step="0.01"
-      value={formData.price}
-      onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-    />
-  </div>
-          <div className="flex items-center space-x-2">
-  <Switch
-    id="use_variants"
-    checked={formData.use_variants ?? false}
-    onCheckedChange={(checked) =>
-      setFormData({ ...formData, use_variants: checked })
-    }
-  />
-  <Label htmlFor="use_variants">Использовать варианты</Label>
-</div>
-{formData.use_variants && (
-  <div className="space-y-4 border rounded-md p-3">
-    <div className="flex justify-between items-center">
-      <Label className="font-medium">Варианты товара</Label>
-      <Button
-        type="button"
-        size="sm"
-        onClick={() => {
-          if ((formData.product_variants?.length ?? 0) >= 10) return;
-          setFormData({
-            ...formData,
-            product_variants: [
-              ...(formData.product_variants || []),
-              { id: crypto.randomUUID(), name: '', price: 0, composition: '' },
-            ],
-          });
-        }}
-      >
-        <Plus className="w-4 h-4 mr-1" /> Добавить вариант
-      </Button>
-    </div>
-
-    {(formData.product_variants || []).map((variant, index) => (
-      <div
-        key={variant.id || index}
-        className="grid grid-cols-12 gap-2 items-end border p-2 rounded"
-      >
-        <div className="col-span-3">
-          <Label>Название</Label>
-          <Input
-            value={variant.name}
-            onChange={(e) => {
-              const copy = [...formData.product_variants];
-              copy[index] = { ...copy[index], name: e.target.value };
-              setFormData({ ...formData, product_variants: copy });
-            }}
-            placeholder="S / M / L / 21 и т.п."
-          />
-        </div>
-        <div className="col-span-3">
-          <Label>Цена</Label>
-          <Input
-            type="number"
-            value={variant.price}
-            onChange={(e) => {
-              const copy = [...formData.product_variants];
-              copy[index] = { ...copy[index], price: Number(e.target.value) };
-              setFormData({ ...formData, product_variants: copy });
-            }}
-          />
-        </div>
-        <div className="col-span-5">
-          <Label>Состав</Label>
-          <Input
-            value={variant.composition}
-            onChange={(e) => {
-              const copy = [...formData.product_variants];
-              copy[index] = { ...copy[index], composition: e.target.value };
-              setFormData({ ...formData, product_variants: copy });
-            }}
-            placeholder="Розы 20 шт."
-          />
-        </div>
-        <div className="col-span-1 flex justify-end">
-          <Button
-            type="button"
-            variant="destructive"
-            size="icon"
-            onClick={() => {
-              const copy = [...formData.product_variants];
-              copy.splice(index, 1);
-              setFormData({ ...formData, product_variants: copy });
-            }}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-    ))}
-  </div>
-)}
+            <Label htmlFor="price">Цена</Label>
+            <Input
+              id="price"
+              type="number"
+              step="0.01"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+            />
+          </div>
           <div>
             <Label>Категории</Label>
             <div className="mt-2 grid grid-cols-2 gap-2 max-h-48 overflow-auto border rounded p-2">

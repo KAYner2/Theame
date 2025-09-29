@@ -34,7 +34,7 @@ import { SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 
 import { useAllProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
-import type { Product, ProductVariant } from '@/types/database';
+import type { Product } from '@/types/database';
 
 /* ---------------- helpers: нормализация/дедуп ---------------- */
 
@@ -68,24 +68,11 @@ const uniqueNormalized = (values: string[]) => {
   return Array.from(map.values());
 };
 
-/* ---------------- адаптер Product → Flower ---------------- */
-
 function toFlower(product: Product): Flower {
-  const variants: ProductVariant[] = product.product_variants ?? [];
-  let price = product.price || 0;
-  let priceLabel: string | null = null;
-
-  if (variants.length > 0) {
-    const minPrice = Math.min(...variants.map((v) => v.price));
-    price = minPrice;
-    // Подсказка: здесь же можно формировать «от {minPrice}»
-    priceLabel = `от ${minPrice.toLocaleString()} ₽`;
-  }
-
   return {
     id: product.id,
     name: product.name,
-    price,
+    price: product.price || 0,
     image: product.image_url || '/placeholder.svg',
     description: product.description || '',
     category: product.category?.name || 'Разное',
@@ -96,9 +83,7 @@ function toFlower(product: Product): Flower {
     occasion: [],
     slug: product.slug ?? null,
     categorySlug: product.category?.slug ?? null,
-    // 👇 можно потом использовать в FlowerCard
-    priceLabel,
-  } as Flower & { priceLabel?: string | null };
+  };
 }
 
 function getPriceBounds(flowers: Flower[]): [number, number] {
@@ -397,7 +382,7 @@ export const FlowerCatalog = () => {
                 {FiltersInner}
               </div>
 
-              {/* Липкий футер */}
+              {/* Липкий футер с safe area */}
               <SheetFooter
                 className="border-t bg-background px-4 py-3"
                 style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
@@ -496,16 +481,18 @@ export const FlowerCatalog = () => {
         </Select>
       </div>
 
-      {/* Каталог */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-        {filteredFlowers.map((flower) => (
-          <FlowerCard
-            key={flower.id}
-            flower={flower}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        ))}
-      </div>
+      {/* ⛔ Блок «найдено товаров / в наличии / нет в наличии» — удалён по ТЗ */}
+
+{/* Каталог */}
+<div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+  {filteredFlowers.map((flower) => (
+    <FlowerCard
+      key={flower.id}
+      flower={flower}
+      onToggleFavorite={handleToggleFavorite}
+    />
+  ))}
+</div>
 
       {/* Пустой результат */}
       {filteredFlowers.length === 0 && (
