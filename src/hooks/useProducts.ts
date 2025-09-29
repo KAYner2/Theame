@@ -5,7 +5,7 @@ import { Product, CreateProductDto } from '@/types/database';
 import { Flower } from '@/types/flower';
 import { useToast } from '@/hooks/use-toast';
 
-/** --- helpers: нормализация списка --- */
+/** --- helpers --- */
 const splitItems = (input: string) =>
   input
     .split(/[,;\n]+/g)
@@ -15,8 +15,8 @@ const splitItems = (input: string) =>
 const capitalizeFirst = (s: string) =>
   s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 
-const normalizeFlower = (raw: string) => {
-  return capitalizeFirst(
+const normalizeFlower = (raw: string) =>
+  capitalizeFirst(
     raw
       .toLowerCase()
       .replace(/\b\d+\s*(шт|штук)\.?/gi, '')
@@ -27,14 +27,13 @@ const normalizeFlower = (raw: string) => {
       .replace(/\s+/g, ' ')
       .trim()
   );
-};
 
 const normalizeComposition = (arr: string[] | null | undefined): string[] =>
   Array.from(
     new Set((arr || []).map((x) => normalizeFlower(x)).filter(Boolean))
   );
 
-/** mapper: row из view -> Flower для карточек/лент */
+/** mapper: row из view -> Flower */
 function mapDbRowToFlower(p: any): Flower {
   return {
     id: p.id,
@@ -48,21 +47,20 @@ function mapDbRowToFlower(p: any): Flower {
     slug: p.slug ?? null,
     inStock: Boolean(p.is_active),
     quantity: 1,
-    // ✅ нормализуем цвета
     colors: normalizeComposition(p.colors),
     size: 'medium',
     occasion: [],
   };
 }
 
-/** Товары для главной (лента). Возвращаем Flower[] */
+/** Товары для главной */
 export const useHomepageProducts = () => {
   return useQuery({
     queryKey: ['homepage-products'],
     queryFn: async (): Promise<Flower[]> => {
       const { data, error } = await (supabase as any)
         .from('products_with_categories')
-        .select('*')
+        .select('*, product_variants(*)') // 🆕 подтягиваем варианты
         .eq('is_active', true)
         .eq('show_on_homepage', true)
         .order('sort_order', { ascending: true })
@@ -71,7 +69,6 @@ export const useHomepageProducts = () => {
       if (error) throw error;
       return (data ?? []).map((row) => {
         const f = mapDbRowToFlower(row);
-        // ✅ при необходимости используем нормализованный composition
         (row as any).composition = normalizeComposition(row.composition);
         return f;
       });
@@ -79,14 +76,14 @@ export const useHomepageProducts = () => {
   });
 };
 
-/** Избранные (витрина). Возвращаем Flower[] */
+/** Избранные */
 export const useFeaturedProducts = () => {
   return useQuery({
     queryKey: ['featured-products'],
     queryFn: async (): Promise<Flower[]> => {
       const { data, error } = await (supabase as any)
         .from('products_with_categories')
-        .select('*')
+        .select('*, product_variants(*)') // 🆕 подтягиваем варианты
         .eq('is_active', true)
         .eq('is_featured', true)
         .order('sort_order', { ascending: true })
@@ -102,18 +99,18 @@ export const useFeaturedProducts = () => {
   });
 };
 
-/** Полный список для админки — оставляем Product[], но composition/colors нормализуем */
+/** Полный список */
 export const useAllProducts = () => {
   return useQuery({
     queryKey: ['products'],
     queryFn: async (): Promise<Product[]> => {
       const { data, error } = await (supabase as any)
         .from('products_with_categories')
-        .select('*')
+        .select('*, product_variants(*)') // 🆕 подтягиваем варианты
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
-      if (error) throw error;
 
+      if (error) throw error;
       return (data ?? []).map((row: any) => ({
         ...row,
         composition: normalizeComposition(row.composition),

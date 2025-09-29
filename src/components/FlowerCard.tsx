@@ -8,7 +8,7 @@ import { buildProductUrl } from '@/utils/buildProductUrl';
 import { Button } from './ui/button';
 
 interface FlowerCardProps {
-  flower: Flower;
+  flower: Flower & { priceLabel?: string | null };
   onToggleFavorite?: (flower: Flower) => void;
 }
 
@@ -55,7 +55,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
   return (
     <div className="group relative">
       <Link to={productUrl} aria-label={flower.name} className="block">
-        {/* 📸 Фото — квадрат 1:1, без рамок/теней, со скруглением */}
+        {/* 📸 Фото */}
         <div className="relative overflow-hidden rounded-2xl aspect-square">
           <img
             src={flower.image}
@@ -73,7 +73,9 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
 
           <div className="mt-1 flex items-center justify-between">
             <span className="text-base md:text-lg font-semibold text-gray-900">
-              {flower.price.toLocaleString()} ₽
+              {flower.priceLabel
+                ? flower.priceLabel
+                : `${flower.price.toLocaleString()} ₽`}
             </span>
 
             {/* ❤️ Избранное */}
@@ -97,7 +99,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
         </div>
       </Link>
 
-      {/* 🛒 Кнопка В корзину — овальная, как в каталоге */}
+      {/* 🛒 Кнопка В корзину */}
       <div className="mt-2 px-1">
         <Button
           onClick={(e) => {
