@@ -43,14 +43,12 @@ export default function ProductPage() {
     error: errorById,
   } = useProduct(effectiveId);
 
+  // ❗️Хук вызываем всегда (без условий). Его собственный enabled внутри хука решит, идти ли в сеть.
   const {
     data: productBySlug,
     isLoading: loadingBySlug,
     error: errorBySlug,
-  } =
-    !effectiveId && productSlug
-      ? useProductBySlug(categorySlug ?? '', productSlug)
-      : { data: null, isLoading: false, error: null } as const;
+  } = useProductBySlug(categorySlug ?? '', productSlug ?? '');
 
   const product = productById ?? productBySlug;
   const isLoading = loadingById || loadingBySlug;
