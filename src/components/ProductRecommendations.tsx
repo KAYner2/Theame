@@ -130,7 +130,7 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
                           <ShoppingBag className="w-3 h-3" />
                         </Button>
                       </div>
-                      {p.category && <div className="text-xs text-muted-foreground">{p.category.name}</div>}
+                      {/* Категория убрана */}
                     </CardContent>
                   </Card>
                 </CarouselItem>
