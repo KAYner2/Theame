@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,25 +12,31 @@ import { useAllProducts } from '@/hooks/useProducts';
 interface ProductRecommendationsProps { productId: string; }
 const asArray = <T,>(v: T[] | null | undefined): T[] => (Array.isArray(v) ? v : []);
 
-// утилита перемешки
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+// детерминированный хэш для «посева» сортировки
+const hash = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h) + s.charCodeAt(i);
+    h |= 0;
   }
-  return a;
-}
+  return h >>> 0;
+};
 
 export function ProductRecommendations({ productId }: ProductRecommendationsProps) {
   const { addToCart } = useCart();
   const { data, isLoading, error } = useAllProducts();
   const products = asArray<any>(data);
 
-  // исключаем текущий товар
-  const pool = products.filter((p) => String(p.id) !== productId);
-  // берём случайные 10
-  const recommendations = shuffle(pool).slice(0, 10);
+  // стабильные рекомендации: пересчитываются только при смене списка товаров или productId
+  const recommendations = useMemo(() => {
+    const pool = products.filter((p) => String(p.id) !== productId);
+    const seeded = pool.slice().sort((a, b) => {
+      const ha = hash(String(a.id) + productId);
+      const hb = hash(String(b.id) + productId);
+      return ha - hb;
+    });
+    return seeded.slice(0, 10);
+  }, [products, productId]);
 
   if (error) {
     return <div className="py-8 text-center text-sm text-destructive/80">Не удалось загрузить рекомендации</div>;
