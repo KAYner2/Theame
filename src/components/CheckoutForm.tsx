@@ -207,39 +207,39 @@ export const CheckoutForm = () => {
   const finalTotal = Math.max(0, subtotalWithDelivery - discountAmount);
   const toKop = (rub: number) => Math.round(rub * 100);
 
-const receiptItems = [
-  ...state.items.map((item) => ({
+let receiptItems = state.items.map((item) => {
+  const priceKop = toKop(item.price);
+  const amountKop = priceKop * item.cartQuantity;
+
+  // распределяем скидку пропорционально
+  let itemDiscount = 0;
+  if (discountAmount > 0 && state.total > 0) {
+    itemDiscount = Math.floor(amountKop * discountAmount / state.total);
+  }
+
+  return {
     Name: String(item.name).slice(0, 128),
-    Price: toKop(item.price),
+    Price: priceKop,
     Quantity: String(item.cartQuantity),
-    Amount: toKop(item.price) * item.cartQuantity,
+    Amount: Math.max(1, amountKop - itemDiscount), // не даём уйти в 0
     PaymentMethod: "full_payment",
     PaymentObject: "commodity",
-    Tax: "none", // УСН без НДС
-  })),
-  ...(deliveryPrice > 0
-    ? [{
-        Name: "Доставка",
-        Price: toKop(deliveryPrice),
-        Quantity: "1",
-        Amount: toKop(deliveryPrice),
-        PaymentMethod: "full_payment",
-        PaymentObject: "service",
-        Tax: "none",
-      }]
-    : []),
-  ...(discountAmount > 0
-    ? [{
-        Name: "Скидка",
-        Price: -toKop(discountAmount),
-        Quantity: "1",
-        Amount: -toKop(discountAmount),
-        PaymentMethod: "full_payment",
-        PaymentObject: "service",
-        Tax: "none",
-      }]
-    : [])
-];
+    Tax: "none",
+  };
+});
+
+if (deliveryPrice > 0) {
+  receiptItems.push({
+    Name: "Доставка",
+    Price: toKop(deliveryPrice),
+    Quantity: "1",
+    Amount: toKop(deliveryPrice),
+    PaymentMethod: "full_payment",
+    PaymentObject: "service",
+    Tax: "none",
+  });
+}
+
 
   const finalTotalKop = toKop(finalTotal);
 
