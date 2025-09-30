@@ -97,19 +97,31 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
         </div>
       </Link>
 
-      {/* 🛒 Кнопка В корзину — овальная, как в каталоге */}
+      {/* 🛒 Кнопка В корзину / Сделать предзаказ */}
       <div className="mt-2 px-1">
-        <Button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleAddToCart();
-          }}
-          disabled={!flower.inStock}
-          className="rounded-full px-6 h-10 text-sm md:text-base font-medium bg-[#819570] hover:bg-[#6f7f5f] text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {flower.inStock ? 'В корзину' : 'Нет в наличии'}
-        </Button>
+        {flower.inStock ? (
+          <Button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAddToCart();
+            }}
+            className="rounded-full px-6 h-10 text-sm md:text-base font-medium bg-[#819570] hover:bg-[#6f7f5f] text-white transition-colors"
+          >
+            В корзину
+          </Button>
+        ) : (
+          <Button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank');
+            }}
+            className="rounded-full px-6 h-10 text-sm md:text-base font-medium bg-[#819570] hover:bg-[#6f7f5f] text-white transition-colors"
+          >
+            Сделать предзаказ
+          </Button>
+        )}
       </div>
     </div>
   );
