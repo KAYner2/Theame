@@ -92,7 +92,7 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
   const buildUrl = (p: any) => {
     const catSlug = p?.category?.slug || slugify(p?.category?.name || '') || 'catalog';
     const prodSlug = p?.slug || slugify(p?.name || '');
-    return `/catalog/${catSlug}/${prodSlug}-${p.id}`;
+    return `/catalog/${catSlug}/${prodSlug}`;
   };
 
   return (
@@ -137,7 +137,6 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
                           <ShoppingBag className="w-3 h-3" />
                         </Button>
                       </div>
-                      {/* Категория убрана */}
                     </CardContent>
                   </Card>
                 </CarouselItem>
