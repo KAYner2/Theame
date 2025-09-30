@@ -170,7 +170,7 @@ export default function ProductPage() {
             </Card>
 
             {imagesLen > 1 && (
-              <div className="grid grid-cols-6 gap-2">
+              <div className="flex justify-center gap-2 flex-wrap">
                 {images.map((src, idx) => (
                   <Card
                     key={src + idx}
