@@ -207,28 +207,39 @@ export const CheckoutForm = () => {
   const finalTotal = Math.max(0, subtotalWithDelivery - discountAmount);
   const toKop = (rub: number) => Math.round(rub * 100);
 
-  const receiptItems = [
-    ...state.items.map((item) => ({
-      Name: String(item.name).slice(0, 128),
-      Price: toKop(item.price),
-      Quantity: String(item.cartQuantity),
-      Amount: toKop(item.price) * item.cartQuantity,
-      PaymentMethod: "full_payment",
-      PaymentObject: "commodity",
-      Tax: "none", // УСН без НДС
-    })),
-    ...(deliveryPrice > 0
-      ? [{
-          Name: "Доставка",
-          Price: toKop(deliveryPrice),
-          Quantity: "1",
-          Amount: toKop(deliveryPrice),
-          PaymentMethod: "full_payment",
-          PaymentObject: "service",
-          Tax: "none",
-        }]
-      : [])
-  ];
+const receiptItems = [
+  ...state.items.map((item) => ({
+    Name: String(item.name).slice(0, 128),
+    Price: toKop(item.price),
+    Quantity: String(item.cartQuantity),
+    Amount: toKop(item.price) * item.cartQuantity,
+    PaymentMethod: "full_payment",
+    PaymentObject: "commodity",
+    Tax: "none", // УСН без НДС
+  })),
+  ...(deliveryPrice > 0
+    ? [{
+        Name: "Доставка",
+        Price: toKop(deliveryPrice),
+        Quantity: "1",
+        Amount: toKop(deliveryPrice),
+        PaymentMethod: "full_payment",
+        PaymentObject: "service",
+        Tax: "none",
+      }]
+    : []),
+  ...(discountAmount > 0
+    ? [{
+        Name: "Скидка",
+        Price: -toKop(discountAmount),
+        Quantity: "1",
+        Amount: -toKop(discountAmount),
+        PaymentMethod: "full_payment",
+        PaymentObject: "service",
+        Tax: "none",
+      }]
+    : [])
+];
 
   const finalTotalKop = toKop(finalTotal);
 
