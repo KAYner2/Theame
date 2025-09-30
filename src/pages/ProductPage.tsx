@@ -74,6 +74,7 @@ export default function ProductPage() {
     );
   }
 
+  // ❌ Ошибку показываем только если реально не пришёл товар
   if (error || !product) {
     return (
       <div className="min-h-screen bg-[#fff8ea]">
@@ -206,14 +207,25 @@ export default function ProductPage() {
 
             {/* Кнопка + сердечко */}
             <div className="flex items-center gap-3">
-              <Button
-                onClick={handleAddToCart}
-                disabled={product?.availability_status !== 'in_stock'}
-                className="h-10 rounded-full px-6 text-sm font-medium"
-              >
-                <ShoppingBag className="w-4 h-4 mr-2" />
-                Добавить в корзину
-              </Button>
+              {product.is_active ? (
+                <Button
+                  onClick={handleAddToCart}
+                  disabled={product?.availability_status !== 'in_stock'}
+                  className="h-10 rounded-full px-6 text-sm font-medium"
+                >
+                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  Добавить в корзину
+                </Button>
+              ) : (
+                <Button
+                  onClick={() =>
+                    window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank')
+                  }
+                  className="h-10 rounded-full px-6 text-sm font-medium"
+                >
+                  Сделать предзаказ
+                </Button>
+              )}
 
               <Button
                 variant="outline"
@@ -277,7 +289,7 @@ export default function ProductPage() {
               </div>
             )}
 
-            {/* Описание — ниже состава, без заголовка */}
+            {/* Описание */}
             {descriptionText ? (
               <div className="pt-1 md:-ml-1 lg:-ml-2">
                 <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
