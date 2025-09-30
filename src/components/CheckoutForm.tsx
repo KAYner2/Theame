@@ -204,7 +204,7 @@ export const CheckoutForm = () => {
 
   const discountAmount = appliedDiscount ? calculateDiscount(state.total, appliedDiscount) : 0;
   const subtotalWithDelivery = state.total + deliveryPrice;
-  const finalTotal = subtotalWithDelivery - discountAmount;
+  const finalTotal = Math.max(0, subtotalWithDelivery - discountAmount);
   const toKop = (rub: number) => Math.round(rub * 100);
 
   const receiptItems = [
@@ -232,14 +232,15 @@ export const CheckoutForm = () => {
 
   const finalTotalKop = toKop(finalTotal);
 
-  // Страхуемся от расхождения копеек
+   // Страхуемся от расхождения копеек
   const sumKop = receiptItems.reduce((sum, i) => sum + Number(i.Amount), 0);
   if (sumKop !== finalTotalKop && receiptItems.length > 0) {
     const diff = finalTotalKop - sumKop;
-    receiptItems[receiptItems.length - 1].Amount =
-      Number(receiptItems[receiptItems.length - 1].Amount) + diff;
+    const last = receiptItems[receiptItems.length - 1];
+    const newAmount = Number(last.Amount) + diff;
+    // не даём позиции уйти в отрицательное или ноль
+    last.Amount = Math.max(1, newAmount);
   }
-
   const receipt = {
     Phone: getCleanPhoneNumber(watch("customerPhone") || ""),
     Taxation: "usn_income_outcome", // или "usn_income" — выбери свою
@@ -328,11 +329,16 @@ export const CheckoutForm = () => {
         rules
       };
 
-      const preview = calculateDiscount(state.total, discountFromDb);
+      const preview = Math.min(
+        calculateDiscount(state.total, discountFromDb),
+        state.total + deliveryPrice // скидка не может превышать сумму заказа с доставкой
+      );
+
       if (preview <= 0) {
         toast.error("Промокод применим при большей сумме корзины");
         return;
       }
+
 
       setAppliedDiscount(discountFromDb);
 
