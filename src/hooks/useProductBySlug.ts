@@ -13,8 +13,7 @@ export const useProductBySlug = (categorySlug: string | undefined, productSlug: 
       const { data, error } = await (supabase as any)
         .from('products_with_categories')
         .select('*')
-        .eq('slug', slug)
-        .eq('is_active', true)
+        .eq('slug', slug)   // 👈 убрали .eq('is_active', true)
         .maybeSingle();
 
       console.log('[useProductBySlug] slug=', slug, 'categorySlug=', cat, 'data=', data, 'error=', error);
