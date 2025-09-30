@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,37 +9,53 @@ import { toast } from '@/hooks/use-toast';
 import { slugify } from '@/utils/slugify';
 import { useAllProducts } from '@/hooks/useProducts';
 
-interface ProductRecommendationsProps { productId: string; }
-const asArray = <T,>(v: T[] | null | undefined): T[] => (Array.isArray(v) ? v : []);
-
-// утилита перемешки
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+interface ProductRecommendationsProps {
+  productId: string;
 }
+
+const asArray = <T,>(v: T[] | null | undefined): T[] =>
+  Array.isArray(v) ? v : [];
+
+// 🔑 простой детерминированный хэш
+const hash = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h) + s.charCodeAt(i);
+    h |= 0;
+  }
+  return h >>> 0;
+};
 
 export function ProductRecommendations({ productId }: ProductRecommendationsProps) {
   const { addToCart } = useCart();
   const { data, isLoading, error } = useAllProducts();
   const products = asArray<any>(data);
 
-  // исключаем текущий товар
-  const pool = products.filter((p) => String(p.id) !== productId);
-  // берём случайные 10
-  const recommendations = shuffle(pool).slice(0, 10);
+  // 📌 Делаем рекомендации стабильными для productId
+  const recommendations = useMemo(() => {
+    const pool = products.filter((p) => String(p.id) !== productId);
+    const seeded = pool.slice().sort((a, b) => {
+      const ha = hash(String(a.id) + productId);
+      const hb = hash(String(b.id) + productId);
+      return ha - hb;
+    });
+    return seeded.slice(0, 10);
+  }, [products, productId]);
 
   if (error) {
-    return <div className="py-8 text-center text-sm text-destructive/80">Не удалось загрузить рекомендации</div>;
+    return (
+      <div className="py-8 text-center text-sm text-destructive/80">
+        Не удалось загрузить рекомендации
+      </div>
+    );
   }
 
   if (isLoading) {
     return (
       <div className="py-8">
-        <h2 className="text-xl font-bold text-foreground mb-6 text-center">С ЭТИМ ТАКЖЕ ПОКУПАЮТ</h2>
+        <h2 className="text-xl font-bold text-foreground mb-6 text-center">
+          С ЭТИМ ТАКЖЕ ПОКУПАЮТ
+        </h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[1, 2, 3, 4, 5].map((i) => (
             <Card key={i} className="overflow-hidden">
@@ -79,7 +96,10 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
       size: 'medium' as const,
       occasion: [],
     } as any);
-    toast({ title: 'Добавлено в корзину', description: `${p.name} добавлен в корзину` });
+    toast({
+      title: 'Добавлено в корзину',
+      description: `${p.name} добавлен в корзину`,
+    });
   };
 
   const buildUrl = (p: any) => {
@@ -90,14 +110,19 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
 
   return (
     <div className="py-8">
-      <h2 className="text-xl font-bold text-foreground mb-6 text-center">С ЭТИМ ТАКЖЕ ПОКУПАЮТ</h2>
+      <h2 className="text-xl font-bold text-foreground mb-6 text-center">
+        С ЭТИМ ТАКЖЕ ПОКУПАЮТ
+      </h2>
       <div className="relative">
         <Carousel opts={{ align: 'start', loop: false }} className="w-full">
           <CarouselContent className="-ml-2 md:-ml-4">
             {recommendations.map((p: any) => {
               const url = buildUrl(p);
               return (
-                <CarouselItem key={p.id} className="pl-2 md:pl-4 basis-1/2 md:basis-1/5">
+                <CarouselItem
+                  key={p.id}
+                  className="pl-2 md:pl-4 basis-1/2 md:basis-1/5"
+                >
                   <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300">
                     <Link to={url} className="block">
                       <div className="aspect-square overflow-hidden">
@@ -116,12 +141,17 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
                       </Link>
                       <div className="flex items-center justify-between">
                         <div className="text-sm font-bold text-foreground">
-                          {p.price ? `${Number(p.price).toLocaleString()} ₽` : 'Цена по запросу'}
+                          {p.price
+                            ? `${Number(p.price).toLocaleString()} ₽`
+                            : 'Цена по запросу'}
                         </div>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={(e) => { e.preventDefault(); handleAddToCart(p); }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleAddToCart(p);
+                          }}
                           className="h-8 w-8 p-0"
                           disabled={p.availability_status !== 'in_stock'}
                           aria-label="Добавить в корзину"
@@ -130,7 +160,6 @@ export function ProductRecommendations({ productId }: ProductRecommendationsProp
                           <ShoppingBag className="w-3 h-3" />
                         </Button>
                       </div>
-                      {/* Категория убрана */}
                     </CardContent>
                   </Card>
                 </CarouselItem>
