@@ -106,7 +106,7 @@ export const FlowerCatalog = () => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
 
   // ✔ сортировка: только две опции из ТЗ
-  const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc'>('price-asc');
+  const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc'>('default');
 
   // управление открытием для desktop-меню и mobile-sheet раздельно
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -198,16 +198,22 @@ export const FlowerCatalog = () => {
       return true;
     });
 
-    // ✔ только две сортировки
-    switch (sortBy) {
-      case 'price-desc':
-        filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-        break;
-      case 'price-asc':
-      default:
-        filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-        break;
-    }
+switch (sortBy) {
+  case 'price-desc':
+    filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+    break;
+  case 'price-asc':
+    filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+    break;
+  case 'default':
+  default:
+    filtered.sort((a, b) => {
+      const pa = products.find(p => p.id === a.id);
+      const pb = products.find(p => p.id === b.id);
+      return (pa?.sort_order ?? 0) - (pb?.sort_order ?? 0);
+    });
+    break;
+}
 
     return filtered;
   }, [flowers, products, selectedCategoryId, selectedColor, selectedComposition, priceRange, sortBy]);
@@ -505,7 +511,7 @@ export const FlowerCatalog = () => {
               setSelectedColor('all');
               setSelectedComposition('all');
               setPriceRange(absolutePriceBounds);
-              setSortBy('price-asc'); // ✔ обновлено
+              setSortBy('default'); // возвращаемся к порядку из админки
               setSearchParams((prev) => {
                 prev.delete('category');
                 return prev;
