@@ -18,6 +18,13 @@ import { useAllReviews, useCreateReview, useUpdateReview, useDeleteReview } from
 import { useAllHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSlide } from '@/hooks/useHeroSlides';
 import { useAllRecommendations, useCreateRecommendation, useUpdateRecommendation, useDeleteRecommendation } from '@/hooks/useRecommendations';
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  useAllVariantProducts,
+  useCreateVariantProduct,
+  useUpdateVariantProduct,
+  useDeleteVariantProduct,
+} from '@/hooks/useVariantProducts';
+import { useSetVariantProductCategories } from '@/hooks/useVariantProductCategories';
 import SortableProductCard from "./SortableProductCard"; // поправь путь при необходимости
 import { Category, Product, Review, HeroSlide } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,9 +65,11 @@ const normalizeComposition = (input: string): string[] =>
 export const AdminPanel = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'categories' | 'products' | 'reviews' | 'hero-slides' | 'recommendations'>('categories');
+  const [activeTab, setActiveTab] = useState<
+  'categories' | 'products' | 'reviews' | 'hero-slides' | 'recommendations' | 'variant-products'
+>('categories');
   const { toast } = useToast();
-
+  const queryClient = useQueryClient();
   // --- для фикса скролла ---
 const scrollRef = React.useRef<HTMLDivElement | null>(null);
 const scrollPosRef = React.useRef<number>(0);
@@ -94,6 +103,58 @@ React.useEffect(() => {
     setOrderedProducts(products ?? []);
   }, [products]);
 
+  // ▼▼▼ VARIANT PRODUCTS: данные + локальный порядок + DnD ▼▼▼
+const { data: variantProducts = [], isLoading: variantProductsLoading } = useAllVariantProducts();
+
+const [orderedVariantProducts, setOrderedVariantProducts] = useState<any[]>([]);
+React.useEffect(() => {
+  setOrderedVariantProducts(variantProducts ?? []);
+}, [variantProducts]);
+
+// CRUD-хуки
+const createVariantProduct = useCreateVariantProduct();
+const updateVariantProduct = useUpdateVariantProduct();
+const deleteVariantProduct = useDeleteVariantProduct();
+
+// RPC для категорий (как у обычных товаров)
+const setVariantProductCategories = useSetVariantProductCategories();
+
+// Перестановка карточек «товаров с вариантами»
+const handleVariantDragEnd = (event: DragEndEvent) => {
+  const { active, over } = event;
+  if (!over || active.id === over.id) return;
+
+  const oldIndex = orderedVariantProducts.findIndex((p) => String(p.id) === String(active.id));
+  const newIndex = orderedVariantProducts.findIndex((p) => String(p.id) === String(over.id));
+  if (oldIndex === -1 || newIndex === -1) return;
+
+  const newOrderArr = arrayMove(orderedVariantProducts, oldIndex, newIndex);
+  setOrderedVariantProducts(newOrderArr);
+
+  updateVariantOrder.mutate(newOrderArr.map((p, i) => ({ id: Number(p.id), sort_order: i })));
+};
+
+// сохранение sort_order в БД
+const updateVariantOrder = useMutation({
+  mutationFn: async (newOrder: Array<{ id: number; sort_order: number }>) => {
+    const results = await Promise.all(
+      newOrder.map((row) =>
+        supabase.from('variant_products').update({ sort_order: row.sort_order }).eq('id', row.id)
+      )
+    );
+    const firstError = results.find((r: any) => r.error)?.error;
+    if (firstError) throw firstError;
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['variant-products'] });
+    toast({ title: 'Порядок сохранён' });
+  },
+  onError: () => {
+    toast({ variant: 'destructive', title: 'Не удалось сохранить порядок' });
+  },
+});
+// ▲▲▲ VARIANT PRODUCTS: конец блока ▲▲▲
+
   const sensors = useSensors(
     // Мышь: начать dnd только если протащили ≥12px (чуть больше, чтобы клики не срабатывали)
     useSensor(MouseSensor, {
@@ -105,7 +166,7 @@ React.useEffect(() => {
     })
   );
 
-  const dndDisabled = isDialogOpen && activeTab === "products";
+  const dndDisabled = isDialogOpen && (activeTab === "products" || activeTab === "variant-products");
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -137,7 +198,7 @@ React.useEffect(() => {
   const setProductCategories = useSetProductCategories();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
-  const queryClient = useQueryClient();
+  
 
   const updateProductOrder = useMutation({
     mutationFn: async (newOrder: Array<{ id: string; sort_order: number }>) => {
@@ -602,6 +663,167 @@ const data = {
     );
   };
 
+// ─────────────────────────────────────────────────────────────
+// VariantProductForm: форма для товаров с вариантами (без вариантов внутри)
+// Категории сохраняем через RPC set_variant_product_categories
+// ─────────────────────────────────────────────────────────────
+const VariantProductForm = ({ product }: { product?: any }) => {
+  const [formData, setFormData] = useState({
+    name: product?.name || '',
+    description: product?.description || '',
+    image_url: product?.image_url || '',
+    is_active: product?.is_active ?? true,
+    sort_order: product?.sort_order || 0,
+    slug: product?.slug || (product?.name ? slugify(product.name) : ''),
+    // локальное хранение выбранных категорий (в БД не пишем напрямую)
+    category_ids: product?.category_ids || [],
+  });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      let imageUrl = formData.image_url;
+
+      if (imageFile) {
+        // можно использовать тот же бакет, что и для обычных товаров
+        imageUrl = await uploadImage(imageFile, 'products');
+      }
+
+      const payload = {
+        name: formData.name,
+        description: formData.description || null,
+        image_url: imageUrl || null,
+        is_active: !!formData.is_active,
+        sort_order: Number(formData.sort_order) || 0,
+        slug: formData.slug || slugify(formData.name),
+      };
+
+      // 1) Сохраняем сам товар
+      let savedId: number;
+      if (product) {
+        const updated = await updateVariantProduct.mutateAsync({
+          id: Number(product.id),
+          updates: payload as any,
+        });
+        savedId = Number(updated.id);
+      } else {
+        const created = await createVariantProduct.mutateAsync(payload as any);
+        savedId = Number((created as any).id);
+      }
+
+      // 2) Сохраняем категории через RPC (строго как у обычных товаров)
+      await setVariantProductCategories.mutateAsync({
+        productId: savedId,
+        categoryIds: formData.category_ids,
+      });
+
+      // 3) Закрываем диалог и сбрасываем локальные состояния
+      setIsDialogOpen(false);
+      setEditingItem(null);
+      setImageFile(null);
+    } catch (err) {
+      console.error(err);
+      toast({ variant: 'destructive', title: 'Ошибка сохранения' });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="vp_name">Название</Label>
+        <Input
+          id="vp_name"
+          value={formData.name}
+          onChange={(e) => setFormData({
+            ...formData,
+            name: e.target.value,
+            slug: slugify(e.target.value)
+          })}
+          required
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="vp_description">Описание</Label>
+        <Textarea
+          id="vp_description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          rows={3}
+        />
+      </div>
+
+      <div>
+        <Label>Категории</Label>
+        <div className="mt-2 grid grid-cols-2 gap-2 max-h-48 overflow-auto border rounded p-2">
+          {categories.map((c) => {
+            const checked = (formData.category_ids || []).includes(c.id);
+            return (
+              <label key={c.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    setFormData((prev) => {
+                      const set = new Set(prev.category_ids || []);
+                      e.target.checked ? set.add(c.id) : set.delete(c.id);
+                      return { ...prev, category_ids: Array.from(set) };
+                    });
+                  }}
+                />
+                <span>{c.name}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="vp_image">Изображение</Label>
+        <Input
+          id="vp_image"
+          type="file"
+          accept="image/*"
+          onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+        />
+        {formData.image_url && (
+          <img
+            src={formData.image_url}
+            alt="Preview"
+            className="mt-2 w-20 h-20 object-cover rounded"
+          />
+        )}
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="vp_is_active"
+          checked={formData.is_active}
+          onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+        />
+        <Label htmlFor="vp_is_active">Активен</Label>
+      </div>
+
+      <div>
+        <Label htmlFor="vp_sort_order">Порядок сортировки</Label>
+        <Input
+          id="vp_sort_order"
+          type="number"
+          value={formData.sort_order}
+          onChange={(e) => setFormData({ ...formData, sort_order: Number(e.target.value) })}
+        />
+      </div>
+
+      <Button type="submit" className="w-full">
+        {product ? 'Обновить' : 'Создать'} товар с вариантами
+      </Button>
+    </form>
+  );
+};
+
+
   const ReviewForm = ({ review }: { review?: Review }) => {
     const [formData, setFormData] = useState({
       client_name: review?.client_name || '',
@@ -908,9 +1130,10 @@ const data = {
         </div>
 
         <Tabs defaultValue="categories" value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="categories">Категории</TabsTrigger>
             <TabsTrigger value="products">Товары</TabsTrigger>
+            <TabsTrigger value="variant-products">Товары с вариантами</TabsTrigger>
             <TabsTrigger value="reviews">Отзывы</TabsTrigger>
             <TabsTrigger value="hero-slides">Hero слайды</TabsTrigger>
             <TabsTrigger value="recommendations">Рекомендации</TabsTrigger>
@@ -1126,6 +1349,146 @@ const data = {
             )}
 
           </TabsContent>
+
+          {/* ▼▼▼ ВКЛАДКА: Товары с вариантами ▼▼▼ */}
+<TabsContent value="variant-products" className="space-y-4">
+  <div className="flex justify-between items-center">
+    <h2 className="text-2xl font-semibold">Товары с вариантами</h2>
+
+    <Dialog
+      open={isDialogOpen && activeTab === 'variant-products'}
+      onOpenChange={(open) => {
+        if (open) captureScroll();
+        setIsDialogOpen(open);
+        if (!open) {
+          requestAnimationFrame(() => {
+            (document.activeElement as HTMLElement | null)?.blur?.();
+          });
+          restoreScroll();
+        } else {
+          restoreScroll();
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button type="button" onClick={() => openDialog()}>
+          <Plus className="mr-2 h-4 w-4" />
+          Добавить товар
+        </Button>
+      </DialogTrigger>
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] overflow-hidden"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
+        <DialogHeader>
+          <DialogTitle>
+            {editingItem ? 'Редактировать' : 'Создать'} товар с вариантами
+          </DialogTitle>
+        </DialogHeader>
+        {/* используем форму, добавленную на ЭТАПЕ 4 */}
+        <VariantProductForm product={editingItem} />
+      </DialogContent>
+    </Dialog>
+  </div>
+
+  {variantProductsLoading ? (
+    <p>Загрузка...</p>
+  ) : (
+    <DndContext
+      sensors={dndDisabled ? [] : sensors}
+      onDragEnd={handleVariantDragEnd}
+    >
+      <SortableContext
+        items={orderedVariantProducts.map((p) => String(p.id))}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="grid gap-4">
+          {orderedVariantProducts.map((product) => (
+            <SortableProductCard
+              key={product.id}
+              id={String(product.id)}
+              disabled={dndDisabled}
+            >
+              <Card>
+                <CardContent className="flex items-center justify-between p-4">
+                  <div className="flex items-center space-x-4">
+                    {product.image_url && (
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-12 h-12 object-cover rounded"
+                        draggable={false}
+                      />
+                    )}
+                    <div>
+                      <h3 className="font-semibold">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {product.description}
+                      </p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Badge variant={product.is_active ? "default" : "secondary"}>
+                          {product.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
+                          {product.is_active ? "Активен" : "Неактивен"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    <Dialog
+                      onOpenChange={(open) => {
+                        if (!open) {
+                          requestAnimationFrame(() => {
+                            (document.activeElement as HTMLElement | null)?.blur?.();
+                          });
+                        }
+                      }}
+                    >
+                      <DialogTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={() => setEditingItem(product)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent
+                        className="max-w-3xl max-h-[90vh] overflow-hidden"
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                        onCloseAutoFocus={(e) => e.preventDefault()}
+                      >
+                        <DialogHeader>
+                          <DialogTitle>Редактировать товар</DialogTitle>
+                        </DialogHeader>
+                        <VariantProductForm product={product} />
+                      </DialogContent>
+                    </Dialog>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => deleteVariantProduct.mutate(product.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </SortableProductCard>
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  )}
+</TabsContent>
+{/* ▲▲▲ КОНЕЦ: вкладка "Товары с вариантами" ▲▲▲ */}
+
 
           <TabsContent value="reviews" className="space-y-4">
             <div className="flex justify-between items-center">
