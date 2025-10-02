@@ -513,9 +513,127 @@ export type Database = {
         }
         Relationships: []
       }
+
+      /* ────────────────────────────────
+         ▼▼▼  НОВЫЕ ТАБЛИЦЫ  ▼▼▼
+         ──────────────────────────────── */
+
+      variant_products: {
+        Row: {
+          id: number
+          name: string
+          slug: string
+          description: string | null
+          image_url: string | null
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          slug: string
+          description?: string | null
+          image_url?: string | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          name?: string
+          slug?: string
+          description?: string | null
+          image_url?: string | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      product_variants: {
+        Row: {
+          id: number
+          product_id: number
+          title: string
+          composition: string | null
+          price: number
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          product_id: number
+          title: string
+          composition?: string | null
+          price: number
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          product_id?: number
+          title?: string
+          composition?: string | null
+          price?: number
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "variant_products"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+
+      variant_product_categories: {
+        Row: {
+          product_id: number
+          category_id: string // uuid
+        }
+        Insert: {
+          product_id: number
+          category_id: string
+        }
+        Update: {
+          product_id?: number
+          category_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variant_product_categories_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "variant_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variant_product_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
+      // Если создашь view `variant_products_with_categories`, добавим сюда.
     }
     Functions: {
       generate_admin_token: {
@@ -525,6 +643,17 @@ export type Database = {
       verify_admin_password: {
         Args: { p_username: string; p_password: string }
         Returns: boolean
+      }
+
+      /* ────────────────────────────────
+         ▼▼▼  НОВАЯ ФУНКЦИЯ RPC  ▼▼▼
+         ──────────────────────────────── */
+      set_variant_product_categories: {
+        Args: {
+          p_product_id: number
+          p_category_ids: string[] | null // uuid[]
+        }
+        Returns: void
       }
     }
     Enums: {

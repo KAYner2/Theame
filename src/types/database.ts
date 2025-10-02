@@ -1,3 +1,4 @@
+export type { Database } from '@/integrations/supabase/types';
 // src/types/database.ts
 
 /** Статус наличия товара на складе */
@@ -185,3 +186,28 @@ export interface Product {
   category?: Category | null; // уже есть у тебя
   // ...
 }
+
+export type VariantProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  image_url: string | null;
+  category_ids: string[];       // jsonb в БД
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProductVariant = {
+  id: string;
+  product_id: string;
+  title: string;
+  composition: string | null;
+  price: number;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
