@@ -9,7 +9,7 @@ import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { toast } from '@/hooks/use-toast';
 
-import { ProductRecommendations } from '@/components/ProductRecommendations';
+import { VariantRecommendations } from '@/components/VariantRecommendations'
 
 type VP = {
   id: number; name: string; slug: string;
@@ -365,9 +365,7 @@ export default function VariantProductPage() {
 
         {/* Рекомендации (как в ProductPage) */}
         <div className="container mx-auto px-4">
-          {product?.id ? (
-            <ProductRecommendations productId={String(product.id)} />
-          ) : null}
+          {product?.id ? <VariantRecommendations productId={product.id} /> : null}
         </div>
       </div>
     </div>
