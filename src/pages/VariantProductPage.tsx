@@ -214,7 +214,7 @@ export default function VariantProductPage() {
   return (
     <div className="min-h-screen bg-[#fff8ea]">
       <div className="container mx-auto px-4 pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-center">
           {/* Галерея */}
           <div className="space-y-4">
             <Card className="relative overflow-hidden aspect-[5/4] max-h-[75vh] lg:max-h-[72vh] mx-auto">
@@ -270,7 +270,7 @@ export default function VariantProductPage() {
           </div>
 
           {/* Инфо */}
-          <div className="space-y-6 lg:self-start lg:max-w-[560px] lg:mx-auto lg:-mt-2 xl:-ml-4 2xl:-ml-6">
+          <div className="space-y-6 lg:self-center lg:max-w-[560px] lg:mx-auto">
             {/* Название */}
             <h1 className="text-2xl md:text-3xl font-bold text-[#819570]">
               {(product.name || '').toUpperCase()}
