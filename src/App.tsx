@@ -45,30 +45,36 @@ const App = () => (
 
               <main className="min-h-screen">
                 <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/catalog" element={<Catalog />} />
-                  <Route path="/favorites" element={<Favorites />} />
-                  <Route path="/catalog/:productSlug" element={<ProductPage />} />
-                  <Route path="/catalog/:categorySlug/:productSlug" element={<ProductPage />} />
-                  <Route path="/product/:id" element={<ProductPage />} />
-                  <Route path="/v/:slug" element={<VariantProductPage />} />
-                  <Route path="/vp/:slug" element={<VariantProductPage />} />
-                  <Route path="/cart" element={<CartPage />} />
-                  <Route path="/admin" element={<Admin />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/catalog/:productSlug" element={<AnyProductPage />} />
-                  <Route path="/catalog/:categorySlug/:productSlug" element={<AnyProductPage />} />
-                  <Route path="/delivery" element={<Delivery />} /> {/* 👈 новый роут */}
-                  <Route path="/privacy" element={<Privacy />} />
-                  <Route path="/public-offer" element={<PublicOffer />} />
-                  <Route path="/success" element={<PaymentSuccess />} />
-                  <Route path="/payment-error" element={<PaymentError />} />
-                  <Route path="/success" element={<Navigate to="/payment-success" replace />} />
-                  <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
-                  <Route path="/test-sort" element={<SortableTest />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="/catalog" element={<Catalog />} />
+  <Route path="/favorites" element={<Favorites />} />
+
+  {/* ЕДИНАЯ страница для ЛЮБОГО товара */}
+  <Route path="/catalog/:productSlug" element={<AnyProductPage />} />
+  <Route path="/catalog/:categorySlug/:productSlug" element={<AnyProductPage />} />
+
+  {/* legacy по id — если используешь */}
+  <Route path="/product/:id" element={<ProductPage />} />
+
+  {/* опционально: прямые ссылки на вариантные товары */}
+  <Route path="/v/:slug" element={<VariantProductPage />} />
+  {/* /vp/:slug был тестовый — лучше удалить, чтобы не путать */}
+
+  <Route path="/cart" element={<CartPage />} />
+  <Route path="/admin" element={<Admin />} />
+  <Route path="/about" element={<About />} />
+  <Route path="/contact" element={<Contact />} />
+  <Route path="/delivery" element={<Delivery />} />
+  <Route path="/privacy" element={<Privacy />} />
+  <Route path="/public-offer" element={<PublicOffer />} />
+  <Route path="/success" element={<PaymentSuccess />} />
+  <Route path="/payment-error" element={<PaymentError />} />
+  <Route path="/success" element={<Navigate to="/payment-success" replace />} />
+  <Route path="/fail" element={<Navigate to="/payment-error" replace />} />
+  <Route path="/test-sort" element={<SortableTest />} />
+  <Route path="*" element={<NotFound />} />
+</Routes>
+
               </main>
 
               <Footer />
