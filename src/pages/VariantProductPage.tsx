@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 // ── Флаги для изоляции проблемных импортов
 const USE_UI = false;           // переключай на false, если подозрение на Button/Card
-const USE_CART_FAV = true;     // переключай на false, если подозрение на контексты
-const USE_RECS = true;         // переключай на false, если подозрение на рекомендации
+const USE_CART_FAV = false;     // переключай на false, если подозрение на контексты
+const USE_RECS = false;         // переключай на false, если подозрение на рекомендации
 
 // Ленивая подгрузка рекомендаций (если модуль внутри делает что-то «не так», просто выключим флагом)
 const LazyRecommendations = React.lazy(() => import('@/components/ProductRecommendations').then(m => ({ default: m.ProductRecommendations })));
