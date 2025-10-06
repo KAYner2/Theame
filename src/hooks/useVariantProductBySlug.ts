@@ -1,57 +1,71 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/types/database";
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/types/database';
 
 type VP = Database["public"]["Tables"]["variant_products"]["Row"];
 type PV = Database["public"]["Tables"]["product_variants"]["Row"];
 
-export const useVariantProductBySlug = (slug: string | undefined) =>
-  useQuery({
-    queryKey: ["variant-product", slug],
-    enabled: !!slug,
-    queryFn: async () => {
-      // 1) сам товар
-      const { data: product, error: e1 } = await supabase
-        .from("variant_products")
-        .select("*")
-        .eq("slug", slug)
-        .eq("is_active", true)
+/**
+ * Возвращает:
+ * - product: сам variant-товар
+ * - variants: активные варианты (отсортированы)
+ * - categoryNames: названия категорий для этого товара
+ */
+export const useVariantProductBySlug = (slugRaw: string | undefined) => {
+  const slug = slugRaw ?? '';
+
+  return useQuery({
+    queryKey: ['variant-product-by-slug', slug],
+    enabled: Boolean(slug),
+    queryFn: async (): Promise<{
+      product: VP;
+      variants: PV[];
+      categoryNames: string[];
+    }> => {
+      // Один запрос с nested select:
+      // - сам товар
+      // - дочерние product_variants (children по FK) — сразу активные и отсортированные
+      // - через связку variant_product_categories → categories получим имена категорий
+      const { data, error } = await (supabase as any)
+        .from('variant_products')
+        .select(`
+          *,
+          product_variants:product_variants (
+            id, product_id, title, composition, description, price, image_url, gallery_urls,
+            is_active, sort_order, created_at, updated_at
+          ),
+          variant_product_categories:variant_product_categories (
+            category_id,
+            categories:categories ( name )
+          )
+        `)
+        .eq('slug', slug)
+        .eq('is_active', true)
         .single();
-      if (e1) throw e1;
-      if (!product) throw new Error("Товар не найден");
 
-      // 2) активные варианты
-      const { data: variants, error: e2 } = await supabase
-        .from("product_variants")
-        .select("*")
-        .eq("product_id", product.id)
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true });
-      if (e2) throw e2;
+      if (error) throw error;
+      if (!data) throw new Error('Товар не найден');
 
-      // 3) категории (для текста/рекомендаций)
-      const { data: catLinks, error: e3 } = await supabase
-        .from("variant_product_categories")
-        .select("category_id")
-        .eq("product_id", product.id);
-      if (e3) throw e3;
+      // Нормализуем варианты: берём только активные и сортируем
+      const allVariants = (data.product_variants ?? []) as PV[];
+      const variants = allVariants
+        .filter(v => v?.is_active)
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .slice(0, 10);
 
-      let categoryNames: string[] = [];
-      if (catLinks?.length) {
-        const ids = catLinks.map((r) => r.category_id);
-        const { data: cats, error: e4 } = await supabase
-          .from("categories")
-          .select("id, name")
-          .in("id", ids);
-        if (e4) throw e4;
-        categoryNames = (cats ?? []).map((c) => c.name);
-      }
+      // Достаём имена категорий
+      const categoryNames = ((data.variant_product_categories ?? []) as any[])
+        .map((row) => row?.categories?.name)
+        .filter(Boolean) as string[];
 
-      return {
-        product: product as VP,
-        variants: (variants ?? []).slice(0, 10) as PV[],
-        categoryNames,
-      };
+      // Выкинем вспомогательные поля из ответа и вернём чистую структуру
+      const product: VP = {
+        ...data,
+        product_variants: undefined,
+        variant_product_categories: undefined,
+      } as VP;
+
+      return { product, variants, categoryNames };
     },
   });
+};
