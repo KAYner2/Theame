@@ -1862,15 +1862,15 @@ if (formData.is_active) {
                         </Button>
                       </DialogTrigger>
                       <DialogContent
-                        className="max-w-3xl max-h-[90vh] overflow-hidden"
-                        onOpenAutoFocus={(e) => e.preventDefault()}
-                        onCloseAutoFocus={(e) => e.preventDefault()}
-                      >
-                        <DialogHeader>
-                          <DialogTitle>Редактировать товар</DialogTitle>
-                        </DialogHeader>
-                        <VariantProductForm product={product} />
-                      </DialogContent>
+  className="max-w-3xl max-h-[90vh] overflow-y-auto"
+  onOpenAutoFocus={(e) => e.preventDefault()}
+  onCloseAutoFocus={(e) => e.preventDefault()}
+>
+  <DialogHeader>
+    <DialogTitle>Редактировать товар</DialogTitle>
+  </DialogHeader>
+  <VariantProductForm product={product} />
+</DialogContent>
                     </Dialog>
 
                     <Button
