@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,23 +14,19 @@ import { useProductBySlug } from '@/hooks/useProductBySlug';
 import { parseCompositionRaw, parseFromArray } from '@/utils/parseComposition';
 import { ProductRecommendations } from '@/components/ProductRecommendations';
 
-// Ленивая подгрузка страницы вариантов, чтобы избежать побочных эффектов статических импортов
-const VariantProductPage = lazy(() => import('./VariantProductPage'));
-
 const asArray = <T,>(v: T[] | T | null | undefined): T[] =>
   Array.isArray(v) ? v : v ? [v] : [];
 
 const UUID_RE =
   /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** ВНУТРЕННЯЯ страница обычного товара — твой исходный контент без изменений */
-function SimpleProductView() {
+export default function ProductPage() {
   const { id: idParam, categorySlug, productSlug } = useParams<{
     id?: string;
     categorySlug?: string;
     productSlug?: string;
   }>();
-  const [sp] = useSearchParams(); // оставлено как в твоём коде (вдруг понадобится)
+  const [sp] = useSearchParams();
   const navigate = useNavigate();
 
   const idFromSlug = useMemo(() => {
@@ -195,7 +191,7 @@ function SimpleProductView() {
             )}
           </div>
 
-        {/* Инфо */}
+          {/* Инфо */}
           <div className="space-y-6 lg:self-center lg:max-w-[560px] lg:mx-auto">
             {/* Название */}
             <h1 className="text-2xl md:text-3xl font-bold text-[#819570]">
@@ -312,61 +308,3 @@ function SimpleProductView() {
     </div>
   );
 }
-
-/** ОБЁРТКА: определяет тип товара по slug и рендерит нужную страницу */
-function ProductPageWrapper() {
-  const params = useParams();
-  // поддерживаем /catalog/:productSlug и /catalog/:categorySlug/:productSlug
-  const slug =
-    (params as any).productSlug ??
-    (params as any).slug ??
-    '';
-
-  const [mode, setMode] = useState<'loading' | 'variant' | 'simple'>('loading');
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        if (!slug) {
-          if (alive) setMode('simple');
-          return;
-        }
-        // ДИНАМИЧЕСКИЙ импорт клиента Supabase (безопасно для правил хуков)
-        const { supabase } = await import('@/integrations/supabase/client');
-
-        const { data, error } = await supabase
-          .from('variant_products')
-          .select('id')
-          .eq('slug', slug)
-          .limit(1);
-
-        if (error) throw error;
-
-        const isVariant = Array.isArray(data) && data.length > 0;
-        if (alive) setMode(isVariant ? 'variant' : 'simple');
-      } catch {
-        // на случай сетевых/других ошибок — не блочим UX
-        if (alive) setMode('simple');
-      }
-    })();
-    return () => { alive = false; };
-  }, [slug]);
-
-  const Fallback = (
-    <div className="min-h-screen bg-[#fff8ea]">
-      <div className="container mx-auto px-4 py-8 text-center">Загрузка…</div>
-    </div>
-  );
-
-  if (mode === 'loading') return Fallback;
-
-  // ❗Важно: здесь НЕТ условных вызовов хуков, мы просто монтируем одну из страниц
-  return (
-    <Suspense fallback={Fallback}>
-      {mode === 'variant' ? <VariantProductPage /> : <SimpleProductView />}
-    </Suspense>
-  );
-}
-
-export default ProductPageWrapper;
