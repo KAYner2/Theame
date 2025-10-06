@@ -9,7 +9,8 @@ import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { toast } from '@/hooks/use-toast';
 
-import { VariantRecommendations } from '@/components/VariantRecommendations'
+// ⬇️ используем готовую карточку для вариантов в блоке «рекомендации»
+import { VariantFlowerCard } from '@/components/VariantFlowerCard';
 
 type VP = {
   id: number; name: string; slug: string;
@@ -33,9 +34,125 @@ const asArray = <T,>(v: T[] | T | null | undefined): T[] =>
 const formatPrice = (n?: number | null) =>
   typeof n === 'number' ? `${n.toLocaleString('ru-RU')} ₽` : '';
 
+/** ───────────────────────────────────────────────────────────────────────────
+ * Рекомендации для variant-товара — вывод через VariantFlowerCard
+ * ─────────────────────────────────────────────────────────────────────────── */
+type VPLite = {
+  id: number;
+  name: string;
+  slug: string;
+  image_url: string | null;
+  min_price_cache: number | null;
+  is_active: boolean | null;
+};
+
+function VariantRecsGrid({ productId, limit = 8 }: { productId: number; limit?: number }) {
+  const [items, setItems] = useState<VPLite[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+
+    (async () => {
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+
+        // категории текущего товара
+        const { data: links, error: e1 } = await supabase
+          .from('variant_product_categories')
+          .select('category_id')
+          .eq('product_id', productId);
+        if (e1) throw e1;
+
+        const catIds = (links ?? []).map((r: any) => r.category_id as string);
+        let recs: VPLite[] = [];
+
+        if (catIds.length) {
+          // возьмём другие товары из этих категорий
+          const { data: others, error: e2 } = await supabase
+            .from('variant_product_categories')
+            .select('product_id, category_id')
+            .in('category_id', catIds);
+          if (e2) throw e2;
+
+          const ids = Array.from(
+            new Set((others ?? []).map((r: any) => r.product_id as number).filter((id) => id !== productId))
+          );
+
+          if (ids.length) {
+            const { data, error: e3 } = await supabase
+              .from('variant_products')
+              .select('id, name, slug, image_url, min_price_cache, is_active, sort_order, created_at')
+              .in('id', ids)
+              .eq('is_active', true)
+              .order('sort_order', { ascending: true })
+              .order('created_at', { ascending: true })
+              .limit(limit);
+            if (e3) throw e3;
+            recs = (data ?? []) as VPLite[];
+          }
+        }
+
+        // если по категориям пусто — fallback: свежие активные
+        if (!recs.length) {
+          const { data, error: e4 } = await supabase
+            .from('variant_products')
+            .select('id, name, slug, image_url, min_price_cache, is_active, sort_order, created_at')
+            .eq('is_active', true)
+            .neq('id', productId)
+            .order('sort_order', { ascending: true })
+            .order('created_at', { ascending: true })
+            .limit(limit);
+          if (e4) throw e4;
+          recs = (data ?? []) as VPLite[];
+        }
+
+        if (!alive) return;
+        setItems(recs);
+        setLoading(false);
+      } catch (err) {
+        console.error('[VariantRecsGrid] error:', err);
+        if (!alive) return;
+        setItems([]);
+        setLoading(false);
+      }
+    })();
+
+    return () => { alive = false; };
+  }, [productId, limit]);
+
+  if (loading || !items.length) return null;
+
+  return (
+    <div className="mt-10">
+      <h2 className="text-xl font-semibold mb-4">Вам может понравиться</h2>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {items.map((p) => (
+          <VariantFlowerCard
+            key={`vrec:${p.id}`}
+            product={{
+              id: p.id,
+              name: p.name,
+              slug: p.slug,
+              image_url: p.image_url,
+              min_price_cache: p.min_price_cache,
+              is_active: p.is_active,
+            }}
+            // useCatalogUrl // включи, если хочешь, чтобы ссылка была через /catalog/:slug
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** ───────────────────────────────────────────────────────────────────────────
+ * Страница variant-товара
+ * ─────────────────────────────────────────────────────────────────────────── */
 export default function VariantProductPage() {
   const params = useParams();
-  const slug = (params as any).slug ?? (params as any).productSlug ?? "";
+  const slug = (params as any).slug ?? (params as any).productSlug ?? '';
   const navigate = useNavigate();
 
   const { addToCart } = useCart();
@@ -47,7 +164,7 @@ export default function VariantProductPage() {
   const [product, setProduct] = useState<VP | null>(null);
   const [variants, setVariants] = useState<PV[]>([]);
 
-  // Загрузка: nested-select, динамический импорт supabase (чтобы не триггерить #310)
+  // Загрузка: nested-select, динамический импорт supabase (безопасно для хуков)
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -152,7 +269,7 @@ export default function VariantProductPage() {
     product.description?.trim(),
     product.detailed_description?.trim(),
     current?.description?.trim(),
-    current?.composition?.trim(), // добавим состав выбранного варианта
+    current?.composition?.trim(), // состав выбранного варианта
   ].filter(Boolean).join('\n\n');
 
   const handleAddToCart = () => {
@@ -166,11 +283,11 @@ export default function VariantProductPage() {
       price: current.price || 0,
       image: current.image_url || product.image_url || '/placeholder.svg',
       description: current.composition || product.description || '',
-      category: 'Разное', // если надо — можно подтянуть названия категорий как в админке
+      category: 'Разное',
       inStock: !!product.is_active,
       quantity: 1,
       colors: [],
-      size: current.title,  // кладём название варианта сюда
+      size: current.title,
       occasion: [],
     } as any);
     toast({
@@ -183,7 +300,7 @@ export default function VariantProductPage() {
     <div className="min-h-screen bg-[#fff8ea]">
       <div className="container mx-auto px-4 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-center">
-          {/* Галерея (как в ProductPage) */}
+          {/* Галерея */}
           <div className="space-y-4">
             <Card
               className="
@@ -245,19 +362,19 @@ export default function VariantProductPage() {
             )}
           </div>
 
-          {/* Инфо (как в ProductPage, но с вариантами) */}
+          {/* Инфо */}
           <div className="space-y-6 lg:self-center lg:max-w-[560px] lg:mx-auto">
             {/* Название */}
             <h1 className="text-2xl md:text-3xl font-bold text-[#819570]">
               {(product.name || '').toUpperCase()}
             </h1>
 
-            {/* Цена: берём текущий вариант, иначе «от …» */}
+            {/* Цена: по выбранному варианту, иначе — «от …» */}
             <div className="text-2xl font-bold text-[#819570]">
               {current ? formatPrice(current.price) : formatPrice(product.min_price_cache)}
             </div>
 
-            {/* Кружки вариантов: до 10; если один вариант — скрываем */}
+            {/* Кружки вариантов: до 10; если один — скрываем */}
             {variants.length > 1 && (
               <div className="space-y-2">
                 <div className="text-sm text-muted-foreground">Варианты</div>
@@ -281,7 +398,7 @@ export default function VariantProductPage() {
               </div>
             )}
 
-            {/* Кнопка + сердечко */}
+            {/* Кнопки */}
             <div className="flex items-center gap-3">
               {product.is_active ? (
                 <Button
@@ -293,9 +410,7 @@ export default function VariantProductPage() {
                 </Button>
               ) : (
                 <Button
-                  onClick={() =>
-                    window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank')
-                  }
+                  onClick={() => window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank')}
                   className="h-10 rounded-full px-6 text-sm font-medium"
                 >
                   Сделать предзаказ
@@ -309,10 +424,7 @@ export default function VariantProductPage() {
                 onClick={() => {
                   if (isFav) {
                     removeFromFavorites(favKey);
-                    toast({
-                      title: 'Удалено из избранного',
-                      description: `${product.name} удалён из избранного`,
-                    });
+                    toast({ title: 'Удалено из избранного', description: `${product.name} удалён из избранного` });
                   } else {
                     addToFavorites({
                       id: favKey,
@@ -327,10 +439,7 @@ export default function VariantProductPage() {
                       size: current?.title || 'variant',
                       occasion: [],
                     } as any);
-                    toast({
-                      title: 'Добавлено в избранное',
-                      description: `${product.name} добавлен в избранное`,
-                    });
+                    toast({ title: 'Добавлено в избранное', description: `${product.name} добавлен в избранное` });
                   }
                 }}
                 className={`h-10 w-10 rounded-full ${isFav ? 'bg-destructive text-destructive-foreground' : ''}`}
@@ -339,7 +448,7 @@ export default function VariantProductPage() {
               </Button>
             </div>
 
-            {/* Состав выбранного варианта — в виде «точек», как у тебя */}
+            {/* Состав выбранного варианта */}
             {current?.composition && (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
@@ -364,9 +473,9 @@ export default function VariantProductPage() {
           </div>
         </div>
 
-        {/* Рекомендации (как в ProductPage) */}
+        {/* Рекомендации — теперь через VariantFlowerCard */}
         <div className="container mx-auto px-4">
-          {product?.id ? <VariantRecommendations productId={product.id} /> : null}
+          {product?.id ? <VariantRecsGrid productId={product.id} /> : null}
         </div>
       </div>
     </div>
