@@ -371,7 +371,7 @@ export default function VariantProductPage() {
           </div>
 
           {/* Инфо */}
-          <div className="space-y-6 lg:self-center lg:max-w-[560px] lg:mx-auto">
+          <div className="space-y-6 lg:self-center lg:max-w-[560px] lg:w-full lg:justify-self-start lg:mr-auto">
             {/* Название */}
             <h1 className="text-2xl md:text-3xl font-bold text-[#819570]">
               {(product.name || '').toUpperCase()}
