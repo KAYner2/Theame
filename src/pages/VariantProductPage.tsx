@@ -3,13 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, Heart, ShoppingBag } from 'lucide-react';
 
-import { useCart } from '@/context/CartContext';
-import { useFavorites } from '@/context/FavoritesContext';
-import { toast } from '@/hooks/use-toast';
-
-import { VariantRecommendations } from '@/components/VariantRecommendations'
 
 type VP = {
   id: number; name: string; slug: string;
