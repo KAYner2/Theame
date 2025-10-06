@@ -36,6 +36,11 @@ import { useAllProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import type { Product } from '@/types/database';
 
+// ⬇️ добавляем хук и карточку для вариантных
+import { useVariantProductsForCatalog } from '@/hooks/useVariantProductsForCatalog';
+import { VariantFlowerCard } from '@/components/VariantFlowerCard';
+import type { VariantCatalogItem } from '@/hooks/useVariantProductsForCatalog';
+
 /* ---------------- helpers: нормализация/дедуп ---------------- */
 
 const splitItems = (arr?: string[]) =>
@@ -86,11 +91,13 @@ function toFlower(product: Product): Flower {
   };
 }
 
-function getPriceBounds(flowers: Flower[]): [number, number] {
-  if (!flowers.length) return [0, 10000];
-  const prices = flowers.map((f) => f.price ?? 0);
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
+function getPriceBounds(flowers: Flower[], variantItems: VariantCatalogItem[]): [number, number] {
+  const pricesNormal = flowers.map((f) => f.price ?? 0);
+  const pricesVariant = variantItems.map((v) => v.min_price_cache ?? 0);
+  const all = [...pricesNormal, ...pricesVariant];
+  if (!all.length) return [0, 10000];
+  const min = Math.min(...all);
+  const max = Math.max(...all);
   return [min, Math.max(max, min)];
 }
 
@@ -123,6 +130,14 @@ export const FlowerCatalog = () => {
     isLoading: categoriesLoading,
     error: categoriesError,
   } = useCategories();
+
+  // ⬇️ грузим вариантные товары (с фильтром по категории, если выбрана)
+  const selectedCategoryUuid = selectedCategoryId === 'all' ? null : String(selectedCategoryId);
+  const {
+    data: variantItems = [],
+    isLoading: variantLoading,
+    error: variantError,
+  } = useVariantProductsForCatalog({ categoryId: selectedCategoryUuid });
 
   useEffect(() => {
     if (!categories.length) return;
@@ -160,7 +175,11 @@ export const FlowerCatalog = () => {
     return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
-  const absolutePriceBounds = useMemo(() => getPriceBounds(flowers), [flowers]);
+  // ⬇️ границы цен считаем по ОБЪЕДИНЁННОМУ набору (обычные + вариантные)
+  const absolutePriceBounds = useMemo(
+    () => getPriceBounds(flowers, variantItems),
+    [flowers, variantItems]
+  );
 
   useEffect(() => {
     setPriceRange(absolutePriceBounds);
@@ -198,25 +217,49 @@ export const FlowerCatalog = () => {
       return true;
     });
 
-switch (sortBy) {
-  case 'price-desc':
-    filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-    break;
-  case 'price-asc':
-    filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-    break;
-  case 'default':
-  default:
-    filtered.sort((a, b) => {
-      const pa = products.find(p => p.id === a.id);
-      const pb = products.find(p => p.id === b.id);
-      return (pa?.sort_order ?? 0) - (pb?.sort_order ?? 0);
-    });
-    break;
-}
+    // сортировка обычных — как у тебя
+    switch (sortBy) {
+      case 'price-desc':
+        filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+        break;
+      case 'price-asc':
+        filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+        break;
+      case 'default':
+      default:
+        filtered.sort((a, b) => {
+          const pa = products.find((p) => p.id === a.id);
+          const pb = products.find((p) => p.id === b.id);
+          return (pa?.sort_order ?? 0) - (pb?.sort_order ?? 0);
+        });
+        break;
+    }
 
     return filtered;
   }, [flowers, products, selectedCategoryId, selectedColor, selectedComposition, priceRange, sortBy]);
+
+  // ⬇️ вариантные: фильтруем по цене; если включены «цвет/состав», пока скрываем
+  const filteredVariantItems = useMemo(() => {
+    const [minPrice, maxPrice] = priceRange;
+    const extraFiltersOn = selectedColor !== 'all' || selectedComposition !== 'all';
+    if (extraFiltersOn) return [] as VariantCatalogItem[];
+
+    const items = variantItems.filter((v) => {
+      const price = v.min_price_cache ?? 0;
+      return price >= minPrice && price <= maxPrice;
+    });
+
+    // сортировка для вариантных при выборе price-asc/desc
+    if (sortBy === 'price-asc') {
+      items.sort((a, b) => (a.min_price_cache ?? 0) - (b.min_price_cache ?? 0));
+    }
+    if (sortBy === 'price-desc') {
+      items.sort((a, b) => (b.min_price_cache ?? 0) - (a.min_price_cache ?? 0));
+    }
+
+    // при 'default' порядок уже задан на сервере (sort_order, created_at)
+    return items;
+  }, [variantItems, priceRange, selectedColor, selectedComposition, sortBy]);
 
   const handleToggleFavorite = (flower: Flower) => {
     console.log('Добавлено в избранное:', flower.name);
@@ -224,7 +267,7 @@ switch (sortBy) {
 
   /* ---------------- общая разметка ---------------- */
 
-  if (productsLoading || categoriesLoading) {
+  if (productsLoading || categoriesLoading || variantLoading) {
     return (
       <div className="container px-6 py-8">
         <div className="text-center">
@@ -235,7 +278,7 @@ switch (sortBy) {
     );
   }
 
-  if (productsError || categoriesError) {
+  if (productsError || categoriesError || variantError) {
     return (
       <div className="container px-6 py-8">
         <div className="text-center">
@@ -246,7 +289,7 @@ switch (sortBy) {
     );
   }
 
-  /* ------- общий фрагмент с фильтрами (переиспользуем в Desktop и Mobile) ------- */
+  /* ------- общий фрагмент с фильтрами ------- */
   const FiltersInner = (
     <div className="space-y-4">
       {/* Категория */}
@@ -351,6 +394,12 @@ switch (sortBy) {
     </div>
   );
 
+  // 🧱 итоговая сетка: обычные + вариантные
+  const gridItems = [
+    ...filteredFlowers.map((f) => ({ type: 'simple' as const, item: f })),
+    ...filteredVariantItems.map((v) => ({ type: 'variant' as const, item: v })),
+  ];
+
   return (
     <div className="container px-6 py-8">
       {/* Заголовок */}
@@ -362,7 +411,7 @@ switch (sortBy) {
 
       {/* Фильтры и сортировка */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        {/* ---- MOBILE: полноэкранная панель ---- */}
+        {/* ---- MOBILE: Sheet ---- */}
         <div className="md:hidden">
           <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
             <SheetTrigger asChild>
@@ -373,31 +422,20 @@ switch (sortBy) {
             </SheetTrigger>
             <SheetContent
               side="bottom"
-              className="
-                !p-0
-                flex h-[100dvh] max-h-[100dvh] flex-col
-                rounded-t-xl
-              "
+              className="!p-0 flex h-[100dvh] max-h-[100dvh] flex-col rounded-t-xl"
             >
               <SheetHeader className="px-4 pt-4 pb-2 border-b">
                 <SheetTitle className="text-base">Фильтры</SheetTitle>
               </SheetHeader>
 
-              {/* Прокручиваемая область */}
-              <div className="flex-1 overflow-y-auto px-4 py-4">
-                {FiltersInner}
-              </div>
+              <div className="flex-1 overflow-y-auto px-4 py-4">{FiltersInner}</div>
 
-              {/* Липкий футер с safe area */}
               <SheetFooter
                 className="border-t bg-background px-4 py-3"
                 style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
               >
                 <div className="flex w-full gap-2">
-                  <Button
-                    className="flex-1 h-11"
-                    onClick={() => setMobileSheetOpen(false)}
-                  >
+                  <Button className="flex-1 h-11" onClick={() => setMobileSheetOpen(false)}>
                     Применить
                   </Button>
                   <Button
@@ -432,24 +470,15 @@ switch (sortBy) {
               </Button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent
-              className="w-[22rem] p-0 max-h-[85dvh] flex flex-col"
-              align="start"
-            >
-              <div className="flex-1 overflow-auto p-4">
-                {FiltersInner}
-              </div>
+            <DropdownMenuContent className="w-[22rem] p-0 max-h-[85dvh] flex flex-col" align="start">
+              <div className="flex-1 overflow-auto p-4">{FiltersInner}</div>
 
               <div
                 className="border-t bg-popover px-4 py-4"
                 style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
               >
                 <div className="flex gap-3">
-                  <Button
-                    variant="default"
-                    className="flex-1 h-10"
-                    onClick={() => setDropdownOpen(false)}
-                  >
+                  <Button variant="default" className="flex-1 h-10" onClick={() => setDropdownOpen(false)}>
                     Применить
                   </Button>
                   <Button
@@ -487,21 +516,30 @@ switch (sortBy) {
         </Select>
       </div>
 
-      {/* ⛔ Блок «найдено товаров / в наличии / нет в наличии» — удалён по ТЗ */}
-
-{/* Каталог */}
-<div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-  {filteredFlowers.map((flower) => (
-    <FlowerCard
-      key={flower.id}
-      flower={flower}
-      onToggleFavorite={handleToggleFavorite}
-    />
-  ))}
-</div>
+      {/* Каталог */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+        {gridItems.map(({ type, item }) =>
+          type === 'simple' ? (
+            <FlowerCard key={`p:${item.id}`} flower={item} onToggleFavorite={handleToggleFavorite} />
+          ) : (
+            <VariantFlowerCard
+              key={`v:${item.id}`}
+              product={{
+                id: item.id,
+                name: item.name,
+                slug: item.slug,
+                image_url: item.image_url,
+                min_price_cache: item.min_price_cache,
+                is_active: item.is_active,
+              }}
+              // useCatalogUrl // включи, если хочешь /catalog/:slug вместо /v/:slug
+            />
+          )
+        )}
+      </div>
 
       {/* Пустой результат */}
-      {filteredFlowers.length === 0 && (
+      {gridItems.length === 0 && (
         <div className="py-12 text-center">
           <p className="mb-4 text-lg text-muted-foreground">Цветы не найдены</p>
           <Button
@@ -511,7 +549,7 @@ switch (sortBy) {
               setSelectedColor('all');
               setSelectedComposition('all');
               setPriceRange(absolutePriceBounds);
-              setSortBy('default'); // возвращаемся к порядку из админки
+              setSortBy('default');
               setSearchParams((prev) => {
                 prev.delete('category');
                 return prev;
