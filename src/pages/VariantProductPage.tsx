@@ -34,7 +34,8 @@ const formatPrice = (n?: number | null) =>
   typeof n === 'number' ? `${n.toLocaleString('ru-RU')} ₽` : '';
 
 export default function VariantProductPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const params = useParams();
+  const slug = (params as any).slug ?? (params as any).productSlug ?? "";
   const navigate = useNavigate();
 
   const { addToCart } = useCart();

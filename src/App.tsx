@@ -13,6 +13,7 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Privacy from "./pages/Privacy";
 import PublicOffer from "./pages/PublicOffer";
+import AnyProductPage from "./pages/AnyProductPage";
 import CartPage from "./pages/CartPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentError from "./pages/PaymentError";
@@ -56,6 +57,8 @@ const App = () => (
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/contact" element={<Contact />} />
+                  <Route path="/catalog/:productSlug" element={<AnyProductPage />} />
+                  <Route path="/catalog/:categorySlug/:productSlug" element={<AnyProductPage />} />
                   <Route path="/delivery" element={<Delivery />} /> {/* 👈 новый роут */}
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/public-offer" element={<PublicOffer />} />
