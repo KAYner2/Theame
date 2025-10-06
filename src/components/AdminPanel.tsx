@@ -1051,7 +1051,7 @@ if (formData.is_active) {
   const { data: categories = [] } = useAllCategories();
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 pb-24">
       {/* Название + slug */}
       <div>
         <Label htmlFor="vp_name">Название</Label>
@@ -1782,18 +1782,18 @@ if (formData.is_active) {
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="max-w-3xl max-h-[90vh] overflow-hidden"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        onCloseAutoFocus={(e) => e.preventDefault()}
-      >
-        <DialogHeader>
-          <DialogTitle>
-            {editingItem ? 'Редактировать' : 'Создать'} товар с вариантами
-          </DialogTitle>
-        </DialogHeader>
-        {/* используем форму, добавленную на ЭТАПЕ 4 */}
-        <VariantProductForm product={editingItem} />
-      </DialogContent>
+  className="max-w-3xl max-h-[90vh] overflow-y-auto"
+  onOpenAutoFocus={(e) => e.preventDefault()}
+  onCloseAutoFocus={(e) => e.preventDefault()}
+>
+  <DialogHeader>
+    <DialogTitle>
+      {editingItem ? 'Редактировать' : 'Создать'} товар с вариантами
+    </DialogTitle>
+  </DialogHeader>
+
+  <VariantProductForm product={editingItem} />
+</DialogContent>
     </Dialog>
   </div>
 
