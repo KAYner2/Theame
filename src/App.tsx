@@ -19,7 +19,7 @@ import PaymentError from "./pages/PaymentError";
 import NotFound from "./pages/NotFound";
 import Favorites from "./pages/Favorites";
 import Delivery from "./pages/Delivery"; // 👈 добавлен импорт
-
+import VariantProductPage from "./pages/VariantProductPage";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { WhatsAppFloat } from "./components/WhatsAppFloat";
@@ -50,6 +50,7 @@ const App = () => (
                   <Route path="/catalog/:productSlug" element={<ProductPage />} />
                   <Route path="/catalog/:categorySlug/:productSlug" element={<ProductPage />} />
                   <Route path="/product/:id" element={<ProductPage />} />
+                  <Route path="/v/:slug" element={<VariantProductPage />} />
                   <Route path="/cart" element={<CartPage />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/about" element={<About />} />
