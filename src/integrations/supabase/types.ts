@@ -614,14 +614,14 @@ product_variants: {
   Row: {
     id: number
     product_id: number
-    title: string                 // подпись на чипе: "S", "XL", "21"...
-    composition: string | null    // короткое описание/состав
-    description: string | null    // длинное описание (опц.)
-    price: number
-    image_url: string | null      // фото варианта
-    gallery_urls: string[] | null // мини-галерея (опц.)
+    title: string                   // подпись кружка («S», «21», …)
+    composition: string | null      // «6 роз», «3 шара» (короткое описание/состав)
+    description: string | null      // длинное описание (опц.)
+    price: number                   // цена этого варианта
+    image_url: string | null        // фото варианта
+    gallery_urls: string[] | null   // мини-галерея (опц.)
     is_active: boolean
-    sort_order: number
+    sort_order: number              // порядок отображения
     created_at: string
     updated_at: string
   }
@@ -663,6 +663,7 @@ product_variants: {
     }
   ]
 }
+
 
 
 variant_product_categories: {

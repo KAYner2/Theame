@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { AvailabilityStatus } from '@/types/database';
+import type { AvailabilityStatus, Database } from '@/types/database';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useSetProductCategories } from '@/hooks/useProducts';
@@ -34,6 +34,8 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DndContext, useSensors, useSensor, MouseSensor, TouchSensor } from "@dnd-kit/core";
 import { slugify } from "@/utils/slugify";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // --- helpers: нормализация списка цветов ---
 const splitItems = (input: string) =>
@@ -663,11 +665,100 @@ const data = {
     );
   };
 
+  const SortableChip = ({
+  id,
+  active,
+  title,
+  price,
+  onTitleChange,
+  onSelect,
+  onDuplicate,
+  onDelete,
+}: {
+  id: number | string;
+  active: boolean;
+  title: string;
+  price: number | null;
+  onTitleChange: (v: string) => void;
+  onSelect: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 border rounded-full pl-2 pr-1 py-1 ${active ? 'ring-2 ring-primary' : ''}`}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+    >
+      {/* drag-handle */}
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="cursor-grab px-1 text-xs opacity-70"
+        title="Перетащи"
+        onClick={(e) => e.stopPropagation()}
+      >
+        ≡
+      </button>
+
+      <Input
+        value={title}
+        onChange={(e) => onTitleChange(e.target.value)}
+        placeholder="S / XL / 3 / 21"
+        className="h-7 w-24 border-none focus-visible:ring-0 p-0 text-sm bg-transparent"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {price != null && (
+        <span className="text-xs opacity-70">• {price} ₽</span>
+      )}
+
+      <button
+        type="button"
+        className="px-1 text-xs opacity-70 hover:opacity-100"
+        title="Дублировать"
+        onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+      >
+        ⎘
+      </button>
+
+      <button
+        type="button"
+        className="px-1 text-xs opacity-70 hover:opacity-100"
+        title="Удалить"
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+      >
+        ✕
+      </button>
+    </div>
+  );
+};
+
+// сенсоры DnD для чипов (хуки — только на верхнем уровне компонента!)
+const chipSensors = useSensors(
+  useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+  useSensor(TouchSensor, { activationConstraint: { distance: 8 } }),
+);
 // ─────────────────────────────────────────────────────────────
-// VariantProductForm: форма для товаров с вариантами (без вариантов внутри)
+// VariantProductForm: форма для товаров с вариантами + редактор вариантов
 // Категории сохраняем через RPC set_variant_product_categories
 // ─────────────────────────────────────────────────────────────
 const VariantProductForm = ({ product }: { product?: any }) => {
+  type PV = Database["public"]["Tables"]["product_variants"]["Row"];
+  type PVInsert = Database["public"]["Tables"]["product_variants"]["Insert"];
+  type PVUpdate = Database["public"]["Tables"]["product_variants"]["Update"];
+
+  // ── Основные поля товара с вариантами
   const [formData, setFormData] = useState({
     name: product?.name || '',
     description: product?.description || '',
@@ -680,86 +771,314 @@ const VariantProductForm = ({ product }: { product?: any }) => {
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
 
+  // ── Варианты (локальный стейт редактирования)
+  type VariantLocal = {
+    id: number | string;           // временно string для новых (e.g. 'tmp-...')
+    product_id?: number;
+    title: string;
+    price: number | null;
+    composition: string | null;
+    description?: string | null;
+    image_url: string | null;
+    gallery_urls?: string[] | null;
+    is_active: boolean;
+    sort_order: number;
+    _dirty?: boolean;              // пометки на несохранённые изменения
+    _new?: boolean;                // новый (ещё нет id в БД)
+    _deleted?: boolean;            // пометили на удаление
+  };
+
+  const [variants, setVariants] = useState<VariantLocal[]>([]);
+  const [activeVariantId, setActiveVariantId] = useState<number | string | null>(null);
+
+  // ── Подтягиваем варианты для редактируемого товара
+  React.useEffect(() => {
+  const loadCats = async () => {
+    if (!product?.id) return;
+    const { data, error } = await supabase
+      .from('variant_product_categories')
+      .select('category_id')
+      .eq('product_id', product.id);
+    if (!error) {
+      setFormData(prev => ({ ...prev, category_ids: (data ?? []).map(r => r.category_id) }));
+    }
+  };
+  loadCats();
+}, [product?.id]);
+  React.useEffect(() => {
+    const fetchVariants = async () => {
+      if (!product?.id) return;
+      const { data, error } = await supabase
+        .from('product_variants')
+        .select('*')
+        .eq('product_id', product.id)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+      if (error) {
+        console.error(error);
+        return;
+      }
+      const list: VariantLocal[] = (data ?? []).map((v: any) => ({
+        id: v.id,
+        product_id: v.product_id,
+        title: v.title,
+        price: v.price,
+        composition: v.composition,
+        description: v.description ?? null,
+        image_url: v.image_url ?? null,
+        gallery_urls: v.gallery_urls ?? null,
+        is_active: v.is_active,
+        sort_order: v.sort_order ?? 0,
+      }));
+      setVariants(list);
+      setActiveVariantId(list[0]?.id ?? null);
+    };
+    fetchVariants();
+  }, [product?.id]);
+
+  // ── Создать новый локальный вариант
+  const handleAddVariant = () => {
+    if (variants.filter(v => !v._deleted).length >= 10) return;
+    const tmpId = `tmp-${crypto.randomUUID()}`;
+    const v: VariantLocal = {
+      id: tmpId,
+      title: '',
+      price: null,
+      composition: '',
+      description: null,
+      image_url: null,
+      gallery_urls: null,
+      is_active: false,
+      sort_order: Math.max(0, ...variants.map(v => v.sort_order)) + 1,
+      _new: true,
+      _dirty: true,
+    };
+    setVariants(prev => [...prev, v]);
+    setActiveVariantId(tmpId);
+  };
+
+  // ── Удалить/восстановить вариант (локально)
+  const handleDeleteVariant = (id: number | string) => {
+    setVariants(prev => prev.map(v => v.id === id ? { ...v, _deleted: true, _dirty: true } : v));
+    // если удалили активный — переключаемся на первый доступный
+    if (activeVariantId === id) {
+      const first = variants.find(v => v.id !== id && !v._deleted);
+      setActiveVariantId(first?.id ?? null);
+    }
+  };
+
+  // ── Дублировать вариант
+  const handleDuplicateVariant = (id: number | string) => {
+    const src = variants.find(v => v.id === id);
+    if (!src) return;
+    const tmpId = `tmp-${crypto.randomUUID()}`;
+    const copy: VariantLocal = {
+      ...src,
+      id: tmpId,
+      title: src.title ? `${src.title}-copy` : '',
+      _new: true,
+      _dirty: true,
+    };
+    setVariants(prev => [...prev, copy]);
+    setActiveVariantId(tmpId);
+  };
+
+  // ── Переупорядочить (вверх/вниз)
+  const moveVariant = (id: number | string, dir: 'up' | 'down') => {
+    const vis = variants.filter(v => !v._deleted);
+    const idx = vis.findIndex(v => v.id === id);
+    if (idx === -1) return;
+    const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= vis.length) return;
+    const a = vis[idx], b = vis[swapIdx];
+    // поменяем sort_order местами
+    setVariants(prev => prev.map(v => {
+      if (v.id === a.id) return { ...v, sort_order: b.sort_order, _dirty: true };
+      if (v.id === b.id) return { ...v, sort_order: a.sort_order, _dirty: true };
+      return v;
+    }));
+    setActiveVariantId(id);
+  };
+
+  // ── Редактирование полей варианта
+  const patchVariant = (id: number | string, patch: Partial<VariantLocal>) => {
+    setVariants(prev => prev.map(v => v.id === id ? { ...v, ...patch, _dirty: true } : v));
+  };
+
+  // ── Загрузка фото для варианта: сразу загружаем и сохраняем URL
+  const handleUploadVariantImage = async (file: File, id: number | string) => {
+    try {
+      const url = await uploadImage(file, 'products');
+      patchVariant(id, { image_url: url });
+    } catch (e) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'Не удалось загрузить фото варианта' });
+    }
+  };
+
+  // ── submit формы товара + вариантов
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
+      // 0) валидация: не больше 10, активные имеют title+price
+      const visible = variants.filter(v => !v._deleted);
+      if (visible.length > 10) {
+        toast({ variant: 'destructive', title: 'Не больше 10 вариантов' });
+        return;
+      }
+      const invalidActive = visible.some(v => v.is_active && (!v.title || v.price == null));
+      if (invalidActive) {
+        toast({ variant: 'destructive', title: 'У активных вариантов должно быть имя и цена' });
+        return;
+      }
+if (formData.is_active) {
+  const hasAtLeastOneActive = visible.some(v => v.is_active && v.title && v.price != null);
+  if (!hasAtLeastOneActive) {
+    toast({ variant: 'destructive', title: 'Чтобы опубликовать товар, нужен хотя бы один активный вариант с именем и ценой' });
+    return;
+  }
+}
+      // 1) Загрузка общего изображения (если выбрали новый файл)
       let imageUrl = formData.image_url;
-
       if (imageFile) {
-        // можно использовать тот же бакет, что и для обычных товаров
         imageUrl = await uploadImage(imageFile, 'products');
       }
 
-      const payload = {
-        name: formData.name,
-        description: formData.description || null,
-        image_url: imageUrl || null,
-        is_active: !!formData.is_active,
-        sort_order: Number(formData.sort_order) || 0,
-        slug: formData.slug || slugify(formData.name),
-      };
-
-      // 1) Сохраняем сам товар
+      // 2) Создаём или обновляем сам товар
       let savedId: number;
-      if (product) {
-        const updated = await updateVariantProduct.mutateAsync({
-          id: Number(product.id),
-          updates: payload as any,
-        });
-        savedId = Number(updated.id);
+      if (product?.id) {
+        await supabase.from('variant_products')
+          .update({
+            name: formData.name,
+            description: formData.description,
+            image_url: imageUrl,
+            is_active: formData.is_active,
+            sort_order: formData.sort_order,
+            slug: formData.slug,
+          })
+          .eq('id', product.id);
+        savedId = product.id;
       } else {
-        const created = await createVariantProduct.mutateAsync(payload as any);
-        savedId = Number((created as any).id);
+        const { data: created, error } = await supabase
+          .from('variant_products')
+          .insert({
+            name: formData.name,
+            description: formData.description,
+            image_url: imageUrl,
+            is_active: formData.is_active,
+            sort_order: formData.sort_order,
+            slug: formData.slug,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        savedId = created.id;
       }
 
-      // 2) Сохраняем категории через RPC (строго как у обычных товаров)
+      // 3) Сохраняем категории через RPC
       await setVariantProductCategories.mutateAsync({
         productId: savedId,
         categoryIds: formData.category_ids,
       });
 
-      // 3) Закрываем диалог и сбрасываем локальные состояния
+      // 4) Сохраняем варианты (create/update/delete)
+      //    Пишем sort_order как порядковый номер по текущему списку
+      const currentVisible = variants
+        .filter(v => !v._deleted)
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((v, i) => ({ ...v, sort_order: i }));
+
+      // 4.1 Удаляем помеченные
+      const toDelete = variants.filter(v => v._deleted && typeof v.id === 'number') as VariantLocal[];
+      if (toDelete.length) {
+        const ids = toDelete.map(v => v.id as number);
+        await supabase.from('product_variants').delete().in('id', ids);
+      }
+
+      // 4.2 Upsert существующих / создание новых
+      for (const v of currentVisible) {
+        if (typeof v.id === 'number') {
+          // update
+          const updates: PVUpdate = {
+            title: v.title,
+            price: v.price ?? undefined,
+            composition: v.composition,
+            description: v.description ?? undefined,
+            image_url: v.image_url ?? undefined,
+            gallery_urls: v.gallery_urls ?? undefined,
+            is_active: v.is_active,
+            sort_order: v.sort_order,
+          };
+          const { error } = await supabase.from('product_variants').update(updates).eq('id', v.id);
+          if (error) throw error;
+        } else {
+          // insert
+          const payload: PVInsert = {
+            product_id: savedId,
+            title: v.title,
+            price: v.price ?? 0,
+            composition: v.composition,
+            description: v.description ?? null,
+            image_url: v.image_url ?? null,
+            gallery_urls: v.gallery_urls ?? null,
+            is_active: v.is_active,
+            sort_order: v.sort_order,
+          };
+          const { data: created, error } = await supabase
+            .from('product_variants')
+            .insert(payload)
+            .select()
+            .single();
+          if (error) throw error;
+          // заменить temp id на реальный
+          setVariants(prev => prev.map(x => x.id === v.id ? { ...x, id: created.id, _new: false, _dirty: false } : x));
+        }
+      }
+
+      // 5) Готово: закрываем форму
       setIsDialogOpen(false);
       setEditingItem(null);
       setImageFile(null);
+      toast({ title: product?.id ? 'Обновлено' : 'Создано' });
     } catch (err) {
       console.error(err);
       toast({ variant: 'destructive', title: 'Ошибка сохранения' });
     }
   };
 
+  // ── Получение категорий для чекбоксов (как в остальной панели)
+  const { data: categories = [] } = useAllCategories();
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Название + slug */}
       <div>
         <Label htmlFor="vp_name">Название</Label>
         <Input
           id="vp_name"
           value={formData.name}
-          onChange={(e) => setFormData({
-            ...formData,
-            name: e.target.value,
-            slug: slugify(e.target.value)
-          })}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value, slug: slugify(e.target.value) })}
           required
         />
       </div>
 
       <div>
-        <Label htmlFor="vp_description">Описание</Label>
-        <Textarea
-          id="vp_description"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          rows={3}
+        <Label htmlFor="vp_slug">Slug</Label>
+        <Input
+          id="vp_slug"
+          value={formData.slug}
+          onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+          required
         />
       </div>
 
+      {/* Категории */}
       <div>
         <Label>Категории</Label>
         <div className="mt-2 grid grid-cols-2 gap-2 max-h-48 overflow-auto border rounded p-2">
-          {categories.map((c) => {
-            const checked = (formData.category_ids || []).includes(c.id);
+          {categories.map((c: any) => {
+            const checked = formData.category_ids.includes(c.id);
             return (
               <label key={c.id} className="flex items-center gap-2 text-sm">
                 <input
@@ -767,7 +1086,7 @@ const VariantProductForm = ({ product }: { product?: any }) => {
                   checked={checked}
                   onChange={(e) => {
                     setFormData((prev) => {
-                      const set = new Set(prev.category_ids || []);
+                      const set = new Set(prev.category_ids);
                       e.target.checked ? set.add(c.id) : set.delete(c.id);
                       return { ...prev, category_ids: Array.from(set) };
                     });
@@ -780,40 +1099,126 @@ const VariantProductForm = ({ product }: { product?: any }) => {
         </div>
       </div>
 
+      {/* Блок Варианты */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-base">Варианты ({variants.filter(v => !v._deleted).length}/10)</Label>
+          <Button type="button" variant="secondary" onClick={handleAddVariant} disabled={variants.filter(v => !v._deleted).length >= 10}>
+            <Plus className="w-4 h-4 mr-1" /> Добавить вариант
+          </Button>
+        </div>
+{/* ЧИПЫ (DnD) */}
+{(() => {
+  const visible = variants
+    .filter(v => !v._deleted)
+    .sort((a, b) => a.sort_order - b.sort_order);
+  const ids = visible.map(v => v.id);
+
+  // локальные сенсоры для перетаскивания
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 8 } }),
+  );
+
+  const onDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = visible.findIndex(v => v.id === active.id);
+    const newIndex = visible.findIndex(v => v.id === over.id);
+    const reordered = arrayMove(visible, oldIndex, newIndex);
+
+    // перенумеруем sort_order по новому порядку
+    const orderMap = new Map(reordered.map((v, i) => [v.id, i]));
+    setVariants(prev =>
+      prev.map(v =>
+        v._deleted ? v : { ...v, sort_order: orderMap.get(v.id) ?? v.sort_order, _dirty: true }
+      )
+    );
+  };
+
+  return (
+    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+      <SortableContext items={ids}>
+        <div className="flex flex-wrap gap-2">
+          {visible.map(v => (
+            <SortableChip
+              key={v.id}
+              id={v.id}
+              active={v.id === activeVariantId}
+              title={v.title}
+              price={v.price}
+              onTitleChange={(val) => patchVariant(v.id, { title: val })}
+              onSelect={() => setActiveVariantId(v.id)}
+              onDuplicate={() => handleDuplicateVariant(v.id)}
+              onDelete={() => handleDeleteVariant(v.id)}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+})()}
+
+
+        {/* Панель выбранного варианта */}
+        {activeVariantId && (() => {
+          const v = variants.find(x => x.id === activeVariantId && !x._deleted);
+          if (!v) return null;
+          return (
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4 border rounded p-3">
+              <div>
+                <Label>Название варианта</Label>
+                <Input value={v.title} onChange={(e) => patchVariant(v.id, { title: e.target.value })} placeholder="S / XL / 3 / 21" />
+              </div>
+              <div>
+                <Label>Цена</Label>
+                <Input type="number" step="0.01" value={v.price ?? ''} onChange={(e) => patchVariant(v.id, { price: e.target.value === '' ? null : Number(e.target.value) })} />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Описание/Состав</Label>
+                <Textarea rows={3} value={v.composition ?? ''} onChange={(e) => patchVariant(v.id, { composition: e.target.value })} />
+              </div>
+              <div>
+                <Label>Фото варианта</Label>
+                <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleUploadVariantImage(e.target.files[0], v.id)} />
+                {v.image_url && <img src={v.image_url} className="mt-2 w-24 h-24 object-cover rounded" alt="variant" />}
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={v.is_active} onCheckedChange={(val) => patchVariant(v.id, { is_active: !!val })} />
+                <span>Активен</span>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Общее изображение товара (fallback если у варианта нет своего) */}
       <div>
-        <Label htmlFor="vp_image">Изображение</Label>
-        <Input
-          id="vp_image"
-          type="file"
-          accept="image/*"
-          onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-        />
+        <Label htmlFor="vp_image">Общее изображение</Label>
+        <Input id="vp_image" type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
         {formData.image_url && (
-          <img
-            src={formData.image_url}
-            alt="Preview"
-            className="mt-2 w-20 h-20 object-cover rounded"
-          />
+          <div className="mt-2">
+            <img src={formData.image_url} alt="Preview" className="w-20 h-20 object-cover rounded" />
+            <p className="text-sm text-muted-foreground mt-1">Текущее общее изображение товара</p>
+          </div>
         )}
       </div>
 
-      <div className="flex items-center space-x-2">
-        <Switch
-          id="vp_is_active"
-          checked={formData.is_active}
-          onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-        />
-        <Label htmlFor="vp_is_active">Активен</Label>
-      </div>
-
-      <div>
-        <Label htmlFor="vp_sort_order">Порядок сортировки</Label>
-        <Input
-          id="vp_sort_order"
-          type="number"
-          value={formData.sort_order}
-          onChange={(e) => setFormData({ ...formData, sort_order: Number(e.target.value) })}
-        />
+      {/* Статусы и сортировка */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.is_active}
+            onCheckedChange={(v) => setFormData({ ...formData, is_active: !!v })}
+            id="vp_active"
+          />
+          <Label htmlFor="vp_active">Активен</Label>
+        </div>
+        <div>
+          <Label htmlFor="vp_sort_order">Порядок сортировки</Label>
+          <Input id="vp_sort_order" type="number" value={formData.sort_order} onChange={(e) => setFormData({ ...formData, sort_order: Number(e.target.value) })} />
+        </div>
       </div>
 
       <Button type="submit" className="w-full">
