@@ -28,12 +28,30 @@ export const useVariantProductBySlug = (slug: string | undefined) =>
         .eq("is_active", true)
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
-
       if (e2) throw e2;
 
-      // Гарантируем максимум 10
-      const limited = (variants ?? []).slice(0, 10);
+      // 3) категории (для текста/рекомендаций)
+      const { data: catLinks, error: e3 } = await supabase
+        .from("variant_product_categories")
+        .select("category_id")
+        .eq("product_id", product.id);
+      if (e3) throw e3;
 
-      return { product: product as VP, variants: limited as PV[] };
+      let categoryNames: string[] = [];
+      if (catLinks?.length) {
+        const ids = catLinks.map((r) => r.category_id);
+        const { data: cats, error: e4 } = await supabase
+          .from("categories")
+          .select("id, name")
+          .in("id", ids);
+        if (e4) throw e4;
+        categoryNames = (cats ?? []).map((c) => c.name);
+      }
+
+      return {
+        product: product as VP,
+        variants: (variants ?? []).slice(0, 10) as PV[],
+        categoryNames,
+      };
     },
   });
