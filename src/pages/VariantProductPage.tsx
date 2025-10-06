@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 // ── Флаги для изоляции проблемных импортов
-const USE_UI = true;           // переключай на false, если подозрение на Button/Card
-const USE_CART_FAV = false;     // переключай на false, если подозрение на контексты
+const USE_UI = false;           // переключай на false, если подозрение на Button/Card
+const USE_CART_FAV = true;     // переключай на false, если подозрение на контексты
 const USE_RECS = true;         // переключай на false, если подозрение на рекомендации
 
 // Ленивая подгрузка рекомендаций (если модуль внутри делает что-то «не так», просто выключим флагом)
