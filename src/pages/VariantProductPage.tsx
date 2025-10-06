@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+
+import { useCart } from '@/context/CartContext'
+
+import { useFavorites } from '@/context/FavoritesContext'
+
+import { toast } from '@/hooks/use-toast'
+
+import { ProductRecommendations } from '@/components/ProductRecommendations'
 
 type VP = {
   id: number; name: string; slug: string;
