@@ -1,38 +1,36 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+// src/hooks/useVariantProductBySlug.ts
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import type { Database } from '@/types/database';
 
-type VP = Database["public"]["Tables"]["variant_products"]["Row"];
-type PV = Database["public"]["Tables"]["product_variants"]["Row"];
+type VP = Database['public']['Tables']['variant_products']['Row'];
+type PV = Database['public']['Tables']['product_variants']['Row'];
 
-/**
- * Возвращает:
- * - product: сам variant-товар
- * - variants: активные варианты (отсортированы)
- * - categoryNames: названия категорий для этого товара
- */
-export const useVariantProductBySlug = (slugRaw: string | undefined) => {
-  const slug = slugRaw ?? '';
+export type VariantProductData = {
+  product: VP | null;
+  variants: PV[];
+  categoryNames: string[];
+};
 
-  return useQuery({
+export const useVariantProductBySlug = (slugRaw?: string) => {
+  const slug = slugRaw?.trim() ?? '';
+
+  return useQuery<VariantProductData>({
     queryKey: ['variant-product-by-slug', slug],
-    enabled: Boolean(slug),
-    queryFn: async (): Promise<{
-      product: VP;
-      variants: PV[];
-      categoryNames: string[];
-    }> => {
-      // Один запрос с nested select:
-      // - сам товар
-      // - дочерние product_variants (children по FK) — сразу активные и отсортированные
-      // - через связку variant_product_categories → categories получим имена категорий
+    enabled: slug.length > 0,        // хук вызывается всегда; запрос — только при валидном slug
+    staleTime: 60_000,               // кэш 60с
+    placeholderData: keepPreviousData, // ← v5: вместо keepPreviousData: true
+    queryFn: async (): Promise<VariantProductData> => {
+      // динамический импорт клиента — без побочек для хуков
+      const { supabase } = await import('@/integrations/supabase/client');
+
       const { data, error } = await (supabase as any)
         .from('variant_products')
         .select(`
-          *,
+          id, name, slug, description, detailed_description, image_url, gallery_urls,
+          is_active, min_price_cache, created_at, updated_at,
           product_variants:product_variants (
-            id, product_id, title, composition, description, price, image_url, gallery_urls,
-            is_active, sort_order, created_at, updated_at
+            id, product_id, title, composition, description, price,
+            image_url, gallery_urls, is_active, sort_order, created_at, updated_at
           ),
           variant_product_categories:variant_product_categories (
             category_id,
@@ -44,26 +42,18 @@ export const useVariantProductBySlug = (slugRaw: string | undefined) => {
         .single();
 
       if (error) throw error;
-      if (!data) throw new Error('Товар не найден');
 
-      // Нормализуем варианты: берём только активные и сортируем
-      const allVariants = (data.product_variants ?? []) as PV[];
-      const variants = allVariants
+      const variants: PV[] = ((data?.product_variants ?? []) as PV[])
         .filter(v => v?.is_active)
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
         .slice(0, 10);
 
-      // Достаём имена категорий
-      const categoryNames = ((data.variant_product_categories ?? []) as any[])
+      const categoryNames = ((data?.variant_product_categories ?? []) as any[])
         .map((row) => row?.categories?.name)
         .filter(Boolean) as string[];
 
-      // Выкинем вспомогательные поля из ответа и вернём чистую структуру
-      const product: VP = {
-        ...data,
-        product_variants: undefined,
-        variant_product_categories: undefined,
-      } as VP;
+      const { product_variants, variant_product_categories, ...rest } = (data ?? {}) as any;
+      const product: VP | null = data ? (rest as VP) : null;
 
       return { product, variants, categoryNames };
     },
