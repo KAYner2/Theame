@@ -1,16 +1,9 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
-
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, Heart, ShoppingBag } from 'lucide-react';
-
-import { useCart } from '@/context/CartContext';
-import { useFavorites } from '@/context/FavoritesContext';
-import { toast } from '@/hooks/use-toast';
-
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useVariantProductBySlug } from '@/hooks/useVariantProductBySlug';
-import { ProductRecommendations } from '@/components/ProductRecommendations';
 
 const asArray = <T,>(v: T[] | T | null | undefined): T[] =>
   Array.isArray(v) ? v : v ? [v] : [];
@@ -19,6 +12,7 @@ const formatPrice = (n?: number | null) =>
   typeof n === 'number' ? `${n.toLocaleString('ru-RU')} ₽` : '';
 
 export default function VariantProductPage() {
+  // ❗ все хуки — только на верхнем уровне компонента
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
 
@@ -27,17 +21,16 @@ export default function VariantProductPage() {
   const variants = data?.variants ?? [];
   const categoryNames = data?.categoryNames ?? [];
 
-  // первый активный вариант как дефолт
+  // первый активный вариант дефолтно
   const defaultVariantId = useMemo(
     () => (variants.length ? variants[0].id : null),
     [variants]
   );
-
   const [activeVariantId, setActiveVariantId] = useState<number | null>(defaultVariantId);
   useEffect(() => setActiveVariantId(defaultVariantId), [defaultVariantId]);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0 });
   }, [slug]);
 
   if (isLoading) {
@@ -62,56 +55,17 @@ export default function VariantProductPage() {
 
   const current = variants.find(v => v.id === activeVariantId) ?? null;
 
-  // Фото: если у варианта есть своё — используем его как главное, иначе — фото товара.
+  // Фото: своё у варианта → иначе общее у товара
   const baseImg = (current?.image_url || product.image_url || '/placeholder.svg') as string;
   const gallery = asArray<string>(product.gallery_urls);
-  // Убираем дубликаты, если фото варианта совпадает с общим
   const images = [baseImg, ...gallery.filter(src => src !== baseImg)];
   const imagesLen = images.length || 1;
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  useEffect(() => setSelectedImageIndex(0), [baseImg]); // при смене варианта возвращаемся к 1-му фото
+  useEffect(() => setSelectedImageIndex(0), [baseImg]);
 
   const nextImage = () => setSelectedImageIndex((i) => (i + 1) % imagesLen);
   const prevImage = () => setSelectedImageIndex((i) => (i - 1 + imagesLen) % imagesLen);
-
-  // Избранное: делаем отдельный space для variant_products, чтобы не конфликтовать с обычными товарами
-  const favKey = `v:${product.id}`; // уникальный ключ для избранного
-  const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
-  const isFav = isFavorite(favKey);
-
-  // Корзина: складываем конкретный вариант (уникализируем id позиции корзины)
-  const { addToCart } = useCart();
-  const handleAddToCart = () => {
-    if (!current) {
-      toast({ title: 'Выберите вариант', description: 'Чтобы добавить в корзину, укажите вариант.' });
-      return;
-    }
-    addToCart({
-      id: `vp:${product.id}:${current.id}`, // уникальный ключ позиции
-      name: `${product.name} — ${current.title}`,
-      price: current.price || 0,
-      image: current.image_url || product.image_url || '/placeholder.svg',
-      description: current.composition || product.description || '',
-      category: categoryNames[0] || 'Разное',
-      inStock: product.is_active,
-      quantity: 1,
-      colors: [],
-      size: current.title, // кладём выбранный вариант в size для совместимости
-      occasion: [],
-    } as any);
-    toast({
-      title: 'Добавлено в корзину',
-      description: `${product.name} (${current.title}) добавлен в корзину`,
-    });
-  };
-
-  // Витринный текст описания (похож на обычный ProductPage, но без доп. парсинга)
-  const descriptionText = [
-    product.description?.trim(),
-    product.detailed_description?.trim(),
-    current?.composition?.trim(), // добавим «состав» выбранного варианта в общий блок
-  ].filter(Boolean).join('\n\n');
 
   return (
     <div className="min-h-screen bg-[#fff8ea]">
@@ -119,15 +73,7 @@ export default function VariantProductPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-center">
           {/* Галерея */}
           <div className="space-y-4">
-            <Card
-              className="
-                relative overflow-hidden
-                aspect-[5/4]
-                max-h-[75vh]
-                lg:max-h-[72vh]
-                mx-auto
-              "
-            >
+            <Card className="relative overflow-hidden aspect-[5/4] max-h-[75vh] lg:max-h-[72vh] mx-auto">
               <img
                 src={images[selectedImageIndex] || baseImg}
                 alt={product.name}
@@ -168,11 +114,7 @@ export default function VariantProductPage() {
                     }`}
                     onClick={() => setSelectedImageIndex(idx)}
                   >
-                    <img
-                      src={src}
-                      alt={`${product.name} ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={src} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover" />
                   </Card>
                 ))}
               </div>
@@ -181,17 +123,15 @@ export default function VariantProductPage() {
 
           {/* Инфо */}
           <div className="space-y-6 lg:self-center lg:max-w-[560px] lg:mx-auto">
-            {/* Название */}
             <h1 className="text-2xl md:text-3xl font-bold text-[#819570]">
               {(product.name || '').toUpperCase()}
             </h1>
 
-            {/* Цена текущего варианта (или «от …») */}
             <div className="text-2xl font-bold text-[#819570]">
               {current ? formatPrice(current.price) : formatPrice(product.min_price_cache)}
             </div>
 
-            {/* Кружки вариантов (до 10). Если 1 вариант — не показываем. */}
+            {/* Кружки вариантов */}
             {variants.length > 1 && (
               <div className="space-y-2">
                 <div className="text-sm text-muted-foreground">Варианты</div>
@@ -215,65 +155,7 @@ export default function VariantProductPage() {
               </div>
             )}
 
-            {/* Кнопка + избранное */}
-            <div className="flex items-center gap-3">
-              {product.is_active ? (
-                <Button
-                  onClick={handleAddToCart}
-                  className="h-10 rounded-full px-6 text-sm font-medium"
-                >
-                  <ShoppingBag className="w-4 h-4 mr-2" />
-                  Добавить в корзину
-                </Button>
-              ) : (
-                <Button
-                  onClick={() =>
-                    window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank')
-                  }
-                  className="h-10 rounded-full px-6 text-sm font-medium"
-                >
-                  Сделать предзаказ
-                </Button>
-              )}
-
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label={isFav ? 'Убрать из избранного' : 'Добавить в избранное'}
-                onClick={() => {
-                  if (isFav) {
-                    removeFromFavorites(favKey);
-                    toast({
-                      title: 'Удалено из избранного',
-                      description: `${product.name} удалён из избранного`,
-                    });
-                  } else {
-                    addToFavorites({
-                      id: favKey,
-                      name: product.name,
-                      price: current?.price ?? product.min_price_cache ?? 0,
-                      image: current?.image_url || product.image_url || '/placeholder.svg',
-                      description: current?.composition || product.description || '',
-                      category: categoryNames[0] || 'Разное',
-                      inStock: product.is_active,
-                      quantity: 1,
-                      colors: [],
-                      size: current?.title || 'variant',
-                      occasion: [],
-                    } as any);
-                    toast({
-                      title: 'Добавлено в избранное',
-                      description: `${product.name} добавлен в избранное`,
-                    });
-                  }
-                }}
-                className={`h-10 w-10 rounded-full ${isFav ? 'bg-destructive text-destructive-foreground' : ''}`}
-              >
-                <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
-              </Button>
-            </div>
-
-            {/* Состав (вариант) — без заголовка, как в обычной странице (сетка точек) */}
+            {/* Состав/описание */}
             {current?.composition && (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
@@ -287,23 +169,16 @@ export default function VariantProductPage() {
               </div>
             )}
 
-            {/* Описание (общий + вариантный состав, см. descriptionText) */}
-            {descriptionText ? (
+            {(product.description || product.detailed_description) && (
               <div className="pt-1 md:-ml-1 lg:-ml-2">
                 <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {descriptionText}
+                  {[product.description, product.detailed_description].filter(Boolean).join('\n\n')}
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
         </div>
-
-        {/* Рекомендации — тот же компонент, передаём id как строку (у нас число) */}
-        <div className="container mx-auto px-4">
-          {product?.id ? (
-            <ProductRecommendations productId={String(product.id)} />
-          ) : null}
-        </div>
+        {/* Рекомендации добавим на шаге 3 */}
       </div>
     </div>
   );
