@@ -514,122 +514,187 @@ export type Database = {
         Relationships: []
       }
 
-      /* ────────────────────────────────
-         ▼▼▼  НОВЫЕ ТАБЛИЦЫ  ▼▼▼
-         ──────────────────────────────── */
+/* ────────────────────────────────
+   ▼▼▼  НОВЫЕ ТАБЛИЦЫ (обновлённые) ▼▼▼
+   ──────────────────────────────── */
 
-      variant_products: {
-        Row: {
-          id: number
-          name: string
-          slug: string
-          description: string | null
-          image_url: string | null
-          is_active: boolean
-          sort_order: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          name: string
-          slug: string
-          description?: string | null
-          image_url?: string | null
-          is_active?: boolean
-          sort_order?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          name?: string
-          slug?: string
-          description?: string | null
-          image_url?: string | null
-          is_active?: boolean
-          sort_order?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
+variant_products: {
+  Row: {
+    id: number
+    name: string
+    slug: string
+    description: string | null
+    detailed_description: string | null
+    image_url: string | null
+    gallery_urls: string[] | null
+    is_active: boolean
+    is_featured: boolean | null
+    show_on_homepage: boolean | null
+    sort_order: number
+    availability_status: string | null
+    delivery_info: string | null
+    gift_info: string | null
+    guarantee_info: string | null
+    care_instructions: string | null
+    size_info: string | null
+    tags: string[] | null
+    seo_title: string | null
+    seo_description: string | null
+    seo_canonical: string | null
+    og_image_url: string | null
+    min_price_cache: number | null
+    max_price_cache: number | null
+    published_at: string | null
+    created_at: string
+    updated_at: string
+  }
+  Insert: {
+    id?: number
+    name: string
+    slug: string
+    description?: string | null
+    detailed_description?: string | null
+    image_url?: string | null
+    gallery_urls?: string[] | null
+    is_active?: boolean
+    is_featured?: boolean | null
+    show_on_homepage?: boolean | null
+    sort_order?: number
+    availability_status?: string | null
+    delivery_info?: string | null
+    gift_info?: string | null
+    guarantee_info?: string | null
+    care_instructions?: string | null
+    size_info?: string | null
+    tags?: string[] | null
+    seo_title?: string | null
+    seo_description?: string | null
+    seo_canonical?: string | null
+    og_image_url?: string | null
+    min_price_cache?: number | null
+    max_price_cache?: number | null
+    published_at?: string | null
+    created_at?: string
+    updated_at?: string
+  }
+  Update: {
+    id?: number
+    name?: string
+    slug?: string
+    description?: string | null
+    detailed_description?: string | null
+    image_url?: string | null
+    gallery_urls?: string[] | null
+    is_active?: boolean
+    is_featured?: boolean | null
+    show_on_homepage?: boolean | null
+    sort_order?: number
+    availability_status?: string | null
+    delivery_info?: string | null
+    gift_info?: string | null
+    guarantee_info?: string | null
+    care_instructions?: string | null
+    size_info?: string | null
+    tags?: string[] | null
+    seo_title?: string | null
+    seo_description?: string | null
+    seo_canonical?: string | null
+    og_image_url?: string | null
+    min_price_cache?: number | null
+    max_price_cache?: number | null
+    published_at?: string | null
+    created_at?: string
+    updated_at?: string
+  }
+  Relationships: []
+}
 
-      product_variants: {
-        Row: {
-          id: number
-          product_id: number
-          title: string
-          composition: string | null
-          price: number
-          is_active: boolean
-          sort_order: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          product_id: number
-          title: string
-          composition?: string | null
-          price: number
-          is_active?: boolean
-          sort_order?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          product_id?: number
-          title?: string
-          composition?: string | null
-          price?: number
-          is_active?: boolean
-          sort_order?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_variants_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "variant_products"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
 
-      variant_product_categories: {
-        Row: {
-          product_id: number
-          category_id: string // uuid
-        }
-        Insert: {
-          product_id: number
-          category_id: string
-        }
-        Update: {
-          product_id?: number
-          category_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "variant_product_categories_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "variant_products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "variant_product_categories_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
+product_variants: {
+  Row: {
+    id: number
+    product_id: number
+    title: string                 // подпись на чипе: "S", "XL", "21"...
+    composition: string | null    // короткое описание/состав
+    description: string | null    // длинное описание (опц.)
+    price: number
+    image_url: string | null      // фото варианта
+    gallery_urls: string[] | null // мини-галерея (опц.)
+    is_active: boolean
+    sort_order: number
+    created_at: string
+    updated_at: string
+  }
+  Insert: {
+    id?: number
+    product_id: number
+    title: string
+    composition?: string | null
+    description?: string | null
+    price: number
+    image_url?: string | null
+    gallery_urls?: string[] | null
+    is_active?: boolean
+    sort_order?: number
+    created_at?: string
+    updated_at?: string
+  }
+  Update: {
+    id?: number
+    product_id?: number
+    title?: string
+    composition?: string | null
+    description?: string | null
+    price?: number
+    image_url?: string | null
+    gallery_urls?: string[] | null
+    is_active?: boolean
+    sort_order?: number
+    created_at?: string
+    updated_at?: string
+  }
+  Relationships: [
+    {
+      foreignKeyName: "product_variants_product_id_fkey"
+      columns: ["product_id"]
+      isOneToOne: false
+      referencedRelation: "variant_products"
+      referencedColumns: ["id"]
+    }
+  ]
+}
+
+
+variant_product_categories: {
+  Row: {
+    product_id: number
+    category_id: string // uuid
+  }
+  Insert: {
+    product_id: number
+    category_id: string
+  }
+  Update: {
+    product_id?: number
+    category_id?: string
+  }
+  Relationships: [
+    {
+      foreignKeyName: "variant_product_categories_product_id_fkey"
+      columns: ["product_id"]
+      isOneToOne: false
+      referencedRelation: "variant_products"
+      referencedColumns: ["id"]
+    },
+    {
+      foreignKeyName: "variant_product_categories_category_id_fkey"
+      columns: ["category_id"]
+      isOneToOne: false
+      referencedRelation: "categories"
+      referencedColumns: ["id"]
+    }
+  ]
+}
     }
     Views: {
       [_ in never]: never
