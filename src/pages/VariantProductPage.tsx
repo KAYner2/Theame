@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, Heart, ShoppingBag } from 'lucide-react';
-
+import { ProductRecommendations } from '@/components/ProductRecommendations';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { toast } from '@/hooks/use-toast';
@@ -46,107 +46,6 @@ const asArray = <T,>(v: T[] | T | null | undefined): T[] =>
 const formatPrice = (n?: number | null) =>
   typeof n === 'number' ? `${n.toLocaleString('ru-RU')} ₽` : '';
 
-/* ---------------- рекомендации (через VariantFlowerCard) ---------------- */
-
-function VariantRecsGrid({ productId, limit = 8 }: { productId: number; limit?: number }) {
-  const [items, setItems] = useState<VPLite[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-
-    (async () => {
-      try {
-        const { supabase } = await import('@/integrations/supabase/client');
-
-        // категории текущего товара
-        const { data: links, error: e1 } = await supabase
-          .from('variant_product_categories')
-          .select('category_id')
-          .eq('product_id', productId);
-        if (e1) throw e1;
-
-        const catIds = (links ?? []).map((r: any) => r.category_id as string);
-        let recs: VPLite[] = [];
-
-        if (catIds.length) {
-          // другие товары из этих категорий
-          const { data: others, error: e2 } = await supabase
-            .from('variant_product_categories')
-            .select('product_id, category_id')
-            .in('category_id', catIds);
-          if (e2) throw e2;
-
-          const ids = Array.from(
-            new Set((others ?? []).map((r: any) => r.product_id as number).filter((id) => id !== productId))
-          );
-
-          if (ids.length) {
-            const { data, error: e3 } = await supabase
-              .from('variant_products')
-              .select('id, name, slug, image_url, min_price_cache, is_active, sort_order, created_at')
-              .in('id', ids)
-              .eq('is_active', true)
-              .order('sort_order', { ascending: true })
-              .order('created_at', { ascending: true })
-              .limit(limit);
-            if (e3) throw e3;
-            recs = (data ?? []) as VPLite[];
-          }
-        }
-
-        // fallback: свежие активные, если по категориям пусто
-        if (!recs.length) {
-          const { data, error: e4 } = await supabase
-            .from('variant_products')
-            .select('id, name, slug, image_url, min_price_cache, is_active, sort_order, created_at')
-            .eq('is_active', true)
-            .neq('id', productId)
-            .order('sort_order', { ascending: true })
-            .order('created_at', { ascending: true })
-            .limit(limit);
-          if (e4) throw e4;
-          recs = (data ?? []) as VPLite[];
-        }
-
-        if (!alive) return;
-        setItems(recs);
-        setLoading(false);
-      } catch (err) {
-        console.error('[VariantRecsGrid] error:', err);
-        if (!alive) return;
-        setItems([]);
-        setLoading(false);
-      }
-    })();
-
-    return () => { alive = false; };
-  }, [productId, limit]);
-
-  if (loading || !items.length) return null;
-
-  return (
-    <div className="mt-10">
-      <h2 className="text-xl font-semibold mb-4">Вам может понравиться</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {items.map((p) => (
-          <VariantFlowerCard
-            key={`vrec:${p.id}`}
-            product={{
-              id: p.id,
-              name: p.name,
-              slug: p.slug,
-              image_url: p.image_url,
-              min_price_cache: p.min_price_cache,
-              is_active: p.is_active,
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /* ---------------- основная страница ---------------- */
 
@@ -481,10 +380,10 @@ export default function VariantProductPage() {
           </div>
         </div>
 
-        {/* Рекомендации — карточки вариантных */}
-        <div className="container mx-auto px-4">
-          {product?.id ? <VariantRecsGrid productId={product.id} /> : null}
-        </div>
+        {/* Рекомендации — как на обычной странице товара */}
+<div className="container mx-auto px-4 mt-12">
+  {product?.id ? <ProductRecommendations productId={String(product.id)} /> : null}
+</div>
       </div>
     </div>
   );
