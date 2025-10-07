@@ -131,16 +131,21 @@ export default function VariantProductPage() {
     [variants, activeVariantId]
   );
 
+  // главное изображение — фото варианта или товара
   const baseImg = useMemo(
     () => (current?.image_url || product?.image_url || '/placeholder.svg') as string,
     [current, product]
   );
 
-  const gallery = useMemo(
-    () => asArray<string>(product?.gallery_urls),
-    [product]
-  );
+  // если у варианта есть своя галерея — используем её,
+  // иначе показываем галерею самого товара
+  const gallery = useMemo(() => {
+    const vgal = asArray<string>(current?.gallery_urls);
+    const pgal = asArray<string>(product?.gallery_urls);
+    return vgal.length ? vgal : pgal;
+  }, [current, product]);
 
+  // объединяем основное фото + галерею (без дубликатов)
   const images = useMemo(
     () => [baseImg, ...gallery.filter(src => src !== baseImg)],
     [baseImg, gallery]
@@ -150,6 +155,7 @@ export default function VariantProductPage() {
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   useEffect(() => setSelectedImageIndex(0), [baseImg]);
+
 
   // ранние return — ПОСЛЕ всех хуков
   if (loading) {
