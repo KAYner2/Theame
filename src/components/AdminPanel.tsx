@@ -916,41 +916,6 @@ const VariantProductForm = ({ product }: { product?: any }) => {
     }
   };
 
-  // загрузка нескольких изображений в галерею варианта (макс. 4)
-const handleUploadVariantGallery = async (files: FileList, id: number | string) => {
-  try {
-    const list = Array.from(files || []);
-    if (!list.length) return;
-
-    // текущее состояние варианта
-    const v = variants.find(x => x.id === id);
-    const current = Array.isArray(v?.gallery_urls) ? v!.gallery_urls! : [];
-
-    // сколько ещё можно
-    const room = Math.max(0, 4 - current.length);
-    const toUpload = list.slice(0, room);
-    if (toUpload.length === 0) {
-      toast({ variant: 'destructive', title: 'Максимум 4 фото в галерее варианта' });
-      return;
-    }
-
-    const uploaded = await Promise.all(toUpload.map(f => uploadImage(f, 'products')));
-    patchVariant(id, { gallery_urls: [...current, ...uploaded] });
-  } catch (e) {
-    console.error(e);
-    toast({ variant: 'destructive', title: 'Не удалось загрузить фото галереи' });
-  }
-};
-
-// удаление одного изображения из галереи варианта
-const removeVariantGalleryImage = (id: number | string, index: number) => {
-  const v = variants.find(x => x.id === id);
-  const arr = Array.isArray(v?.gallery_urls) ? [...(v!.gallery_urls!)] : [];
-  arr.splice(index, 1);
-  patchVariant(id, { gallery_urls: arr });
-};
-
-
   // ── submit формы товара + вариантов
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1223,39 +1188,6 @@ if (formData.is_active) {
                 <Switch checked={v.is_active} onCheckedChange={(val) => patchVariant(v.id, { is_active: !!val })} />
                 <span>Активен</span>
               </div>
-              <div>
-  <Label>Галерея варианта (до 4 фото)</Label>
-  <Input
-    type="file"
-    accept="image/*"
-    multiple
-    onChange={(e) => e.target.files && handleUploadVariantGallery(e.target.files, v.id)}
-  />
-  {!!(v.gallery_urls && v.gallery_urls.length) && (
-    <div className="mt-2">
-      <p className="text-sm text-muted-foreground mb-2">
-        Текущие фото галереи:
-      </p>
-      <div className="grid grid-cols-4 gap-2">
-        {v.gallery_urls!.map((url, idx) => (
-          <div key={url + idx} className="relative">
-            <img src={url} alt={`Variant ${idx+1}`} className="w-16 h-16 object-cover rounded" />
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              className="absolute -top-2 -right-2 w-6 h-6 rounded-full p-0"
-              onClick={() => removeVariantGalleryImage(v.id, idx)}
-              title="Удалить"
-            >
-              ×
-            </Button>
-          </div>
-        ))}
-      </div>
-    </div>
-  )}
-</div>
             </div>
           );
         })()}
