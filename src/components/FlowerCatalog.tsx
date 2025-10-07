@@ -353,27 +353,6 @@ export const FlowerCatalog = () => {
         </div>
       )}
 
-      {/* Цвета */}
-      {availableColors.length > 0 && (
-        <div className="space-y-2">
-          <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
-            Цвета
-          </DropdownMenuLabel>
-          <Select value={selectedColor} onValueChange={setSelectedColor}>
-            <SelectTrigger>
-              <SelectValue placeholder="Выберите цвет" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все цвета</SelectItem>
-              {availableColors.map((color) => (
-                <SelectItem key={color} value={color}>
-                  {color}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
 
       {/* Цена */}
       <div className="space-y-2">
