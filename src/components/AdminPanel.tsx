@@ -513,37 +513,14 @@ const data = {
     />
   </div>
 )}
-          <div>
-            <Label htmlFor="size_info">Размеры</Label>
-            <Input
-              id="size_info"
-              value={formData.size_info}
-              onChange={(e) => setFormData({ ...formData, size_info: e.target.value })}
-              placeholder="Высота букета: 40-45 см"
-            />
-          </div>
-          <div>
-            <Label htmlFor="availability_status">Статус наличия</Label>
-            <Select
-              value={formData.availability_status}
-              onValueChange={(value) =>
-                setFormData({
-                  ...formData,
-                  availability_status: value as AvailabilityStatus,
-                }) 
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите статус" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="in_stock">В наличии</SelectItem>
-                <SelectItem value="out_of_stock">Нет в наличии</SelectItem>
-                <SelectItem value="limited">Ограничено</SelectItem>
-                <SelectItem value="pre_order">Предзаказ</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+{/*
+<div>
+  <Label htmlFor="availability_status">Статус наличия</Label>
+  <Select ... >
+    ...
+  </Select>
+</div>
+*/}
           <div>
             <Label htmlFor="price">Цена</Label>
             <Input
@@ -623,14 +600,6 @@ const data = {
                 </div>
               </div>
             )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="is_featured"
-              checked={formData.is_featured}
-              onCheckedChange={(checked) => setFormData({ ...formData, is_featured: checked })}
-            />
-            <Label htmlFor="is_featured">Рекомендуемый</Label>
           </div>
           <div className="flex items-center space-x-2">
             <Switch
