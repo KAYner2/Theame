@@ -307,18 +307,6 @@ const updateVariantOrder = useMutation({
           />
         </div>
         <div>
-          <Label htmlFor="image">Изображение</Label>
-          <Input
-            id="image"
-            type="file"
-            accept="image/*"
-            onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-          />
-          {formData.image_url && (
-            <img src={formData.image_url} alt="Preview" className="mt-2 w-20 h-20 object-cover rounded" />
-          )}
-        </div>
-        <div>
           <Label htmlFor="sort_order">Порядок сортировки</Label>
           <Input
             id="sort_order"
@@ -1353,22 +1341,6 @@ if (formData.is_active) {
 
     return (
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="title">Заголовок</Label>
-          <Input
-            id="title"
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          />
-        </div>
-        <div>
-          <Label htmlFor="subtitle">Подзаголовок</Label>
-          <Input
-            id="subtitle"
-            value={formData.subtitle}
-            onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-          />
-        </div>
         <div>
           <Label htmlFor="image">Изображение</Label>
           <Input
