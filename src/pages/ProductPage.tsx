@@ -2,7 +2,6 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, Heart, ShoppingBag } from 'lucide-react';
 
 import { useCart } from '@/context/CartContext';
@@ -43,7 +42,7 @@ export default function ProductPage() {
     error: errorById,
   } = useProduct(effectiveId);
 
-  // ❗️Хук вызываем всегда (без условий). Его собственный enabled внутри хука решит, идти ли в сеть.
+  // вызываем всегда; внутри хука решается, идти ли в сеть
   const {
     data: productBySlug,
     isLoading: loadingBySlug,
@@ -72,7 +71,6 @@ export default function ProductPage() {
     );
   }
 
-  // ❌ Ошибку показываем только если реально не пришёл товар
   if (error || !product) {
     return (
       <div className="min-h-screen bg-[#fff8ea]">
@@ -131,19 +129,20 @@ export default function ProductPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-center">
           {/* Галерея */}
           <div className="space-y-4">
-            <Card
+            {/* Убраны карточные рамки/фон, картинка заполняет контейнер */}
+            <div
               className="
                 relative overflow-hidden
                 aspect-[5/4]
                 max-h-[75vh]
                 lg:max-h-[72vh]
-                mx-auto
+                mx-auto rounded-lg
               "
             >
               <img
                 src={images[selectedImageIndex] || baseImg}
                 alt={product?.name || ''}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover object-center"
               />
 
               {imagesLen > 1 && (
@@ -151,29 +150,29 @@ export default function ProductPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
                     onClick={prevImage}
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-5 h-5" />
                   </Button>
                   <Button
                     variant="outline"
                     size="icon"
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
                     onClick={nextImage}
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-5 h-5" />
                   </Button>
                 </>
               )}
-            </Card>
+            </div>
 
             {imagesLen > 1 && (
               <div className="flex justify-center gap-2 flex-wrap">
                 {images.map((src, idx) => (
-                  <Card
+                  <div
                     key={src + idx}
-                    className={`cursor-pointer overflow-hidden aspect-square h-16 md:h-20 transition-all ${
+                    className={`cursor-pointer overflow-hidden aspect-square h-16 md:h-20 rounded-md transition-all ${
                       selectedImageIndex === idx
                         ? 'ring-2 ring-primary'
                         : 'hover:ring-1 hover:ring-muted-foreground'
@@ -185,7 +184,7 @@ export default function ProductPage() {
                       alt={`${product?.name || ''} ${idx + 1}`}
                       className="w-full h-full object-cover"
                     />
-                  </Card>
+                  </div>
                 ))}
               </div>
             )}
@@ -203,15 +202,15 @@ export default function ProductPage() {
               {(product?.price || 0).toLocaleString()} ₽
             </div>
 
-            {/* Кнопка + сердечко */}
+            {/* Кнопка + сердечко (увеличены) */}
             <div className="flex items-center gap-3">
               {product.is_active ? (
                 <Button
                   onClick={handleAddToCart}
                   disabled={product?.availability_status !== 'in_stock'}
-                  className="h-10 rounded-full px-6 text-sm font-medium"
+                  className="h-12 rounded-full px-8 text-base font-medium"
                 >
-                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  <ShoppingBag className="w-6 h-6 mr-2" />
                   Добавить в корзину
                 </Button>
               ) : (
@@ -219,7 +218,7 @@ export default function ProductPage() {
                   onClick={() =>
                     window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank')
                   }
-                  className="h-10 rounded-full px-6 text-sm font-medium"
+                  className="h-12 rounded-full px-8 text-base font-medium"
                 >
                   Сделать предзаказ
                 </Button>
@@ -256,22 +255,31 @@ export default function ProductPage() {
                     });
                   }
                 }}
-                className={`h-10 w-10 rounded-full ${isFav ? 'bg-destructive text-destructive-foreground' : ''}`}
+                className={`h-12 w-12 rounded-full ${isFav ? 'bg-destructive text-destructive-foreground' : ''}`}
               >
-                <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+                <Heart className={`w-6 h-6 ${isFav ? 'fill-current' : ''}`} />
               </Button>
             </div>
 
-            {/* СОСТАВ — без заголовка */}
+            {/* СОСТАВ — один столбик и без переносов "шт." */}
             {(compositionItems?.length ?? 0) > 0 && (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   {compositionItems.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full" />
+                    <div key={item.name} className="flex items-start gap-2">
+                      <div className="mt-2 w-2 h-2 bg-primary rounded-full shrink-0" />
                       <span className="text-muted-foreground">
                         {item.name}
-                        {typeof item.qty === 'number' ? ` — ${item.qty} шт.` : ''}
+                        {typeof item.qty === 'number' ? (
+                          <>
+                            {' — '}
+                            <span className="whitespace-nowrap">
+                              {item.qty}
+                              {'\u00A0'}
+                              шт.
+                            </span>
+                          </>
+                        ) : null}
                       </span>
                     </div>
                   ))}
@@ -287,9 +295,9 @@ export default function ProductPage() {
               </div>
             )}
 
-            {/* Описание */}
+            {/* Описание — выравнивание по одному краю, без отрицательных отступов */}
             {descriptionText ? (
-              <div className="pt-1 md:-ml-1 lg:-ml-2">
+              <div>
                 <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
                   {descriptionText}
                 </div>
