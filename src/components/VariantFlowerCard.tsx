@@ -107,7 +107,7 @@ export function VariantFlowerCard({
   };
 
   return (
-    <div className={`group relative ${className || ''}`}>
+    <div className={`group relative flex flex-col h-full ${className || ''}`}>
       <Link to={productUrl} aria-label={product.name} className="block">
         {/* 📸 Фото — квадрат 1:1 */}
         <div className="relative overflow-hidden rounded-2xl aspect-square">
@@ -121,7 +121,7 @@ export function VariantFlowerCard({
 
         {/* 📝 Название и цена «от ...» */}
         <div className="mt-3 px-1">
-          <h3 className="text-sm md:text-base font-normal leading-snug text-gray-800 line-clamp-2">
+          <h3 className="text-sm md:text-base font-normal leading-snug text-gray-800 line-clamp-2 min-h-[42px] md:min-h-0">
             {product.name}
           </h3>
 
@@ -152,7 +152,7 @@ export function VariantFlowerCard({
       </Link>
 
       {/* 🛒 Кнопка В корзину / Сделать предзаказ */}
-      <div className="mt-2 px-1">
+      <div className="mt-2 px-1 mt-auto">
         {product.is_active ? (
           <Button
             onClick={(e) => {
@@ -166,15 +166,16 @@ export function VariantFlowerCard({
           </Button>
         ) : (
           <Button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank');
-            }}
-            className="rounded-full px-6 h-10 text-sm md:text-base font-medium bg-[#819570] hover:bg-[#6f7f5f] text-white transition-colors"
-          >
-            Сделать предзаказ
-          </Button>
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank');
+  }}
+  className="rounded-full w-full h-[40px] text-xs md:text-base font-medium bg-[#819570] hover:bg-[#6f7f5f] text-white transition-colors whitespace-normal leading-tight text-center"
+>
+  <span className="hidden sm:inline">Сделать предзаказ</span>
+  <span className="inline sm:hidden">Предзаказ</span>
+</Button>
         )}
       </div>
     </div>

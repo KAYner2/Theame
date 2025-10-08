@@ -53,7 +53,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
   });
 
   return (
-    <div className="group relative">
+    <div className="group relative flex flex-col h-full">
       <Link to={productUrl} aria-label={flower.name} className="block">
         {/* 📸 Фото — квадрат 1:1, без рамок/теней, со скруглением */}
         <div className="relative overflow-hidden rounded-2xl aspect-square">
@@ -67,7 +67,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
 
         {/* 📝 Название и цена */}
         <div className="mt-3 px-1">
-          <h3 className="text-sm md:text-base font-normal leading-snug text-gray-800 line-clamp-2">
+          <h3 className="text-sm md:text-base font-normal leading-snug text-gray-800 line-clamp-2 min-h-[42px] md:min-h-0">
             {flower.name}
           </h3>
 
@@ -98,7 +98,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
       </Link>
 
       {/* 🛒 Кнопка В корзину / Сделать предзаказ */}
-      <div className="mt-2 px-1">
+      <div className="mt-2 px-1 mt-auto">
         {flower.inStock ? (
           <Button
             onClick={(e) => {
