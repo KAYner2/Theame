@@ -68,8 +68,8 @@ export function FeaturedProducts() {
               : 'По запросу';
 
             return (
-              <div key={product.id} className="group">
-                <Link to={to} aria-label={product.name} className="block">
+              <div key={product.id} className="group flex flex-col h-full">
+                <Link to={to} aria-label={product.name} className="block flex-1 flex flex-col">
                   {/* Фото — КВАДРАТ */}
                   <div className="relative overflow-hidden rounded-2xl">
                     <div className="aspect-square">
@@ -84,7 +84,7 @@ export function FeaturedProducts() {
 
                   {/* Текст */}
                   <div className="mt-3 px-1">
-                    <h3 className="text-[15px] md:text-base font-medium leading-snug line-clamp-2">
+                    <h3 className="text-[15px] md:text-base font-medium leading-snug line-clamp-2 min-h-[42px] md:min-h-0">
                       {product.name}
                     </h3>
                     <div className="mt-1">
@@ -96,7 +96,7 @@ export function FeaturedProducts() {
                 </Link>
 
                 {/* Кнопка */}
-                <div className="px-1 pt-3">
+                <div className="px-1 pt-3 mt-auto">
                   <Button
                     onClick={(e) => {
                       e.preventDefault();
