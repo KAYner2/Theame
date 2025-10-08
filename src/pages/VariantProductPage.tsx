@@ -53,7 +53,7 @@ type CompItem = { name: string; qty?: number };
 const parseVariantComposition = (raw?: string | null): CompItem[] => {
   if (!raw) return [];
   const lines = raw
-    .split(/\r?\n/)
+    .split(/[\r\n,;]+/)
     .map(l => l.trim())
     .filter(Boolean);
 
@@ -455,7 +455,7 @@ const primaryImg = useMemo(
                   {compItems.map((item, idx) => (
                     <div key={`${item.name}-${idx}`} className="flex items-start gap-2">
                       <div className="mt-2 w-2 h-2 bg-primary rounded-full shrink-0" />
-                      <span className="text-muted-foreground">
+                      <span className="text-muted-foreground break-words">
                         {item.name}
                         {typeof item.qty === 'number' ? (
                           <>
