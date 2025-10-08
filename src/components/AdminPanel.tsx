@@ -1118,36 +1118,134 @@ if (formData.is_active) {
 })()}
 
 
-        {/* Панель выбранного варианта */}
-        {activeVariantId && (() => {
-          const v = variants.find(x => x.id === activeVariantId && !x._deleted);
-          if (!v) return null;
-          return (
-            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4 border rounded p-3">
-              <div>
-                <Label>Название варианта</Label>
-                <Input value={v.title} onChange={(e) => patchVariant(v.id, { title: e.target.value })} placeholder="S / XL / 3 / 21" />
+{/* Панель выбранного варианта */}
+{activeVariantId && (() => {
+  const v = variants.find(x => x.id === activeVariantId && !x._deleted);
+  if (!v) return null;
+
+  // локальный хелпер: загрузка нескольких фото в галерею варианта
+  const handleUploadVariantGallery = async (files: File[], id: number | string) => {
+    try {
+      const limited = files.slice(0, 4); // максимум 4
+      const urls = await Promise.all(limited.map(f => uploadImage(f, 'products')));
+      const prev = Array.isArray(v.gallery_urls) ? v.gallery_urls : [];
+      patchVariant(id, { gallery_urls: [...prev, ...urls].slice(0, 4) });
+    } catch (e) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'Не удалось загрузить галерею варианта' });
+    }
+  };
+
+  const removeFromVariantGallery = (idx: number) => {
+    const arr = Array.isArray(v.gallery_urls) ? [...v.gallery_urls] : [];
+    arr.splice(idx, 1);
+    patchVariant(v.id, { gallery_urls: arr });
+  };
+
+  return (
+    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4 border rounded p-3">
+      <div>
+        <Label>Название варианта</Label>
+        <Input
+          value={v.title}
+          onChange={(e) => patchVariant(v.id, { title: e.target.value })}
+          placeholder="S / XL / 3 / 21"
+        />
+      </div>
+
+      <div>
+        <Label>Цена</Label>
+        <Input
+          type="number"
+          step="0.01"
+          value={v.price ?? ''}
+          onChange={(e) =>
+            patchVariant(v.id, { price: e.target.value === '' ? null : Number(e.target.value) })
+          }
+        />
+      </div>
+
+      {/* Описание и Состав — раздельно */}
+      <div className="md:col-span-2">
+        <Label>Описание варианта</Label>
+        <Textarea
+          rows={3}
+          value={v.description ?? ''}
+          onChange={(e) => patchVariant(v.id, { description: e.target.value })}
+          placeholder="Короткий текст про вариант (не состав)."
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <Label>Состав (как на сайте, с «шт.» и переносами)</Label>
+        <Textarea
+          rows={3}
+          value={v.composition ?? ''}
+          onChange={(e) => patchVariant(v.id, { composition: e.target.value })}
+          placeholder={`Роза — 7 шт\nЭвкалипт — 3 шт`}
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Каждый ингредиент с новой строки. «шт.» можно писать — на витрине мы фиксируем переносы.
+        </p>
+      </div>
+
+      {/* Фото варианта */}
+      <div>
+        <Label>Фото варианта (основное)</Label>
+        <Input
+          type="file"
+          accept="image/*"
+          onChange={(e) => e.target.files?.[0] && handleUploadVariantImage(e.target.files[0], v.id)}
+        />
+        {v.image_url && (
+          <img src={v.image_url} className="mt-2 w-24 h-24 object-cover rounded" alt="variant" />
+        )}
+      </div>
+
+      {/* Галерея варианта */}
+      <div>
+        <Label>Галерея варианта (до 4 изображений)</Label>
+        <Input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            handleUploadVariantGallery(files, v.id);
+          }}
+        />
+        {Array.isArray(v.gallery_urls) && v.gallery_urls.length > 0 && (
+          <div className="mt-2 grid grid-cols-4 gap-2">
+            {v.gallery_urls.map((url, idx) => (
+              <div key={url + idx} className="relative">
+                <img src={url} className="w-16 h-16 object-cover rounded" />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full p-0"
+                  onClick={() => removeFromVariantGallery(idx)}
+                >
+                  ×
+                </Button>
               </div>
-              <div>
-                <Label>Цена</Label>
-                <Input type="number" step="0.01" value={v.price ?? ''} onChange={(e) => patchVariant(v.id, { price: e.target.value === '' ? null : Number(e.target.value) })} />
-              </div>
-              <div className="md:col-span-2">
-                <Label>Описание/Состав</Label>
-                <Textarea rows={3} value={v.composition ?? ''} onChange={(e) => patchVariant(v.id, { composition: e.target.value })} />
-              </div>
-              <div>
-                <Label>Фото варианта</Label>
-                <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleUploadVariantImage(e.target.files[0], v.id)} />
-                {v.image_url && <img src={v.image_url} className="mt-2 w-24 h-24 object-cover rounded" alt="variant" />}
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={v.is_active} onCheckedChange={(val) => patchVariant(v.id, { is_active: !!val })} />
-                <span>Активен</span>
-              </div>
-            </div>
-          );
-        })()}
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={v.is_active}
+          onCheckedChange={(val) => patchVariant(v.id, { is_active: !!val })}
+          id={`variant_active_${v.id}`}
+        />
+        <Label htmlFor={`variant_active_${v.id}`}>Активен</Label>
+      </div>
+    </div>
+  );
+})()}
+
       </div>
 
       {/* Общее изображение товара (fallback если у варианта нет своего) */}

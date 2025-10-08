@@ -352,55 +352,64 @@ export default function VariantProductPage() {
               </div>
             )}
 
-            {/* Кнопки — увеличены как на обычной странице */}
-            <div className="flex items-center gap-3">
-              {product.is_active ? (
-                <Button
-                  onClick={handleAddToCart}
-                  className="h-12 rounded-full px-8 text-base font-medium"
-                >
-                  <ShoppingBag className="w-6 h-6 mr-2" />
-                  Добавить в корзину
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank')}
-                  className="h-12 rounded-full px-8 text-base font-medium"
-                >
-                  Сделать предзаказ
-                </Button>
-              )}
+{/* Кнопки — завязка на активность выбранного варианта */}
+<div className="flex items-center gap-3">
+  {current ? (
+    current.is_active ? (
+      <Button
+        onClick={handleAddToCart}
+        className="h-12 rounded-full px-8 text-base font-medium"
+      >
+        <ShoppingBag className="w-6 h-6 mr-2" />
+        Добавить в корзину
+      </Button>
+    ) : (
+      <Button
+        onClick={() => window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank')}
+        className="h-12 rounded-full px-8 text-base font-medium"
+      >
+        Сделать предзаказ
+      </Button>
+    )
+  ) : (
+    <Button disabled className="h-12 rounded-full px-8 text-base font-medium">
+      Выберите вариант
+    </Button>
+  )}
 
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label={isFav ? 'Убрать из избранного' : 'Добавить в избранное'}
-                onClick={() => {
-                  if (isFav) {
-                    removeFromFavorites(favKey);
-                    toast({ title: 'Удалено из избранного', description: `${product.name} удалён из избранного` });
-                  } else {
-                    addToFavorites({
-                      id: favKey,
-                      name: product.name,
-                      price: current?.price ?? product.min_price_cache ?? 0,
-                      image: current?.image_url || product.image_url || '/placeholder.svg',
-                      description: current?.composition || product.description || '',
-                      category: 'Разное',
-                      inStock: !!product.is_active,
-                      quantity: 1,
-                      colors: [],
-                      size: current?.title || 'variant',
-                      occasion: [],
-                    } as any);
-                    toast({ title: 'Добавлено в избранное', description: `${product.name} добавлен в избранное` });
-                  }
-                }}
-                className={`h-12 w-12 rounded-full ${isFav ? 'bg-destructive text-destructive-foreground' : ''}`}
-              >
-                <Heart className={`w-6 h-6 ${isFav ? 'fill-current' : ''}`} />
-              </Button>
-            </div>
+  {/* Избранное без изменений */}
+  <Button
+    variant="outline"
+    size="icon"
+    aria-label={isFav ? 'Убрать из избранного' : 'Добавить в избранное'}
+    onClick={() => {
+      if (!current) return;
+      if (isFav) {
+        removeFromFavorites(favKey);
+        toast({ title: 'Удалено из избранного', description: `${product.name} удалён из избранного` });
+      } else {
+        addToFavorites({
+          id: favKey,
+          name: product.name,
+          price: current?.price ?? product.min_price_cache ?? 0,
+          image: current?.image_url || product.image_url || '/placeholder.svg',
+          description: current?.description || product.description || '',
+          category: 'Разное',
+          inStock: !!product.is_active,
+          quantity: 1,
+          colors: [],
+          size: current?.title || 'variant',
+          occasion: [],
+        } as any);
+        toast({ title: 'Добавлено в избранное', description: `${product.name} добавлен в избранное` });
+      }
+    }}
+    className={`h-12 w-12 rounded-full ${isFav ? 'bg-destructive text-destructive-foreground' : ''}`}
+  >
+    <Heart className={`w-6 h-6 ${isFav ? 'fill-current' : ''}`} />
+  </Button>
+</div>
+
 
             {/* Состав выбранного варианта — один столбик, без переноса "шт." */}
             {compItems.length > 0 && (
