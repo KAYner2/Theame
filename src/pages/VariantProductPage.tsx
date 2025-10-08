@@ -289,16 +289,16 @@ const primaryImg = useMemo(
             <div
               className="
                 relative overflow-hidden
-                aspect-[5/4]
-                max-h-[75vh]
-                lg:max-h-[72vh]
-                mx-auto rounded-lg
-              "
+    aspect-square
+    w-full max-w-[620px]
+    mx-auto rounded-lg
+    bg-white
+  "
             >
               <img
   src={images[selectedImageIndex] || primaryImg}
   alt={product.name}
-  className="w-full h-full object-cover object-center"
+  className="w-full h-full object-contain object-center"
 />
 
               {imagesLen > 1 && (
