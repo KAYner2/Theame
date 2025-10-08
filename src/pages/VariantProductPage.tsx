@@ -167,48 +167,52 @@ export default function VariantProductPage() {
   );
 
 // 1) Главное фото — всегда общее фото товара
-// Главное фото — картинка выбранного варианта (если есть), иначе фото товара
-const primaryImg = useMemo(
-  () => (current?.image_url || product?.image_url || '/placeholder.svg') as string,
-  [current?.image_url, product?.image_url]
+// 0) Базовое фото товара
+const baseImg = useMemo(
+  () => (product?.image_url || '/placeholder.svg') as string,
+  [product?.image_url]
 );
 
-// Галерея выбранного варианта
-const currentVariantGallery = useMemo(
-  () => (asArray(current?.gallery_urls).filter(Boolean) as string[]),
-  [current?.gallery_urls]
-);
+// 1) Статичный список миниатюр: [общее фото товара] + [фото всех вариантов в порядке] + [доп. фото товара]
+//    Без дублей.
+const images = useMemo(() => {
+  const seen = new Set<string>();
+  const out: string[] = [];
 
-// Превью остальных вариантов (кроме активного), без дублей и без картинок активного варианта
-const otherVariantThumbs = useMemo(() => {
-  const seen = new Set<string>([primaryImg, ...currentVariantGallery]);
-  return variants
-    .filter(v => v.id !== current?.id)
-    .map(v => v.image_url)
-    .filter((src): src is string => !!src && !seen.has(src) && !seen.add(src));
-}, [variants, current?.id, primaryImg, currentVariantGallery]);
+  const push = (src?: string | null) => {
+    if (!src) return;
+    if (seen.has(src)) return;
+    seen.add(src);
+    out.push(src);
+  };
 
-// «Хвост» — доп. фото товара, без дублей
-const tail = useMemo(() => {
-  const t = [
-    (product as any)?.extra_image_1_url || '',
-    (product as any)?.extra_image_2_url || '',
-  ].filter(Boolean) as string[];
-  const ban = new Set<string>([primaryImg, ...currentVariantGallery, ...otherVariantThumbs]);
-  return t.filter(src => src && !ban.has(src));
-}, [product, primaryImg, currentVariantGallery, otherVariantThumbs]);
+  // общее фото
+  push(baseImg);
 
-// Итоговая галерея: сначала активный вариант, затем его галерея, потом прочие варианты и хвост
-const images = useMemo(
-  () => [primaryImg, ...currentVariantGallery, ...otherVariantThumbs, ...tail],
-  [primaryImg, currentVariantGallery, otherVariantThumbs, tail]
-);
+  // фото всех вариантов по порядку
+  variants.forEach(v => push(v.image_url));
+
+  // «хвостовые» доп. фото товара (если есть)
+  push((product as any)?.extra_image_1_url || '');
+  push((product as any)?.extra_image_2_url || '');
+
+  return out.length ? out : [baseImg];
+}, [baseImg, variants, product?.extra_image_1_url, product?.extra_image_2_url]);
 
 const imagesLen = images.length || 1;
 const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
-// При смене выбранного варианта/его главной картинки — показываем первое фото его набора
-useEffect(() => setSelectedImageIndex(0), [current?.id, primaryImg]);
+// 2) Главное фото — картинка выбранного варианта (если есть), иначе общее фото товара
+const primaryImg = useMemo(
+  () => (current?.image_url || baseImg),
+  [current?.image_url, baseImg]
+);
+
+// 3) При смене выбранного варианта — находим его фото в статичном списке и активируем соответствующую миниатюру
+useEffect(() => {
+  const idx = images.findIndex(src => src === primaryImg);
+  setSelectedImageIndex(idx >= 0 ? idx : 0);
+}, [primaryImg, images]);
 
 
 
