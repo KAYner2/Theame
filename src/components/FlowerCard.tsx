@@ -111,13 +111,13 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
             В корзину
           </Button>
         ) : (
-          <Button
+<Button
   onClick={(e) => {
     e.preventDefault();
     e.stopPropagation();
     window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank');
   }}
-  className="rounded-full w-full h-[40px] text-xs md:text-base font-medium bg-[#819570] hover:bg-[#6f7f5f] text-white transition-colors whitespace-normal leading-tight text-center"
+  className="rounded-full w-full h-10 text-sm md:text-base font-medium bg-[#819570] hover:bg-[#6f7f5f] text-white transition-colors whitespace-normal leading-snug text-center"
 >
   <span className="hidden sm:inline">Сделать предзаказ</span>
   <span className="inline sm:hidden">Предзаказ</span>
