@@ -54,7 +54,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
 
   return (
     <div className="group relative flex flex-col h-full">
-      <Link to={productUrl} aria-label={flower.name} className="block">
+      <Link to={productUrl} aria-label={flower.name} className="block flex-1">
         {/* 📸 Фото — квадрат 1:1, без рамок/теней, со скруглением */}
         <div className="relative overflow-hidden rounded-2xl aspect-square">
           <img
@@ -98,7 +98,7 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
       </Link>
 
       {/* 🛒 Кнопка В корзину / Сделать предзаказ */}
-      <div className="mt-2 px-1 mt-auto">
+      <div className="mt-3 px-1">
         {flower.inStock ? (
           <Button
             onClick={(e) => {
@@ -117,10 +117,9 @@ export const FlowerCard = ({ flower, onToggleFavorite }: FlowerCardProps) => {
     e.stopPropagation();
     window.open('https://wa.me/message/XQDDWGSEL35LP1', '_blank');
   }}
-  className="rounded-full w-full h-10 text-sm md:text-base font-medium bg-[#819570] hover:bg-[#6f7f5f] text-white transition-colors whitespace-normal leading-snug text-center"
+  className="rounded-full px-6 h-10 text-sm md:text-base font-medium bg-[#819570] hover:bg-[#6f7f5f] text-white transition-colors"
 >
-  <span className="hidden sm:inline">Сделать предзаказ</span>
-  <span className="inline sm:hidden">Предзаказ</span>
+  Предзаказ
 </Button>
         )}
       </div>
