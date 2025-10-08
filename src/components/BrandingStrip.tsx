@@ -160,10 +160,10 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
           </nav>
 
           {/* Мобильная версия инфо-блока */}
-          <div className="md:hidden mt-2 text-[#819570] text-sm leading-snug tracking-wide text-center">
+          <div className="md:hidden mt-0 text-[#819570] text-sm leading-snug tracking-wide text-center">
             <div>Режим работы: с 09:00 до 21:00</div>
             <div>Доставка букетов ~45 минут</div>
-            <div className="mt-2 flex items-center justify-center gap-4">
+            <div className="mt-1 flex items-center justify-center gap-3">
               <a
                 href="https://www.instagram.com/theame.flowers"
                 target="_blank"
