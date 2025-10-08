@@ -113,93 +113,6 @@ React.useEffect(() => {
   setOrderedVariantProducts(variantProducts ?? []);
 }, [variantProducts]);
 
-// ───── ЕДИНЫЙ СПИСОК ДЛЯ СОРТИРОВКИ (products + variant_products) ─────
-type CatalogItem = {
-  id: string;
-  type: 'product' | 'variant';
-  name: string;
-  image_url?: string | null;
-  sort_order: number | null;
-  created_at?: string | null;
-};
-
-const orderingList: CatalogItem[] = React.useMemo(() => {
-  const p: CatalogItem[] = (products || []).map((x: any) => ({
-    id: String(x.id),
-    type: 'product' as const,
-    name: x.name,
-    image_url: x.image_url,
-    sort_order: x.sort_order ?? null,
-    created_at: x.created_at ?? null,
-  }));
-
-  const vp: CatalogItem[] = (variantProducts || []).map((x: any) => ({
-    id: String(x.id),
-    type: 'variant' as const,
-    name: x.name,
-    image_url: x.image_url,
-    sort_order: x.sort_order ?? null,
-    created_at: x.created_at ?? null,
-  }));
-
-  // стартовый порядок: сначала по sort_order, затем по дате создания, затем по имени
-  const combined = [...p, ...vp].sort((a, b) => {
-    const soA = a.sort_order ?? Number.MAX_SAFE_INTEGER;
-    const soB = b.sort_order ?? Number.MAX_SAFE_INTEGER;
-    if (soA !== soB) return soA - soB;
-
-    const ca = a.created_at || '';
-    const cb = b.created_at || '';
-    if (ca !== cb) return (ca < cb ? -1 : 1);
-
-    return a.name.localeCompare(b.name, 'ru');
-  });
-
-  return combined;
-}, [products, variantProducts]);
-
-// локальное состояние для вкладки «Порядок»
-const [orderedAll, setOrderedAll] = React.useState<CatalogItem[]>([]);
-React.useEffect(() => {
-  setOrderedAll(orderingList);
-}, [orderingList]);
-
-// сохранение единого порядка в обе таблицы
-const saveUnifiedOrder = useMutation({
-  mutationFn: async (arr: CatalogItem[]) => {
-    const prodPayload = arr
-      .map((item, i) => (item.type === 'product' ? { id: item.id, sort_order: i } : null))
-      .filter(Boolean) as Array<{ id: string; sort_order: number }>;
-
-    const varPayload = arr
-      .map((item, i) => (item.type === 'variant' ? { id: Number(item.id), sort_order: i } : null))
-      .filter(Boolean) as Array<{ id: number; sort_order: number }>;
-
-    const [prodRes, varRes] = await Promise.all([
-      Promise.all(prodPayload.map(r =>
-        supabase.from('products').update({ sort_order: r.sort_order }).eq('id', r.id)
-      )),
-      Promise.all(varPayload.map(r =>
-        supabase.from('variant_products').update({ sort_order: r.sort_order }).eq('id', r.id)
-      )),
-    ]);
-
-    const prodErr = (prodRes as any[]).find(r => r.error)?.error;
-    const varErr  = (varRes  as any[]).find(r => r.error)?.error;
-    if (prodErr || varErr) throw (prodErr || varErr);
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["products"] });
-    queryClient.invalidateQueries({ queryKey: ["featured-products"] });
-    queryClient.invalidateQueries({ queryKey: ["all-products"] });
-    queryClient.invalidateQueries({ queryKey: ["homepage-products"] });
-    queryClient.invalidateQueries({ queryKey: ['variant-products'] });
-    toast({ title: 'Порядок сохранён' });
-  },
-  onError: () => toast({ variant: 'destructive', title: 'Не удалось сохранить порядок' }),
-});
-
-
 // CRUD-хуки
 const createVariantProduct = useCreateVariantProduct();
 const updateVariantProduct = useUpdateVariantProduct();
@@ -1729,14 +1642,13 @@ if (extra2File) {
         </div>
 
         <Tabs defaultValue="categories" value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="categories">Категории</TabsTrigger>
             <TabsTrigger value="products">Товары</TabsTrigger>
             <TabsTrigger value="variant-products">Товары с вариантами</TabsTrigger>
             <TabsTrigger value="reviews">Отзывы</TabsTrigger>
             <TabsTrigger value="hero-slides">Hero слайды</TabsTrigger>
             <TabsTrigger value="recommendations">Рекомендации</TabsTrigger>
-            <TabsTrigger value="ordering">Порядок</TabsTrigger>
           </TabsList>
 
           <TabsContent value="categories" className="space-y-4">
@@ -2342,61 +2254,6 @@ if (extra2File) {
               </div>
             )}
           </TabsContent>
-
-          <TabsContent value="ordering" className="space-y-4">
-  <div className="flex items-center justify-between">
-    <h2 className="text-2xl font-semibold">Порядок каталога</h2>
-    <Button
-  type="button"
-  onClick={() => saveUnifiedOrder.mutate(orderedAll)}
-  disabled={saveUnifiedOrder.isPending}
->
-  {saveUnifiedOrder.isPending ? 'Сохранение…' : 'Сохранить порядок'}
-</Button>
-  </div>
-
-  <DndContext
-    sensors={sensors}
-    onDragEnd={({ active, over }) => {
-      if (!over || active.id === over.id) return;
-      const oldIndex = orderedAll.findIndex(i => String(i.type) + i.id === String(active.id));
-      const newIndex = orderedAll.findIndex(i => String(i.type) + i.id === String(over.id));
-      if (oldIndex === -1 || newIndex === -1) return;
-      setOrderedAll(prev => arrayMove(prev, oldIndex, newIndex));
-    }}
-  >
-    <SortableContext
-      items={orderedAll.map(i => String(i.type) + i.id)}
-      strategy={verticalListSortingStrategy}
-    >
-      <div className="grid gap-2">
-        {orderedAll.map(item => (
-          <div
-            key={item.type + item.id}
-            id={item.type + item.id}
-            className="flex items-center justify-between border rounded p-2 bg-white"
-          >
-            <div className="flex items-center gap-3">
-              {item.image_url && (
-                <img src={item.image_url} className="w-10 h-10 rounded object-cover" />
-              )}
-              <div>
-                <div className="font-medium">{item.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {item.type === 'product' ? 'Обычный товар' : 'Товар с вариантами'}
-                </div>
-              </div>
-            </div>
-            <div className="text-sm text-muted-foreground pr-1">
-              перетащите ↑↓
-            </div>
-          </div>
-        ))}
-      </div>
-    </SortableContext>
-  </DndContext>
-</TabsContent>
-
         </Tabs>
       </div>
     </div>
