@@ -31,7 +31,7 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
   );
 
   return (
-    <div className="relative overflow-hidden bg-[#ffe9c3]">
+    <div className="relative overflow-hidden bg-[#ffe9c3] pb-[calc(env(safe-area-inset-bottom)+14px)] md:pb-0">
       {/* ДЕКОР-ЦВЕТЫ — за контентом */}
       {flowerLeftSrc && (
         <img
@@ -88,7 +88,7 @@ export function BrandingStrip({ flowerLeftSrc, flowerRightSrc }: Props) {
 
       {/* КОНТЕНТ */}
       <div className="relative z-10 container mx-auto px-4 md:px-10 lg:px-16 xl:px-24">
-        <div className="pt-6 pb-4 md:pt-8 md:pb-5">
+        <div className="pt-6 pb-6 md:pt-8 md:pb-5">
           {/* ЛОГО-ТЕКСТ */}
           <div className="text-center" style={{ fontFamily: "Forum, serif" }}>
             <Link to="/" className="block">
