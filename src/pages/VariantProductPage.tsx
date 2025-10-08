@@ -125,9 +125,8 @@ export default function VariantProductPage() {
 
         const all = (data.product_variants ?? []) as PV[];
         const vs = all
-          .filter(v => v?.is_active)
-          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-          .slice(0, 10);
+  .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+  .slice(0, 10);
 
         if (!alive) return;
         const { product_variants, ...rest } = data;
