@@ -17,6 +17,9 @@ type VP = {
   description: string | null; detailed_description: string | null;
   image_url: string | null; gallery_urls: string[] | null;
   is_active: boolean | null; min_price_cache: number | null;
+
+  extra_image_1_url?: string | null;
+  extra_image_2_url?: string | null;
 };
 
 type PV = {
@@ -163,28 +166,46 @@ export default function VariantProductPage() {
     [variants, activeVariantId]
   );
 
-  // главное изображение
-  const baseImg = useMemo(
-    () => (current?.image_url || product?.image_url || '/placeholder.svg') as string,
-    [current, product]
-  );
+// 1) Главное фото — всегда общее фото товара
+const baseImg = useMemo(
+  () => (product?.image_url || '/placeholder.svg') as string,
+  [product]
+);
 
-  // галерея: сперва у варианта, иначе у товара
-  const gallery = useMemo(() => {
-    const vgal = asArray<string>(current?.gallery_urls);
-    const pgal = asArray<string>(product?.gallery_urls);
-    return vgal.length ? vgal : pgal;
-  }, [current, product]);
+// 2) Фото всех вариантов (по одному основному) — без дублей и без baseImg
+const variantThumbs = useMemo(() => {
+  const list = variants.map(v => v.image_url).filter(Boolean) as string[];
+  const seen = new Set<string>();
+  return list.filter((src) => {
+    if (!src) return false;
+    if (src === baseImg) return false;
+    if (seen.has(src)) return false;
+    seen.add(src);
+    return true;
+  });
+}, [variants, baseImg]);
 
-  // объединяем фото + галерею (без дублей)
-  const images = useMemo(
-    () => [baseImg, ...gallery.filter(src => src !== baseImg)],
-    [baseImg, gallery]
-  );
-  const imagesLen = images.length || 1;
+// 3) Два «хвостовых» доп. фото из товара (если заданы)
+const tail = useMemo(() => {
+  const t = [
+    (product as any)?.extra_image_1_url || '',
+    (product as any)?.extra_image_2_url || '',
+  ].filter(Boolean) as string[];
+  // на всякий случай — не дублируем baseImg и фото вариантов
+  const ban = new Set([baseImg, ...variantThumbs]);
+  return t.filter((src) => src && !ban.has(src));
+}, [product, baseImg, variantThumbs]);
 
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  useEffect(() => setSelectedImageIndex(0), [baseImg]);
+// Итоговый порядок галереи
+const images = useMemo(
+  () => [baseImg, ...variantThumbs, ...tail],
+  [baseImg, variantThumbs, tail]
+);
+
+const imagesLen = images.length || 1;
+const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+useEffect(() => setSelectedImageIndex(0), [baseImg]);
+
 
   // ранние return
   if (loading) {

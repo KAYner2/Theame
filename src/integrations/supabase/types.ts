@@ -547,6 +547,8 @@ variant_products: {
     published_at: string | null
     created_at: string
     updated_at: string
+    extra_image_1_url: string | null
+    extra_image_2_url: string | null
   }
   Insert: {
     id?: number
@@ -576,6 +578,8 @@ variant_products: {
     published_at?: string | null
     created_at?: string
     updated_at?: string
+    extra_image_1_url?: string | null
+    extra_image_2_url?: string | null
   }
   Update: {
     id?: number
@@ -605,6 +609,8 @@ variant_products: {
     published_at?: string | null
     created_at?: string
     updated_at?: string
+    extra_image_1_url?: string | null
+    extra_image_2_url?: string | null
   }
   Relationships: []
 }

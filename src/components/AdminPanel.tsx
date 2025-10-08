@@ -723,10 +723,14 @@ const VariantProductForm = ({ product }: { product?: any }) => {
     is_active: product?.is_active ?? true,
     sort_order: product?.sort_order || 0,
     slug: product?.slug || (product?.name ? slugify(product.name) : ''),
+    extra_image_1_url: (product as any)?.extra_image_1_url || '',
+    extra_image_2_url: (product as any)?.extra_image_2_url || '',
     // локальное хранение выбранных категорий (в БД не пишем напрямую)
     category_ids: product?.category_ids || [],
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [extra1File, setExtra1File] = useState<File | null>(null);
+  const [extra2File, setExtra2File] = useState<File | null>(null);
 
   // ── Варианты (локальный стейт редактирования)
   type VariantLocal = {
@@ -902,6 +906,17 @@ if (formData.is_active) {
         imageUrl = await uploadImage(imageFile, 'products');
       }
 
+      // 1.1) Загрузка двух доп. фото (если выбраны)
+let extra1Url = formData.extra_image_1_url || '';
+let extra2Url = formData.extra_image_2_url || '';
+
+if (extra1File) {
+  extra1Url = await uploadImage(extra1File, 'products');
+}
+if (extra2File) {
+  extra2Url = await uploadImage(extra2File, 'products');
+}
+
       // 2) Создаём или обновляем сам товар
       let savedId: number;
       if (product?.id) {
@@ -913,6 +928,8 @@ if (formData.is_active) {
             is_active: formData.is_active,
             sort_order: formData.sort_order,
             slug: formData.slug,
+            extra_image_1_url: extra1Url || null,
+            extra_image_2_url: extra2Url || null,
           })
           .eq('id', product.id);
         savedId = product.id;
@@ -926,6 +943,8 @@ if (formData.is_active) {
             is_active: formData.is_active,
             sort_order: formData.sort_order,
             slug: formData.slug,
+            extra_image_1_url: extra1Url || null,
+            extra_image_2_url: extra2Url || null,
           })
           .select()
           .single();
@@ -1259,6 +1278,55 @@ if (formData.is_active) {
           </div>
         )}
       </div>
+
+      {/* Дополнительные фото — пойдут в самый конец галереи на витрине */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div>
+    <Label htmlFor="vp_extra1">Доп. фото #1 (конец галереи)</Label>
+    <Input
+      id="vp_extra1"
+      type="file"
+      accept="image/*"
+      onChange={(e) => setExtra1File(e.target.files?.[0] || null)}
+    />
+    {(formData.extra_image_1_url) && (
+      <div className="mt-2">
+        <img src={formData.extra_image_1_url} alt="extra1" className="w-20 h-20 object-cover rounded" />
+        <Button
+          type="button"
+          variant="ghost"
+          className="mt-1 px-2 py-1 h-7"
+          onClick={() => setFormData((s) => ({ ...s, extra_image_1_url: '' }))}
+        >
+          Очистить текущее
+        </Button>
+      </div>
+    )}
+  </div>
+
+  <div>
+    <Label htmlFor="vp_extra2">Доп. фото #2 (конец галереи)</Label>
+    <Input
+      id="vp_extra2"
+      type="file"
+      accept="image/*"
+      onChange={(e) => setExtra2File(e.target.files?.[0] || null)}
+    />
+    {(formData.extra_image_2_url) && (
+      <div className="mt-2">
+        <img src={formData.extra_image_2_url} alt="extra2" className="w-20 h-20 object-cover rounded" />
+        <Button
+          type="button"
+          variant="ghost"
+          className="mt-1 px-2 py-1 h-7"
+          onClick={() => setFormData((s) => ({ ...s, extra_image_2_url: '' }))}
+        >
+          Очистить текущее
+        </Button>
+      </div>
+    )}
+  </div>
+</div>
 
       {/* Статусы и сортировка */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
