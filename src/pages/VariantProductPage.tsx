@@ -167,14 +167,16 @@ export default function VariantProductPage() {
   );
 
 // 1) Главное фото — всегда общее фото товара
-// 0) Базовое фото товара
+// === ГАЛЕРЕЯ / ФОТО (статичная лента снизу) ===
+
+// Базовое фото товара
 const baseImg = useMemo(
   () => (product?.image_url || '/placeholder.svg') as string,
   [product?.image_url]
 );
 
-// 1) Статичный список миниатюр: [общее фото товара] + [фото всех вариантов в порядке] + [доп. фото товара]
-//    Без дублей.
+// Статичный список миниатюр:
+// [общее фото товара] → [фото всех вариантов по порядку] → [доп. фото товара] (без дублей)
 const images = useMemo(() => {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -186,33 +188,26 @@ const images = useMemo(() => {
     out.push(src);
   };
 
-  // общее фото
+  // общее
   push(baseImg);
-
-  // фото всех вариантов по порядку
+  // все варианты
   variants.forEach(v => push(v.image_url));
-
-  // «хвостовые» доп. фото товара (если есть)
+  // «хвост» — доп. фото товара
   push((product as any)?.extra_image_1_url || '');
   push((product as any)?.extra_image_2_url || '');
 
   return out.length ? out : [baseImg];
 }, [baseImg, variants, product?.extra_image_1_url, product?.extra_image_2_url]);
 
+// Индекс активной миниатюры (по умолчанию показываем ОБЩЕЕ фото товара)
 const imagesLen = images.length || 1;
 const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
-// 2) Главное фото — картинка выбранного варианта (если есть), иначе общее фото товара
+// Главное фото сверху — это либо картинка выбранного варианта, либо общее фото
 const primaryImg = useMemo(
   () => (current?.image_url || baseImg),
   [current?.image_url, baseImg]
 );
-
-// 3) При смене выбранного варианта — находим его фото в статичном списке и активируем соответствующую миниатюру
-useEffect(() => {
-  const idx = images.findIndex(src => src === primaryImg);
-  setSelectedImageIndex(idx >= 0 ? idx : 0);
-}, [primaryImg, images]);
 
 
 
@@ -366,15 +361,22 @@ useEffect(() => {
                     const active = v.id === activeVariantId;
                     return (
                       <button
-                        key={v.id}
-                        onClick={() => setActiveVariantId(v.id)}
-                        className={`rounded-full px-4 py-2 border text-sm transition
-                          ${active ? 'border-primary ring-2 ring-primary' : 'hover:bg-muted'}`}
-                        aria-pressed={active}
-                        title={v.title}
-                      >
-                        {v.title}
-                      </button>
+  key={v.id}
+  onClick={() => {
+    setActiveVariantId(v.id);
+    // синхронизируем главную картинку с выбранным вариантом,
+    // но список миниатюр остаётся тем же
+    const targetSrc = v.image_url || baseImg;
+    const idx = images.findIndex(src => src === targetSrc);
+    setSelectedImageIndex(idx >= 0 ? idx : 0);
+  }}
+  className={`rounded-full px-4 py-2 border text-sm transition
+    ${active ? 'border-primary ring-2 ring-primary' : 'hover:bg-muted'}`}
+  aria-pressed={active}
+  title={v.title}
+>
+  {v.title}
+</button>
                     );
                   })}
                 </div>
