@@ -203,6 +203,12 @@ const images = useMemo(() => {
 const imagesLen = images.length || 1;
 const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
+// сбрасываем выбранную миниатюру при смене товара (другой slug -> другой product.id)
+useEffect(() => {
+  setSelectedImageIndex(0);
+}, [product?.id]);
+
+
 // Главное фото сверху — это либо картинка выбранного варианта, либо общее фото
 const primaryImg = useMemo(
   () => (current?.image_url || baseImg),
