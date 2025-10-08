@@ -167,44 +167,49 @@ export default function VariantProductPage() {
   );
 
 // 1) Главное фото — всегда общее фото товара
-const baseImg = useMemo(
-  () => (product?.image_url || '/placeholder.svg') as string,
-  [product]
+// Главное фото — картинка выбранного варианта (если есть), иначе фото товара
+const primaryImg = useMemo(
+  () => (current?.image_url || product?.image_url || '/placeholder.svg') as string,
+  [current?.image_url, product?.image_url]
 );
 
-// 2) Фото всех вариантов (по одному основному) — без дублей и без baseImg
-const variantThumbs = useMemo(() => {
-  const list = variants.map(v => v.image_url).filter(Boolean) as string[];
-  const seen = new Set<string>();
-  return list.filter((src) => {
-    if (!src) return false;
-    if (src === baseImg) return false;
-    if (seen.has(src)) return false;
-    seen.add(src);
-    return true;
-  });
-}, [variants, baseImg]);
+// Галерея выбранного варианта
+const currentVariantGallery = useMemo(
+  () => (asArray(current?.gallery_urls).filter(Boolean) as string[]),
+  [current?.gallery_urls]
+);
 
-// 3) Два «хвостовых» доп. фото из товара (если заданы)
+// Превью остальных вариантов (кроме активного), без дублей и без картинок активного варианта
+const otherVariantThumbs = useMemo(() => {
+  const seen = new Set<string>([primaryImg, ...currentVariantGallery]);
+  return variants
+    .filter(v => v.id !== current?.id)
+    .map(v => v.image_url)
+    .filter((src): src is string => !!src && !seen.has(src) && !seen.add(src));
+}, [variants, current?.id, primaryImg, currentVariantGallery]);
+
+// «Хвост» — доп. фото товара, без дублей
 const tail = useMemo(() => {
   const t = [
     (product as any)?.extra_image_1_url || '',
     (product as any)?.extra_image_2_url || '',
   ].filter(Boolean) as string[];
-  // на всякий случай — не дублируем baseImg и фото вариантов
-  const ban = new Set([baseImg, ...variantThumbs]);
-  return t.filter((src) => src && !ban.has(src));
-}, [product, baseImg, variantThumbs]);
+  const ban = new Set<string>([primaryImg, ...currentVariantGallery, ...otherVariantThumbs]);
+  return t.filter(src => src && !ban.has(src));
+}, [product, primaryImg, currentVariantGallery, otherVariantThumbs]);
 
-// Итоговый порядок галереи
+// Итоговая галерея: сначала активный вариант, затем его галерея, потом прочие варианты и хвост
 const images = useMemo(
-  () => [baseImg, ...variantThumbs, ...tail],
-  [baseImg, variantThumbs, tail]
+  () => [primaryImg, ...currentVariantGallery, ...otherVariantThumbs, ...tail],
+  [primaryImg, currentVariantGallery, otherVariantThumbs, tail]
 );
 
 const imagesLen = images.length || 1;
 const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-useEffect(() => setSelectedImageIndex(0), [baseImg]);
+
+// При смене выбранного варианта/его главной картинки — показываем первое фото его набора
+useEffect(() => setSelectedImageIndex(0), [current?.id, primaryImg]);
+
 
 
   // ранние return
@@ -286,10 +291,10 @@ useEffect(() => setSelectedImageIndex(0), [baseImg]);
               "
             >
               <img
-                src={images[selectedImageIndex] || baseImg}
-                alt={product.name}
-                className="w-full h-full object-cover object-center"
-              />
+  src={images[selectedImageIndex] || primaryImg}
+  alt={product.name}
+  className="w-full h-full object-cover object-center"
+/>
 
               {imagesLen > 1 && (
                 <>
