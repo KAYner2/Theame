@@ -36,19 +36,19 @@ import { useAllProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import type { Product } from '@/types/database';
 
-// Вариантные
+// ⬇️ добавляем хук и карточку для вариантных
 import { useVariantProductsForCatalog } from '@/hooks/useVariantProductsForCatalog';
 import { VariantFlowerCard } from '@/components/VariantFlowerCard';
 import type { VariantCatalogItem } from '@/hooks/useVariantProductsForCatalog';
 
-/* ---------------- helpers ---------------- */
+/* ---------------- helpers: нормализация/дедуп ---------------- */
 
 const splitItems = (arr?: string[]) =>
   (arr || []).map((s) => (s || '').trim()).filter(Boolean);
 
 const capitalizeFirst = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-/** Нормализуем «Розы 3шт», «x5», «( )», точки и т.п. */
+/** Нормализуем возможные «Розы 3шт», «x5», «( )», точки и т.п. */
 const normalizeFlower = (raw: string) =>
   capitalizeFirst(
     raw
@@ -101,7 +101,7 @@ function getPriceBounds(flowers: Flower[], variantItems: VariantCatalogItem[]): 
   return [min, Math.max(max, min)];
 }
 
-/* ---------------- основной компонент ---------------- */
+/* ---------------- основной компонент каталога ---------------- */
 
 export const FlowerCatalog = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -112,10 +112,10 @@ export const FlowerCatalog = () => {
   const [selectedComposition, setSelectedComposition] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
 
-  // сортировка
+  // ✔ сортировка: только две опции из ТЗ
   const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc'>('default');
 
-  // UI state
+  // управление открытием для desktop-меню и mobile-sheet раздельно
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
@@ -131,7 +131,7 @@ export const FlowerCatalog = () => {
     error: categoriesError,
   } = useCategories();
 
-  // вариантные (фильтрация по категории)
+  // ⬇️ грузим вариантные товары (с фильтром по категории, если выбрана)
   const selectedCategoryUuid = selectedCategoryId === 'all' ? null : String(selectedCategoryId);
   const {
     data: variantItems = [],
@@ -139,7 +139,6 @@ export const FlowerCatalog = () => {
     error: variantError,
   } = useVariantProductsForCatalog({ categoryId: selectedCategoryUuid });
 
-  // синк категории из query
   useEffect(() => {
     if (!categories.length) return;
 
@@ -176,7 +175,7 @@ export const FlowerCatalog = () => {
     return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
-  // границы цен по объединённому набору
+  // ⬇️ границы цен считаем по ОБЪЕДИНЁННОМУ набору (обычные + вариантные)
   const absolutePriceBounds = useMemo(
     () => getPriceBounds(flowers, variantItems),
     [flowers, variantItems]
@@ -186,7 +185,6 @@ export const FlowerCatalog = () => {
     setPriceRange(absolutePriceBounds);
   }, [absolutePriceBounds[0], absolutePriceBounds[1]]);
 
-  // фильтрация обычных товаров
   const filteredFlowers = useMemo(() => {
     const productMap = new Map<string, Product>();
     products.forEach((p) => productMap.set(String(p.id), p));
@@ -219,7 +217,7 @@ export const FlowerCatalog = () => {
       return true;
     });
 
-    // локальная сортировка обычных (для консистентности; итоговая ниже всё равно объединит)
+    // сортировка обычных — как у тебя
     switch (sortBy) {
       case 'price-desc':
         filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
@@ -240,7 +238,7 @@ export const FlowerCatalog = () => {
     return filtered;
   }, [flowers, products, selectedCategoryId, selectedColor, selectedComposition, priceRange, sortBy]);
 
-  // фильтрация вариантных (если включены цвет/состав — временно скрываем)
+  // ⬇️ вариантные: фильтруем по цене; если включены «цвет/состав», пока скрываем
   const filteredVariantItems = useMemo(() => {
     const [minPrice, maxPrice] = priceRange;
     const extraFiltersOn = selectedColor !== 'all' || selectedComposition !== 'all';
@@ -251,7 +249,7 @@ export const FlowerCatalog = () => {
       return price >= minPrice && price <= maxPrice;
     });
 
-    // локально по цене, default порядок — как пришёл с бэка
+    // сортировка для вариантных при выборе price-asc/desc
     if (sortBy === 'price-asc') {
       items.sort((a, b) => (a.min_price_cache ?? 0) - (b.min_price_cache ?? 0));
     }
@@ -259,6 +257,7 @@ export const FlowerCatalog = () => {
       items.sort((a, b) => (b.min_price_cache ?? 0) - (a.min_price_cache ?? 0));
     }
 
+    // при 'default' порядок уже задан на сервере (sort_order, created_at)
     return items;
   }, [variantItems, priceRange, selectedColor, selectedComposition, sortBy]);
 
@@ -266,7 +265,7 @@ export const FlowerCatalog = () => {
     console.log('Добавлено в избранное:', flower.name);
   };
 
-  /* ---------------- загрузка/ошибка ---------------- */
+  /* ---------------- общая разметка ---------------- */
 
   if (productsLoading || categoriesLoading || variantLoading) {
     return (
@@ -290,7 +289,7 @@ export const FlowerCatalog = () => {
     );
   }
 
-  /* ------- фильтры ------- */
+  /* ------- общий фрагмент с фильтрами ------- */
   const FiltersInner = (
     <div className="space-y-4">
       {/* Категория */}
@@ -354,6 +353,7 @@ export const FlowerCatalog = () => {
         </div>
       )}
 
+
       {/* Цена */}
       <div className="space-y-2">
         <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
@@ -373,45 +373,11 @@ export const FlowerCatalog = () => {
     </div>
   );
 
-  /* ---------------- ОБЪЕДИНЁННАЯ СОРТИРОВКА ----------------
-     В default используем для обычных sort_order из products,
-     для вариантных — их текущий индекс (они уже приходят отсортированными). */
-
-  const productsById = useMemo(() => {
-    const m = new Map<string, Product>();
-    products.forEach((p) => m.set(String(p.id), p));
-    return m;
-  }, [products]);
-
-  const gridItems = useMemo(() => {
-    const simple = filteredFlowers.map((f) => ({
-      type: 'simple' as const,
-      item: f,
-      sort: productsById.get(String(f.id))?.sort_order ?? 0,
-      price: f.price ?? 0,
-    }));
-
-    const variant = filteredVariantItems.map((v, idx) => ({
-      type: 'variant' as const,
-      item: v,
-      sort: idx,                         // <-- вместо v.sort_order
-      price: v.min_price_cache ?? 0,
-    }));
-
-    const all = [...simple, ...variant];
-
-    if (sortBy === 'price-asc') {
-      all.sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'price-desc') {
-      all.sort((a, b) => b.price - a.price);
-    } else {
-      all.sort((a, b) => a.sort - b.sort);
-    }
-
-    return all.map(({ type, item }) => ({ type, item }));
-  }, [filteredFlowers, filteredVariantItems, productsById, sortBy]);
-
-  /* ---------------- разметка ---------------- */
+  // 🧱 итоговая сетка: обычные + вариантные
+  const gridItems = [
+    ...filteredFlowers.map((f) => ({ type: 'simple' as const, item: f })),
+    ...filteredVariantItems.map((v) => ({ type: 'variant' as const, item: v })),
+  ];
 
   return (
     <div className="container px-6 py-8">
@@ -516,46 +482,45 @@ export const FlowerCatalog = () => {
           </DropdownMenu>
         </div>
 
-        {/* Сортировка */}
+        {/* Сортировка — только цена */}
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
           <SelectTrigger className="min-w-[220px] w-auto">
             <ArrowUpDown className="mr-2 h-4 w-4" />
             <SelectValue placeholder="Сортировка" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="default">По умолчанию</SelectItem>
             <SelectItem value="price-asc">По возрастанию цены</SelectItem>
             <SelectItem value="price-desc">По убыванию цены</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Сетка каталога */}
+      {/* Каталог */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
         {gridItems.map(({ type, item }) =>
           type === 'simple' ? (
-            <FlowerCard key={`p:${(item as Flower).id}`} flower={item as Flower} onToggleFavorite={handleToggleFavorite} />
+            <FlowerCard key={`p:${item.id}`} flower={item} onToggleFavorite={handleToggleFavorite} />
           ) : (
             <VariantFlowerCard
-              key={`v:${(item as VariantCatalogItem).id}`}
+              key={`v:${item.id}`}
               product={{
-                id: (item as VariantCatalogItem).id,
-                name: (item as VariantCatalogItem).name,
-                slug: (item as VariantCatalogItem).slug,
-                image_url: (item as VariantCatalogItem).image_url,
-                min_price_cache: (item as VariantCatalogItem).min_price_cache,
-                is_active: (item as VariantCatalogItem).is_active,
+                id: item.id,
+                name: item.name,
+                slug: item.slug,
+                image_url: item.image_url,
+                min_price_cache: item.min_price_cache,
+                is_active: item.is_active,
               }}
-              // useCatalogUrl // включи, если нужен URL вида /catalog/:slug
+              // useCatalogUrl // включи, если хочешь /catalog/:slug вместо /v/:slug
             />
           )
         )}
       </div>
 
-      {/* Пусто */}
+      {/* Пустой результат */}
       {gridItems.length === 0 && (
         <div className="py-12 text-center">
-          <p className="mb-4 text-lg text-muted-foreground">Товары не найдены</p>
+          <p className="mb-4 text-lg text-muted-foreground">Цветы не найдены</p>
           <Button
             variant="outline"
             onClick={() => {
