@@ -222,10 +222,10 @@ const handleUnifiedDragEnd = (event: DragEndEvent) => {
   setOrderedVariantProducts(newVariants as any);
 
   updateProductOrder.mutate(
-    newProducts.map((p, i) => ({ id: String(p.id), sort_order: i }))
+    newProducts.map((p) => ({ id: String(p.id), sort_order: Number(p.sort_order) }))
   );
   updateVariantOrder.mutate(
-    newVariants.map((p, i) => ({ id: Number(p.id), sort_order: i }))
+    newVariants.map((p) => ({ id: Number(p.id), sort_order: Number(p.sort_order) }))
   );
 };
 
