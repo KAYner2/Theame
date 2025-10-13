@@ -200,7 +200,36 @@ const updateVariantOrder = useMutation({
     );
   };
 
-  
+const handleUnifiedDragEnd = (event: DragEndEvent) => {
+  const { active, over } = event;
+  if (!over || active.id === over.id) return;
+
+  const keyOf = (x: any) => `${x._kind}:${x.id}`;
+
+  const oldIndex = combinedItems.findIndex((x) => keyOf(x) === String(active.id));
+  const newIndex = combinedItems.findIndex((x) => keyOf(x) === String(over.id));
+  if (oldIndex === -1 || newIndex === -1) return;
+
+  const newCombined = arrayMove(combinedItems, oldIndex, newIndex).map((item, idx) => ({
+    ...item,
+    sort_order: idx,
+  }));
+
+  const newProducts = newCombined.filter(i => i._kind === "product");
+  const newVariants = newCombined.filter(i => i._kind === "variant");
+
+  setOrderedProducts(newProducts as any);
+  setOrderedVariantProducts(newVariants as any);
+
+  updateProductOrder.mutate(
+    newProducts.map((p, i) => ({ id: String(p.id), sort_order: i }))
+  );
+  updateVariantOrder.mutate(
+    newVariants.map((p, i) => ({ id: Number(p.id), sort_order: i }))
+  );
+};
+
+
 
   const { data: reviews = [], isLoading: reviewsLoading } = useAllReviews();
   const { data: heroSlides = [], isLoading: heroSlidesLoading } = useAllHeroSlides();
@@ -1739,225 +1768,169 @@ if (extra2File) {
 
           <TabsContent value="products" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-semibold">Товары</h2>
-              <Dialog
-  open={isDialogOpen && activeTab === 'products'}
-  onOpenChange={(open) => {
-    if (open) captureScroll();         // ⬅️ запомнили позицию скролла
-    setIsDialogOpen(open);
-    if (!open) {
-      requestAnimationFrame(() => {
-        (document.activeElement as HTMLElement | null)?.blur?.();
-      });
-      restoreScroll();                 // ⬅️ вернули позицию при закрытии
-    } else {
-      restoreScroll();                 // ⬅️ и на открытии тоже принудительно
-    }
-  }}
->
-                <DialogTrigger asChild>
-                  <Button type="button" onClick={() => openDialog()}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Добавить товар
-                  </Button>
-                </DialogTrigger>
-                <DialogContent
-                  className="max-w-3xl max-h-[90vh] overflow-hidden"
-                  onOpenAutoFocus={(e) => e.preventDefault()}
-                  onCloseAutoFocus={(e) => e.preventDefault()}
-                >
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingItem ? 'Редактировать' : 'Создать'} товар
-                    </DialogTitle>
-                  </DialogHeader>
-                  <ProductForm product={editingItem} />
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {productsLoading ? (
-              <p>Загрузка...</p>
-            ) : (
-              <DndContext
-  sensors={dndDisabled ? [] : sensors}   // если открыт диалог → сенсоры пустые
-  onDragEnd={handleDragEnd}
->
-  <SortableContext
-    items={orderedProducts.map((p) => String(p.id))}
-    strategy={verticalListSortingStrategy}
-  >
-    <div className="grid gap-4">
-      {orderedProducts.map((product) => (
-        <SortableProductCard
-          key={product.id}
-          id={String(product.id)}
-          disabled={dndDisabled}         // пробрасываем в карточку
-        >
-          <Card>
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="flex items-center space-x-4">
-                {product.image_url && (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-12 h-12 object-cover rounded"
-                    draggable={false}
-                  />
-                )}
-                <div>
-                  <h3 className="font-semibold">{product.name}</h3>
-                  <p className="text-sm text-muted-foreground">{product.description}</p>
-                  <p className="text-sm font-medium">₽{product.price}</p>
-                  <div className="flex items-center space-x-2 mt-1">
-                    {product.is_featured && (
-                      <Badge variant="default">
-                        <Star className="w-3 h-3 mr-1" />
-                        Рекомендуемый
-                      </Badge>
-                    )}
-                    <Badge variant={product.is_active ? "default" : "secondary"}>
-                      {product.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
-                      {product.is_active ? "Активен" : "Неактивен"}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-              <div className="flex space-x-2">
-                <Dialog
-                  onOpenChange={(open) => {
-                    if (!open) {
-                      requestAnimationFrame(() => {
-                        (document.activeElement as HTMLElement | null)?.blur?.();
-                      });
-                    }
-                  }}
-                >
-                  <DialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => setEditingItem(product)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent
-                    className="max-w-3xl max-h-[90vh] overflow-hidden"
-                    onOpenAutoFocus={(e) => e.preventDefault()}
-                    onCloseAutoFocus={(e) => e.preventDefault()}
-                  >
-                    <DialogHeader>
-                      <DialogTitle>Редактировать товар</DialogTitle>
-                    </DialogHeader>
-                    <ProductForm product={product} />
-                  </DialogContent>
-                </Dialog>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => deleteProduct.mutate(product.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </SortableProductCard>
-      ))}
-    </div>
-  </SortableContext>
-</DndContext>
-            )}
-            {/* ▼▼▼ Добавляем товары с вариантами прямо во вкладке ТОВАРЫ ▼▼▼ */}
-{variantProducts && variantProducts.length > 0 && (
-  <>
-    <h3 className="text-xl font-semibold mt-8">Товары с вариантами</h3>
-    <DndContext
-      sensors={dndDisabled ? [] : sensors}
-      onDragEnd={handleVariantDragEnd}
+    <h2 className="text-2xl font-semibold">Товары</h2>
+    <Dialog
+      open={isDialogOpen && activeTab === 'products'}
+      onOpenChange={(open) => {
+        if (open) captureScroll();         // ⬅️ запомнили позицию скролла
+        setIsDialogOpen(open);
+        if (!open) {
+          requestAnimationFrame(() => {
+            (document.activeElement as HTMLElement | null)?.blur?.();
+          });
+          restoreScroll();                 // ⬅️ вернули позицию при закрытии
+        } else {
+          restoreScroll();                 // ⬅️ и на открытии тоже принудительно
+        }
+      }}
     >
-      <SortableContext
-        items={orderedVariantProducts.map((p) => String(p.id))}
-        strategy={verticalListSortingStrategy}
+      <DialogTrigger asChild>
+        <Button type="button" onClick={() => openDialog()}>
+          <Plus className="mr-2 h-4 w-4" />
+          Добавить товар
+        </Button>
+      </DialogTrigger>
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] overflow-hidden"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="grid gap-4 mt-4">
-          {orderedVariantProducts.map((product) => (
-            <SortableProductCard
-              key={product.id}
-              id={String(product.id)}
-              disabled={dndDisabled}
-            >
-              <Card>
-                <CardContent className="flex items-center justify-between p-4">
-                  <div className="flex items-center space-x-4">
-                    {product.image_url && (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-12 h-12 object-cover rounded"
-                        draggable={false}
-                      />
-                    )}
-                    <div>
-                      <h3 className="font-semibold">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {product.description}
-                      </p>
-                      <Badge variant={product.is_active ? "default" : "secondary"}>
-                        {product.is_active ? "Активен" : "Неактивен"}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={() => setEditingItem(product)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent
-                        className="max-w-3xl max-h-[90vh] overflow-y-auto"
-                        onOpenAutoFocus={(e) => e.preventDefault()}
-                        onCloseAutoFocus={(e) => e.preventDefault()}
-                      >
-                        <DialogHeader>
-                          <DialogTitle>Редактировать товар с вариантами</DialogTitle>
-                        </DialogHeader>
-                        <VariantProductForm product={product} />
-                      </DialogContent>
-                    </Dialog>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => deleteVariantProduct.mutate(product.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </SortableProductCard>
-          ))}
-        </div>
-      </SortableContext>
-    </DndContext>
-  </>
-)}
-{/* ▲▲▲ Конец блока отображения товаров с вариантами ▲▲▲ */}
+        <DialogHeader>
+          <DialogTitle>
+            {editingItem ? 'Редактировать' : 'Создать'} товар
+          </DialogTitle>
+        </DialogHeader>
+        <ProductForm product={editingItem} />
+      </DialogContent>
+    </Dialog>
+  </div>
 
+  {productsLoading ? (
+    <p>Загрузка...</p>
+  ) : (
+    <>
+      {/* ▼▼▼ ЕДИНЫЙ СПИСОК: обычные + вариантные ▼▼▼ */}
+      <DndContext
+        sensors={dndDisabled ? [] : sensors}
+        onDragEnd={handleUnifiedDragEnd}
+      >
+        <SortableContext
+  items={combinedItems.map((p: any) => `${p._kind}:${p.id}`)}
+  strategy={verticalListSortingStrategy}
+>
+          <div className="grid gap-4">
+            {combinedItems.map((product: any) => (
+              <SortableProductCard
+  key={`${product._kind}:${product.id}`}
+  id={`${product._kind}:${product.id}`}
+  disabled={dndDisabled}
+>
+                <Card>
+                  <CardContent className="flex items-center justify-between p-4">
+                    <div className="flex items-center space-x-4">
+                      {product.image_url && (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="w-12 h-12 object-cover rounded"
+                          draggable={false}
+                        />
+                      )}
+                      <div>
+                        <h3 className="font-semibold">{product.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {product.description}
+                        </p>
+
+                        {/* бейджи */}
+                        <div className="flex items-center space-x-2 mt-1">
+                          {/* для обычных товаров остаётся "Рекомендуемый" */}
+                          {product._kind === "product" && product.is_featured && (
+                            <Badge variant="default">
+                              <Star className="w-3 h-3 mr-1" />
+                              Рекомендуемый
+                            </Badge>
+                          )}
+
+                          <Badge variant={product.is_active ? "default" : "secondary"}>
+                            {product.is_active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
+                            {product.is_active ? "Активен" : "Неактивен"}
+                          </Badge>
+
+                          <Badge variant={product._kind === "variant" ? "default" : "outline"}>
+                            {product._kind === "variant" ? "С вариантами" : "Обычный"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex space-x-2">
+                      <Dialog
+                        onOpenChange={(open) => {
+                          if (!open) {
+                            requestAnimationFrame(() => {
+                              (document.activeElement as HTMLElement | null)?.blur?.();
+                            });
+                          }
+                        }}
+                      >
+                        <DialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={() => setEditingItem(product)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+
+                        <DialogContent
+                          className="max-w-3xl max-h-[90vh] overflow-hidden"
+                          onOpenAutoFocus={(e) => e.preventDefault()}
+                          onCloseAutoFocus={(e) => e.preventDefault()}
+                        >
+                          <DialogHeader>
+                            <DialogTitle>
+                              {product._kind === "variant"
+                                ? "Редактировать товар с вариантами"
+                                : "Редактировать товар"}
+                            </DialogTitle>
+                          </DialogHeader>
+
+                          {product._kind === "variant" ? (
+                            <VariantProductForm product={product} />
+                          ) : (
+                            <ProductForm product={product} />
+                          )}
+                        </DialogContent>
+                      </Dialog>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() =>
+                          product._kind === "variant"
+                            ? deleteVariantProduct.mutate(product.id)
+                            : deleteProduct.mutate(product.id)
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </SortableProductCard>
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+      {/* ▲▲▲ КОНЕЦ единого списка ▲▲▲ */}
+    </>
+  )}
           </TabsContent>
 
           {/* ▼▼▼ ВКЛАДКА: Товары с вариантами ▼▼▼ */}
