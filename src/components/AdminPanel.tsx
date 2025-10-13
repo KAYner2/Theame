@@ -1859,6 +1859,90 @@ if (extra2File) {
   </SortableContext>
 </DndContext>
             )}
+            {/* ▼▼▼ Добавляем товары с вариантами прямо во вкладке ТОВАРЫ ▼▼▼ */}
+{variantProducts && variantProducts.length > 0 && (
+  <>
+    <h3 className="text-xl font-semibold mt-8">Товары с вариантами</h3>
+    <DndContext
+      sensors={dndDisabled ? [] : sensors}
+      onDragEnd={handleVariantDragEnd}
+    >
+      <SortableContext
+        items={orderedVariantProducts.map((p) => String(p.id))}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="grid gap-4 mt-4">
+          {orderedVariantProducts.map((product) => (
+            <SortableProductCard
+              key={product.id}
+              id={String(product.id)}
+              disabled={dndDisabled}
+            >
+              <Card>
+                <CardContent className="flex items-center justify-between p-4">
+                  <div className="flex items-center space-x-4">
+                    {product.image_url && (
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-12 h-12 object-cover rounded"
+                        draggable={false}
+                      />
+                    )}
+                    <div>
+                      <h3 className="font-semibold">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {product.description}
+                      </p>
+                      <Badge variant={product.is_active ? "default" : "secondary"}>
+                        {product.is_active ? "Активен" : "Неактивен"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={() => setEditingItem(product)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent
+                        className="max-w-3xl max-h-[90vh] overflow-y-auto"
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                        onCloseAutoFocus={(e) => e.preventDefault()}
+                      >
+                        <DialogHeader>
+                          <DialogTitle>Редактировать товар с вариантами</DialogTitle>
+                        </DialogHeader>
+                        <VariantProductForm product={product} />
+                      </DialogContent>
+                    </Dialog>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => deleteVariantProduct.mutate(product.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </SortableProductCard>
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  </>
+)}
+{/* ▲▲▲ Конец блока отображения товаров с вариантами ▲▲▲ */}
 
           </TabsContent>
 
