@@ -1,7 +1,19 @@
 // === UnifiedOrderTab.tsx (или вставь в AdminPanel.tsx перед export AdminPanel) ===
 import * as React from 'react';
-import { DndContext, useSensors, useSensor, MouseSensor, TouchSensor, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import {
+  DndContext,
+  useSensors,
+  useSensor,
+  MouseSensor,
+  TouchSensor,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +34,7 @@ type CombinedItem = {
   price: number | null;
   is_active: boolean | null;
   sort_order: number | null;
+  created_at: string | null;      // ⬅️ добавили, чтобы совпадать с логикой каталога
 };
 
 function SortableRow({
@@ -54,6 +67,23 @@ function SortableRow({
   );
 }
 
+const BIG = 1e9;
+const toTS = (d?: string | null) => (d ? new Date(d).getTime() : 0);
+
+// ⬅️ Тот же компаратор, что и в каталоге (default):
+// 1) sort_order ASC (NULL → в конец)
+// 2) created_at DESC (новее выше)
+// 3) name ASC
+const byDefault = (a: CombinedItem, b: CombinedItem) => {
+  const ao = a.sort_order ?? BIG;
+  const bo = b.sort_order ?? BIG;
+  if (ao !== bo) return ao - bo;
+  const ad = toTS(a.created_at);
+  const bd = toTS(b.created_at);
+  if (ad !== bd) return bd - ad;
+  return a.name.localeCompare(b.name);
+};
+
 export function UnifiedOrderTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -62,7 +92,7 @@ export function UnifiedOrderTab() {
   const { data: products = [], isLoading: loadingProducts } = useAllProducts();
   const { data: variants = [], isLoading: loadingVariants } = useAllVariantProducts();
 
-  // собираем единый массив
+  // собираем единый массив и сортируем ТЕМ ЖЕ компараТОРОМ, что в каталоге
   const combined = React.useMemo<CombinedItem[]>(() => {
     const A: CombinedItem[] = (products ?? []).map((p: any) => ({
       key: `p:${p.id}`,
@@ -73,6 +103,7 @@ export function UnifiedOrderTab() {
       price: p.price ?? null,
       is_active: p.is_active ?? null,
       sort_order: p.sort_order ?? null,
+      created_at: p.created_at ?? null,   // ← есть у products
     }));
     const B: CombinedItem[] = (variants ?? []).map((v: any) => ({
       key: `v:${v.id}`,
@@ -83,14 +114,9 @@ export function UnifiedOrderTab() {
       price: v.min_price_cache ?? null,
       is_active: v.is_active ?? null,
       sort_order: v.sort_order ?? null,
+      created_at: v.created_at ?? null,   // ← если хук не возвращает, будет null — это ок
     }));
-    const BIG = 1e9;
-    return [...A, ...B].sort((a, b) => {
-      const ao = a.sort_order ?? BIG;
-      const bo = b.sort_order ?? BIG;
-      if (ao !== bo) return ao - bo;
-      return a.name.localeCompare(b.name);
-    });
+    return [...A, ...B].sort(byDefault);
   }, [products, variants]);
 
   // локальный порядок
@@ -137,7 +163,6 @@ export function UnifiedOrderTab() {
       }
     },
     onSuccess: async () => {
-      // подгони ключи под свои useQuery
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['products'] }),
         qc.invalidateQueries({ queryKey: ['all-products'] }),
