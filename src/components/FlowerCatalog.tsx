@@ -278,16 +278,21 @@ export const FlowerCatalog = () => {
       };
     });
 
-const variants: CatalogUnion[] = filteredVariantItems.map((vp, idx) => ({
+const variants: CatalogUnion[] = filteredVariantItems.map((vp) => ({
   kind: 'variant',
   id: vp.id,
   name: vp.name,
   price: vp.min_price_cache ?? null,
-  // 🔧 нет sort_order в типе VariantCatalogItem → используем индекс как стабильный порядок
-  sortOrder: idx,
-  createdAt: 0, // в типе VariantCatalogItem тоже нет created_at
+
+  // теперь используем реальный порядок из БД
+  sortOrder: vp.sort_order ?? BIG,
+
+  // и реальную дату, чтобы "default" был стабильным при одинаковом sort_order
+  createdAt: toTS(vp.created_at ?? null),
+
   data: vp,
 }));
+
 
     return [...normals, ...variants];
   }, [filteredFlowers, filteredVariantItems, productById]);
