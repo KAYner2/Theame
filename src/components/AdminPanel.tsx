@@ -36,6 +36,7 @@ import { DndContext, useSensors, useSensor, MouseSensor, TouchSensor } from "@dn
 import { slugify } from "@/utils/slugify";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { UnifiedOrderTab } from '@/components/UnifiedOrderTab';
 
 // --- helpers: нормализация списка цветов ---
 const splitItems = (input: string) =>
@@ -1656,13 +1657,14 @@ if (extra2File) {
         </div>
 
         <Tabs defaultValue="categories" value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="categories">Категории</TabsTrigger>
             <TabsTrigger value="products">Товары</TabsTrigger>
             <TabsTrigger value="variant-products">Товары с вариантами</TabsTrigger>
             <TabsTrigger value="reviews">Отзывы</TabsTrigger>
             <TabsTrigger value="hero-slides">Hero слайды</TabsTrigger>
             <TabsTrigger value="recommendations">Рекомендации</TabsTrigger>
+            <TabsTrigger value="order">Порядок</TabsTrigger>
           </TabsList>
 
           <TabsContent value="categories" className="space-y-4">
@@ -2352,6 +2354,9 @@ if (extra2File) {
               </div>
             )}
           </TabsContent>
+          <TabsContent value="order" className="space-y-4">
+  <UnifiedOrderTab />
+</TabsContent>
         </Tabs>
       </div>
     </div>
