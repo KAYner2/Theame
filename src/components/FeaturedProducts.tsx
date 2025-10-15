@@ -1,10 +1,10 @@
-// FeaturedProducts.tsx — версия без вариантных товаров, «как раньше»
-// Показываем все обычные товары с флажком show_on_homepage
+// FeaturedProducts.tsx — без поддержки вариантных товаров
+// Источник истины: обычные товары с флажком show_on_homepage && is_active
 
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
-import { useAllProducts } from '@/hooks/useProducts'; // ⬅️ ВАЖНО: берём все товары
+import { useAllProducts } from '@/hooks/useProducts';
 import { useCart } from '@/context/CartContext';
 import type { Flower } from '@/types/flower';
 import { slugify } from '@/utils/slugify';
@@ -14,24 +14,23 @@ const toTS = (d?: string | null) => (d ? new Date(d).getTime() : 0);
 
 export function FeaturedProducts() {
   const [showAll, setShowAll] = useState(false);
-  const { data: allProducts = [], isLoading, error } = useAllProducts(); // ⬅️ тут
+  const { data: allProducts = [], isLoading, error } = useAllProducts();
   const { addToCart } = useCart();
 
+  // Формируем список «для главной»: только активные + show_on_homepage
+  // Порядок: sort_order ASC → created_at DESC → name ASC
   const homepageProducts: Flower[] = useMemo(() => {
     const list = (allProducts || [])
-      // только активные и помеченные «Показывать на главной»
       .filter((p: any) => p?.is_active !== false && p?.show_on_homepage === true)
-      // общий порядок: sort_order → created_at → name
       .sort((a: any, b: any) => {
         const ao = a?.sort_order ?? BIG;
         const bo = b?.sort_order ?? BIG;
         if (ao !== bo) return ao - bo;
         const ad = toTS(a?.created_at ?? null);
         const bd = toTS(b?.created_at ?? null);
-        if (ad !== bd) return bd - ad; // новее выше
+        if (ad !== bd) return bd - ad; // новее — выше
         return String(a?.name ?? '').localeCompare(String(b?.name ?? ''));
       })
-      // приводим к типу Flower (как в каталоге)
       .map((product: any) => ({
         id: product.id,
         name: product.name,
@@ -77,8 +76,10 @@ export function FeaturedProducts() {
     );
   }
 
-  // как и раньше: до 12 карточек, далее «Показать ещё»
-  const displayedProducts: Flower[] = showAll ? homepageProducts : homepageProducts.slice(0, 12);
+  // «как раньше»: до 12 карточек, дальше — кнопка «Показать ещё»
+  const displayedProducts: Flower[] = showAll
+    ? homepageProducts
+    : homepageProducts.slice(0, 12);
 
   const buildUrl = (p: any) => {
     const cat =
@@ -111,6 +112,7 @@ export function FeaturedProducts() {
             return (
               <div key={product.id} className="group flex flex-col h-full">
                 <Link to={to} aria-label={product.name} className="block flex-1 flex flex-col">
+                  {/* Фото — квадратное */}
                   <div className="relative overflow-hidden rounded-2xl">
                     <div className="aspect-square">
                       <img
@@ -122,6 +124,7 @@ export function FeaturedProducts() {
                     </div>
                   </div>
 
+                  {/* Текст */}
                   <div className="mt-3 px-1">
                     <h3 className="text-[15px] md:text-base font-medium leading-snug line-clamp-2 min-h-[42px] md:min-h-0">
                       {product.name}
@@ -132,6 +135,7 @@ export function FeaturedProducts() {
                   </div>
                 </Link>
 
+                {/* Кнопка */}
                 <div className="px-1 pt-3 mt-auto">
                   <Button
                     onClick={(e) => {
