@@ -542,6 +542,7 @@ const variants: CatalogUnion[] = filteredVariantItems.map((vp) => ({
             <SelectValue placeholder="Сортировка" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="default">По умолчанию</SelectItem>
             <SelectItem value="price-asc">По возрастанию цены</SelectItem>
             <SelectItem value="price-desc">По убыванию цены</SelectItem>
           </SelectContent>
