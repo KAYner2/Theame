@@ -1,15 +1,57 @@
-import { useState } from 'react';
+// FeaturedProducts.tsx — версия БЕЗ вариантных товаров, «как раньше»
+// Берём все товары и локально фильтруем show_on_homepage + is_active
+
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
-import { useHomepageProducts } from '@/hooks/useProducts';
+// ⬇️ заменили хук
+import { useAllProducts } from '@/hooks/useProducts';
 import { useCart } from '@/context/CartContext';
 import type { Flower } from '@/types/flower';
 import { slugify } from '@/utils/slugify';
 
+const BIG = 1e9;
+const toTS = (d?: string | null) => (d ? new Date(d).getTime() : 0);
+
 export function FeaturedProducts() {
   const [showAll, setShowAll] = useState(false);
-  const { data: homepageProducts = [], isLoading, error } = useHomepageProducts();
+
+  // ⬇️ берём ВСЕ продукты
+  const { data: allProducts = [], isLoading, error } = useAllProducts();
   const { addToCart } = useCart();
+
+  // ⬇️ фильтруем по твоему флажку «Показывать на главной» + активность
+  // и сортируем как в каталоге/админке: sort_order ASC → created_at DESC → name ASC
+  const homepageProducts: Flower[] = useMemo(() => {
+    const list = (allProducts || [])
+      .filter((p: any) => !!p?.show_on_homepage && p?.is_active !== false)
+      .sort((a: any, b: any) => {
+        const ao = a?.sort_order ?? BIG;
+        const bo = b?.sort_order ?? BIG;
+        if (ao !== bo) return ao - bo;
+        const ad = toTS(a?.created_at ?? null);
+        const bd = toTS(b?.created_at ?? null);
+        if (ad !== bd) return bd - ad; // новее выше
+        return String(a?.name ?? '').localeCompare(String(b?.name ?? ''));
+      });
+
+    // маппим к типу Flower (как и в каталоге)
+    return list.map((product: any) => ({
+      id: product.id,
+      name: product.name,
+      price: product.price || 0,
+      image: product.image_url || '/placeholder.svg',
+      description: product.description || '',
+      category: product.category?.name || 'Разное',
+      inStock: Boolean(product.is_active),
+      quantity: 1,
+      colors: product.colors || [],
+      size: 'medium',
+      occasion: [],
+      slug: product.slug ?? null,
+      categorySlug: product.category?.slug ?? null,
+    })) as Flower[];
+  }, [allProducts]);
 
   if (isLoading) {
     return (
@@ -37,6 +79,7 @@ export function FeaturedProducts() {
     );
   }
 
+  // ⬇️ логика «как раньше»: показываем первые 12, далее — кнопка «Показать ещё»
   const displayedProducts: Flower[] = showAll ? homepageProducts : homepageProducts.slice(0, 12);
 
   const buildUrl = (p: any) => {
@@ -47,9 +90,7 @@ export function FeaturedProducts() {
       (p.category?.name ? slugify(p.category.name) : '') ||
       '';
     const prod = p.slug || slugify(p.name || 'product');
-    return cat && cat.toLowerCase() !== 'catalog'
-      ? `/catalog/${cat}/${prod}`
-      : `/catalog/${prod}`;
+    return cat && cat.toLowerCase() !== 'catalog' ? `/catalog/${cat}/${prod}` : `/catalog/${prod}`;
   };
 
   const handleAddToCart = (product: Flower) => addToCart(product);
@@ -88,9 +129,7 @@ export function FeaturedProducts() {
                       {product.name}
                     </h3>
                     <div className="mt-1">
-                      <span className="text-base md:text-lg font-semibold">
-                        {priceText}
-                      </span>
+                      <span className="text-base md:text-lg font-semibold">{priceText}</span>
                     </div>
                   </div>
                 </Link>
