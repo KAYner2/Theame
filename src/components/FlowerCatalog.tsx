@@ -36,7 +36,7 @@ import { useAllProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import type { Product } from '@/types/database';
 
-// ⬇️ добавляем хук и карточку для вариантных
+// вариантные товары (для каталога) + карточка
 import { useVariantProductsForCatalog } from '@/hooks/useVariantProductsForCatalog';
 import { VariantFlowerCard } from '@/components/VariantFlowerCard';
 import type { VariantCatalogItem } from '@/hooks/useVariantProductsForCatalog';
@@ -112,10 +112,10 @@ export const FlowerCatalog = () => {
   const [selectedComposition, setSelectedComposition] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
 
-  // ✔ сортировка: только две опции из ТЗ
+  // сортировка: 'default' (по sort_order/created_at) и две по цене
   const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc'>('default');
 
-  // управление открытием для desktop-меню и mobile-sheet раздельно
+  // desktop-dropdown / mobile-sheet
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
@@ -131,7 +131,7 @@ export const FlowerCatalog = () => {
     error: categoriesError,
   } = useCategories();
 
-  // ⬇️ грузим вариантные товары (с фильтром по категории, если выбрана)
+  // вариантные товары (фильтруем по категории, если выбрана)
   const selectedCategoryUuid = selectedCategoryId === 'all' ? null : String(selectedCategoryId);
   const {
     data: variantItems = [],
@@ -139,6 +139,7 @@ export const FlowerCatalog = () => {
     error: variantError,
   } = useVariantProductsForCatalog({ categoryId: selectedCategoryUuid });
 
+  // синк параметра категории из URL с локальным состоянием
   useEffect(() => {
     if (!categories.length) return;
 
@@ -175,7 +176,7 @@ export const FlowerCatalog = () => {
     return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
-  // ⬇️ границы цен считаем по ОБЪЕДИНЁННОМУ набору (обычные + вариантные)
+  // границы цен по ОБЪЕДИНЁННОМУ набору
   const absolutePriceBounds = useMemo(
     () => getPriceBounds(flowers, variantItems),
     [flowers, variantItems]
@@ -185,15 +186,21 @@ export const FlowerCatalog = () => {
     setPriceRange(absolutePriceBounds);
   }, [absolutePriceBounds[0], absolutePriceBounds[1]]);
 
-  const filteredFlowers = useMemo(() => {
-    const productMap = new Map<string, Product>();
-    products.forEach((p) => productMap.set(String(p.id), p));
+  // индекс Product по id
+  const productById = useMemo(() => {
+    const m = new Map<string, Product>();
+    products.forEach((p) => m.set(String(p.id), p));
+    return m;
+  }, [products]);
 
+  // ФИЛЬТРАЦИЯ обычных (сортировать будем позже — в общем массиве)
+  const filteredFlowers = useMemo(() => {
     const [minPrice, maxPrice] = priceRange;
 
-    const filtered = flowers.filter((flower) => {
-      const prod = productMap.get(String(flower.id));
+    return flowers.filter((flower) => {
+      const prod = productById.get(String(flower.id));
 
+      // категории (many-to-many через category_ids)
       const catIds = Array.isArray(prod?.category_ids) ? prod!.category_ids.map(String) : [];
       if (!(selectedCategoryId === 'all' || catIds.includes(String(selectedCategoryId)))) {
         return false;
@@ -216,54 +223,101 @@ export const FlowerCatalog = () => {
 
       return true;
     });
+  }, [flowers, productById, selectedCategoryId, selectedColor, selectedComposition, priceRange]);
 
-    // сортировка обычных — как у тебя
-    switch (sortBy) {
-      case 'price-desc':
-        filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-        break;
-      case 'price-asc':
-        filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-        break;
-      case 'default':
-      default:
-        filtered.sort((a, b) => {
-          const pa = products.find((p) => p.id === a.id);
-          const pb = products.find((p) => p.id === b.id);
-          return (pa?.sort_order ?? 0) - (pb?.sort_order ?? 0);
-        });
-        break;
-    }
-
-    return filtered;
-  }, [flowers, products, selectedCategoryId, selectedColor, selectedComposition, priceRange, sortBy]);
-
-  // ⬇️ вариантные: фильтруем по цене; если включены «цвет/состав», пока скрываем
+  // ФИЛЬТРАЦИЯ вариантных (сортировать будем позже)
   const filteredVariantItems = useMemo(() => {
     const [minPrice, maxPrice] = priceRange;
+
+    // если включены «цвет/состав», пока скрываем вариантные до появления атрибутов
     const extraFiltersOn = selectedColor !== 'all' || selectedComposition !== 'all';
     if (extraFiltersOn) return [] as VariantCatalogItem[];
 
-    const items = variantItems.filter((v) => {
+    return variantItems.filter((v) => {
       const price = v.min_price_cache ?? 0;
       return price >= minPrice && price <= maxPrice;
     });
+  }, [variantItems, priceRange, selectedColor, selectedComposition]);
 
-    // сортировка для вариантных при выборе price-asc/desc
-    if (sortBy === 'price-asc') {
-      items.sort((a, b) => (a.min_price_cache ?? 0) - (b.min_price_cache ?? 0));
-    }
-    if (sortBy === 'price-desc') {
-      items.sort((a, b) => (b.min_price_cache ?? 0) - (a.min_price_cache ?? 0));
-    }
+  /* ---------- ЕДИНЫЙ СПИСОК + ОБЩАЯ СОРТИРОВКА ---------- */
 
-    // при 'default' порядок уже задан на сервере (sort_order, created_at)
-    return items;
-  }, [variantItems, priceRange, selectedColor, selectedComposition, sortBy]);
+  type CatalogUnion =
+    | {
+        kind: 'simple';
+        id: string;
+        name: string;
+        price: number | null;
+        sortOrder: number;
+        createdAt: number;
+        data: Flower;
+      }
+    | {
+        kind: 'variant';
+        id: number;
+        name: string;
+        price: number | null; // min_price_cache
+        sortOrder: number;
+        createdAt: number;
+        data: VariantCatalogItem;
+      };
 
-  const handleToggleFavorite = (flower: Flower) => {
-    console.log('Добавлено в избранное:', flower.name);
+  const toTS = (d?: string | null) => (d ? new Date(d).getTime() : 0);
+  const BIG = 1e9;
+
+  const combined = useMemo<CatalogUnion[]>(() => {
+    const normals: CatalogUnion[] = filteredFlowers.map((f) => {
+      const p = productById.get(String(f.id));
+      return {
+        kind: 'simple',
+        id: String(f.id),
+        name: f.name,
+        price: typeof f.price === 'number' ? f.price : null,
+        sortOrder: p?.sort_order ?? BIG,
+        createdAt: toTS(p?.created_at ?? null),
+        data: f,
+      };
+    });
+
+const variants: CatalogUnion[] = filteredVariantItems.map((vp, idx) => ({
+  kind: 'variant',
+  id: vp.id,
+  name: vp.name,
+  price: vp.min_price_cache ?? null,
+  // 🔧 нет sort_order в типе VariantCatalogItem → используем индекс как стабильный порядок
+  sortOrder: idx,
+  createdAt: 0, // в типе VariantCatalogItem тоже нет created_at
+  data: vp,
+}));
+
+    return [...normals, ...variants];
+  }, [filteredFlowers, filteredVariantItems, productById]);
+
+  const byDefault = (a: CatalogUnion, b: CatalogUnion) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    if (a.createdAt !== b.createdAt) return b.createdAt - a.createdAt; // новее выше
+    return a.name.localeCompare(b.name);
   };
+
+  const byPriceAsc = (a: CatalogUnion, b: CatalogUnion) => {
+    const pa = a.price ?? Number.POSITIVE_INFINITY;
+    const pb = b.price ?? Number.POSITIVE_INFINITY;
+    if (pa !== pb) return pa - pb;
+    return byDefault(a, b);
+  };
+
+  const byPriceDesc = (a: CatalogUnion, b: CatalogUnion) => {
+    const pa = a.price ?? Number.NEGATIVE_INFINITY;
+    const pb = b.price ?? Number.NEGATIVE_INFINITY;
+    if (pa !== pb) return pb - pa;
+    return byDefault(a, b);
+  };
+
+  const sortedCombined = useMemo(() => {
+    const arr = [...combined];
+    if (sortBy === 'price-asc') return arr.sort(byPriceAsc);
+    if (sortBy === 'price-desc') return arr.sort(byPriceDesc);
+    return arr.sort(byDefault);
+  }, [combined, sortBy]);
 
   /* ---------------- общая разметка ---------------- */
 
@@ -272,8 +326,8 @@ export const FlowerCatalog = () => {
       <div className="container px-6 py-8">
         <div className="text-center">
           <h1 className="mb-4 text-4xl font-bold text-foreground">Каталог цветов и букетов</h1>
-          <p className="text-lg text-muted-foreground">Загрузка каталога...</p>
         </div>
+        <p className="text-lg text-muted-foreground text-center">Загрузка каталога...</p>
       </div>
     );
   }
@@ -283,8 +337,8 @@ export const FlowerCatalog = () => {
       <div className="container px-6 py-8">
         <div className="text-center">
           <h1 className="mb-4 text-4xl font-bold text-foreground">Каталог цветов и букетов</h1>
-          <p className="text-destructive">Ошибка загрузки каталога</p>
         </div>
+        <p className="text-destructive text-center">Ошибка загрузки каталога</p>
       </div>
     );
   }
@@ -353,6 +407,27 @@ export const FlowerCatalog = () => {
         </div>
       )}
 
+      {/* Цвет */}
+      {availableColors.length > 0 && (
+        <div className="space-y-2">
+          <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
+            Цвет
+          </DropdownMenuLabel>
+          <Select value={selectedColor} onValueChange={setSelectedColor}>
+            <SelectTrigger>
+              <SelectValue placeholder="Выберите цвет" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все цвета</SelectItem>
+              {availableColors.map((color) => (
+                <SelectItem key={color} value={color}>
+                  {color}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Цена */}
       <div className="space-y-2">
@@ -372,12 +447,6 @@ export const FlowerCatalog = () => {
       </div>
     </div>
   );
-
-  // 🧱 итоговая сетка: обычные + вариантные
-  const gridItems = [
-    ...filteredFlowers.map((f) => ({ type: 'simple' as const, item: f })),
-    ...filteredVariantItems.map((v) => ({ type: 'variant' as const, item: v })),
-  ];
 
   return (
     <div className="container px-6 py-8">
@@ -482,7 +551,7 @@ export const FlowerCatalog = () => {
           </DropdownMenu>
         </div>
 
-        {/* Сортировка — только цена */}
+        {/* Сортировка — по цене (default остаётся по умолчанию) */}
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
           <SelectTrigger className="min-w-[220px] w-auto">
             <ArrowUpDown className="mr-2 h-4 w-4" />
@@ -497,19 +566,23 @@ export const FlowerCatalog = () => {
 
       {/* Каталог */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-        {gridItems.map(({ type, item }) =>
-          type === 'simple' ? (
-            <FlowerCard key={`p:${item.id}`} flower={item} onToggleFavorite={handleToggleFavorite} />
+        {sortedCombined.map((node) =>
+          node.kind === 'simple' ? (
+            <FlowerCard
+              key={`p:${node.id}`}
+              flower={node.data}
+              onToggleFavorite={(f) => console.log('Добавлено в избранное:', f.name)}
+            />
           ) : (
             <VariantFlowerCard
-              key={`v:${item.id}`}
+              key={`v:${node.id}`}
               product={{
-                id: item.id,
-                name: item.name,
-                slug: item.slug,
-                image_url: item.image_url,
-                min_price_cache: item.min_price_cache,
-                is_active: item.is_active,
+                id: node.data.id,
+                name: node.data.name, // ← имя вариативного товара
+                slug: node.data.slug,
+                image_url: node.data.image_url,
+                min_price_cache: node.data.min_price_cache,
+                is_active: node.data.is_active,
               }}
               // useCatalogUrl // включи, если хочешь /catalog/:slug вместо /v/:slug
             />
@@ -518,7 +591,7 @@ export const FlowerCatalog = () => {
       </div>
 
       {/* Пустой результат */}
-      {gridItems.length === 0 && (
+      {sortedCombined.length === 0 && (
         <div className="py-12 text-center">
           <p className="mb-4 text-lg text-muted-foreground">Цветы не найдены</p>
           <Button
