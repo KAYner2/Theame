@@ -133,12 +133,14 @@ const buildUrl = (item: UnifiedItem) => {
         <h2 className="text-4xl font-bold text-center mb-12">Букеты недели</h2>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-          {displayed.map((item) => {
-            const to = buildUrl(item);
-            const priceText =
-              typeof item.price === 'number' && item.price > 0
-                ? `${Number(item.price).toLocaleString('ru-RU')} ₽`
-                : 'По запросу';
+  {displayed.map((item) => {
+    const to = buildUrl(item);
+    const isVariant = item._kind === 'variant';
+    const hasPrice = typeof item.price === 'number' && item.price > 0;
+
+    const priceText = hasPrice
+      ? `${isVariant ? 'от ' : ''}${Number(item.price).toLocaleString('ru-RU')} ₽`
+      : 'По запросу';
 
             return (
               <div key={item.id} className="group flex flex-col h-full">
