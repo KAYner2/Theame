@@ -311,6 +311,8 @@ export type Database = {
           name: string
           price: number | null
           show_on_homepage: boolean | null
+          show_substitution_note: boolean | null
+          substitution_note_text: string | null
           size_info: string | null
           sort_order: number | null
           updated_at: string
@@ -335,6 +337,8 @@ export type Database = {
           name: string
           price?: number | null
           show_on_homepage?: boolean | null
+          show_substitution_note?: boolean | null
+          substitution_note_text?: string | null
           size_info?: string | null
           sort_order?: number | null
           updated_at?: string
@@ -359,6 +363,8 @@ export type Database = {
           name?: string
           price?: number | null
           show_on_homepage?: boolean | null
+          show_substitution_note?: boolean | null
+          substitution_note_text?: string | null
           size_info?: string | null
           sort_order?: number | null
           updated_at?: string
@@ -530,6 +536,8 @@ variant_products: {
     is_active: boolean
     is_featured: boolean | null
     show_on_homepage: boolean | null
+    show_substitution_note: boolean | null
+    substitution_note_text: string | null
     sort_order: number
     availability_status: string | null
     delivery_info: string | null
@@ -561,6 +569,8 @@ variant_products: {
     is_active?: boolean
     is_featured?: boolean | null
     show_on_homepage?: boolean | null
+    show_substitution_note?: boolean | null
+    substitution_note_text?: string | null
     sort_order?: number
     availability_status?: string | null
     delivery_info?: string | null
@@ -592,6 +602,8 @@ variant_products: {
     is_active?: boolean
     is_featured?: boolean | null
     show_on_homepage?: boolean | null
+    show_substitution_note?: boolean | null
+    substitution_note_text?: string | null
     sort_order?: number
     availability_status?: string | null
     delivery_info?: string | null

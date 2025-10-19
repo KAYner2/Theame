@@ -20,6 +20,8 @@ type VP = {
 
   extra_image_1_url?: string | null;
   extra_image_2_url?: string | null;
+  show_substitution_note?: boolean | null;
+  substitution_note_text?: string | null;
 };
 
 type PV = {
@@ -473,7 +475,13 @@ const primaryImg = useMemo(
                 </div>
               </div>
             )}
-
+            
+            {product?.show_substitution_note && (
+  <p className="mt-2 text-sm text-green-700">
+    {(product?.substitution_note_text && product.substitution_note_text.trim()) ||
+      'До 20% компонентов букета могут быть заменены с сохранением общей стилистики и цветового решения!'}
+  </p>
+)}
             {/* Описание — без отрицательных отступов, выровнено */}
             {descriptionText ? (
               <div>

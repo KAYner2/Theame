@@ -736,6 +736,9 @@ const VariantProductForm = ({ product }: { product?: any }) => {
     description: product?.description || '',
     image_url: product?.image_url || '',
     is_active: product?.is_active ?? true,
+    show_on_homepage: product?.show_on_homepage ?? false,          // 👈 добавили
+    show_substitution_note: product?.show_substitution_note ?? false, // 👈 добавили
+    substitution_note_text: product?.substitution_note_text ?? '',    // 👈 добавили
     sort_order: product?.sort_order || 0,
     slug: product?.slug || (product?.name ? slugify(product.name) : ''),
     extra_image_1_url: (product as any)?.extra_image_1_url || '',
@@ -942,6 +945,9 @@ if (extra2File) {
             image_url: imageUrl,
             is_active: formData.is_active,
             sort_order: formData.sort_order,
+            show_on_homepage: formData.show_on_homepage,                 // 👈 добавили
+            show_substitution_note: formData.show_substitution_note,     // 👈 добавили
+            substitution_note_text: formData.substitution_note_text,     // 👈 добавили
             slug: formData.slug,
             extra_image_1_url: extra1Url || null,
             extra_image_2_url: extra2Url || null,
@@ -957,6 +963,9 @@ if (extra2File) {
             image_url: imageUrl,
             is_active: formData.is_active,
             sort_order: formData.sort_order,
+            show_on_homepage: formData.show_on_homepage,                 // 👈 добавили
+            show_substitution_note: formData.show_substitution_note,     // 👈 добавили
+            substitution_note_text: formData.substitution_note_text,     // 👈 добавили
             slug: formData.slug,
             extra_image_1_url: extra1Url || null,
             extra_image_2_url: extra2Url || null,
@@ -1358,6 +1367,41 @@ if (extra2File) {
           <Input id="vp_sort_order" type="number" value={formData.sort_order} onChange={(e) => setFormData({ ...formData, sort_order: Number(e.target.value) })} />
         </div>
       </div>
+      {/* Показывать на главной */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div className="flex items-center gap-2">
+    <Switch
+      checked={formData.show_on_homepage}
+      onCheckedChange={(v) => setFormData({ ...formData, show_on_homepage: !!v })}
+      id="vp_show_home"
+    />
+    <Label htmlFor="vp_show_home">Показывать на главной</Label>
+  </div>
+</div>
+
+{/* Строка о возможной замене */}
+<div className="space-y-2">
+  <div className="flex items-center gap-2">
+    <Switch
+      checked={formData.show_substitution_note}
+      onCheckedChange={(v) => setFormData({ ...formData, show_substitution_note: !!v })}
+      id="vp_subst_note"
+    />
+    <Label htmlFor="vp_subst_note">Показывать строку о возможной замене</Label>
+  </div>
+
+  {formData.show_substitution_note && (
+    <div>
+      <Label htmlFor="vp_subst_text">Текст строки</Label>
+      <Input
+        id="vp_subst_text"
+        value={formData.substitution_note_text}
+        onChange={(e) => setFormData({ ...formData, substitution_note_text: e.target.value })}
+        placeholder="До 20% компонентов могут быть заменены…"
+      />
+    </div>
+  )}
+</div>
 
       <Button type="submit" className="w-full">
         {product ? 'Обновить' : 'Создать'} товар с вариантами
