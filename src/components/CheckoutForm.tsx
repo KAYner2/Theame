@@ -110,16 +110,16 @@ const generateTimeSlots = () => {
 const timeSlots = generateTimeSlots();
 
 const districts = [
-  { name: "Центр Сочи", price: 300, freeFrom: 5000 },
-  { name: "Дагомыс, Мацеста", price: 500, freeFrom: 7000 },
-  { name: "Хоста", price: 700, freeFrom: 10000 },
-  { name: "Адлер", price: 1000, freeFrom: 15000 },
-  { name: "Лоо", price: 1000, freeFrom: 15000 },
-  { name: "Сириус", price: 1200, freeFrom: 15000 },
-  { name: "п. Красная поляна", price: 1500, freeFrom: 20000 },
-  { name: "п. Эсто-Садок", price: 1700, freeFrom: 20000 },
-  { name: "п. Роза-Хутор", price: 1900, freeFrom: 20000 },
-  { name: "На высоту 960м (Роза-Хутор/Горки город)", price: 2100, freeFrom: 25000 }
+  { name: "Центр Сочи", price: 300, freeFrom: 5000 },           // "Центр остается"
+  { name: "Дагомыс, Мацеста", price: 700, freeFrom: 7000 },     // было 500 → 700
+  { name: "Хоста", price: 1000, freeFrom: 10000 },              // было 700 → 1000
+  { name: "Адлер", price: 1200, freeFrom: 12000 },              // 1200 и от 12000 бесплатно
+  { name: "Лоо", price: 1200, freeFrom: 12000 },                // 1200 и от 12000 бесплатно
+  { name: "Сириус", price: 1500, freeFrom: 15000 },             // было 1200 → 1500
+  { name: "п. Красная поляна", price: 1800, freeFrom: 20000 },  // было 1500 → 1800
+  { name: "п. Эсто-Садок", price: 2000, freeFrom: 20000 },      // было 1700 → 2000
+  { name: "п. Роза-Хутор", price: 2200, freeFrom: 20000 },      // было 1900 → 2200
+  { name: "На высоту 960м (Роза-Хутор/Горки город)", price: 2400, freeFrom: 25000 }, // было 2100 → 2400
 ];
 
 export const CheckoutForm = () => {

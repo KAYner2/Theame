@@ -6,18 +6,18 @@ export default function Delivery() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const deliveries = [
-    { area: "Центр Сочи", freeFrom: 5000, price: 300 },
-    { area: "Дагомыс, Мацеста", freeFrom: 7000, price: 500 },
-    { area: "Хоста", freeFrom: 10000, price: 700 },
-    { area: "Адлер", freeFrom: 15000, price: 1000 },
-    { area: "Лоо", freeFrom: 15000, price: 1000 },
-    { area: "Сириус", freeFrom: 15000, price: 1200 },
-    { area: "п. Красная поляна", freeFrom: 20000, price: 1500 },
-    { area: "п. Эсто-Садок", freeFrom: 20000, price: 1700 },
-    { area: "п. Роза-Хутор", freeFrom: 20000, price: 1900 },
-    { area: "На высоту 960м (Роза-Хутор/Горки город)", freeFrom: 25000, price: 2100 },
-  ];
+const deliveries = [
+  { area: "Центр Сочи", freeFrom: 5000, price: 300 },
+  { area: "Дагомыс, Мацеста", freeFrom: 7000, price: 700 },
+  { area: "Хоста", freeFrom: 10000, price: 1000 },
+  { area: "Адлер", freeFrom: 12000, price: 1200 },   // обновлён порог и цена
+  { area: "Лоо", freeFrom: 12000, price: 1200 },     // обновлён порог и цена
+  { area: "Сириус", freeFrom: 15000, price: 1500 },
+  { area: "п. Красная поляна", freeFrom: 20000, price: 1800 },
+  { area: "п. Эсто-Садок", freeFrom: 20000, price: 2000 },
+  { area: "п. Роза-Хутор", freeFrom: 20000, price: 2200 },
+  { area: "На высоту 960м (Роза-Хутор/Горки город)", freeFrom: 25000, price: 2400 },
+];
 
   return (
     <div className="min-h-screen bg-[#fff8ea]">
