@@ -81,25 +81,25 @@ export function FeaturedProducts() {
 
   const displayed = showAll ? homepageItems : homepageItems.slice(0, 12);
 
-  const buildUrl = (item: UnifiedItem) => {
-    const nameFallback = slugify(item.name || 'product');
-    const prod = item.slug || nameFallback;
+const buildUrl = (item: UnifiedItem) => {
+  const nameFallback = slugify(item.name || 'product');
+  const prod = item.slug || nameFallback;
 
-    // Обычные — прежний паттерн каталога (как было в исходнике) :contentReference[oaicite:2]{index=2}
-    if (item._kind === 'product') {
-      const cat = item.categorySlug || '';
-      return cat && cat.toLowerCase() !== 'catalog'
-        ? `/catalog/${cat}/${prod}`
-        : `/catalog/${prod}`;
-    }
+  if (item._kind === 'product') {
+    const cat = item.categorySlug || '';
+    return cat && cat.toLowerCase() !== 'catalog'
+      ? `/catalog/${cat}/${prod}`
+      : `/catalog/${prod}`;
+  }
 
-    // Вариативные: если есть категория — используем такой же паттерн
-    if (item.categorySlug) {
-      return `/catalog/${item.categorySlug}/${prod}`;
-    }
-    // иначе — прямой маршрут вариативных (при необходимости поменяй префикс)
-    return `/vp/${prod}`;
-  };
+  // ВАРИАТИВНЫЕ
+  if (item.categorySlug) {
+    // если хочешь всегда вести через /catalog/:categorySlug/:slug — оставляем так
+    return `/catalog/${item.categorySlug}/${prod}`;
+  }
+  // иначе — ваш маршрут вариативных
+  return `/v/${prod}`;
+};
 
   if (isLoading) {
     return (
