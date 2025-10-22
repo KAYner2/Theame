@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Helmet } from 'react-helmet';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 
 export default function Delivery() {
@@ -21,6 +22,19 @@ export default function Delivery() {
 
   return (
     <div className="min-h-screen bg-[#fff8ea]">
+      {/* Мета-теги для SEO */}
+      <Helmet>
+        <title>Срочная доставка цветов по Сочи | Круглосуточно, быстро и красиво</title>
+        <meta
+          name="description"
+          content="Круглосуточная доставка цветов и букетов по Сочи, Адлеру, Хосте, Лоо, Сириусу и Красной Поляне. Свежие букеты, розы, коробки и корзины — закажите онлайн.!"
+        />
+        <meta
+          name="keywords"
+          content="доставка цветов Сочи, купить букет Сочи, заказать цветы Сочи, доставка букетов Сочи, срочная доставка цветов Сочи, круглосуточная доставка цветов Сочи, цветочный магазин Сочи, букет в подарок Сочи"
+        />
+      </Helmet>
+
       {/* Hero */}
       <section className="py-16 md:py-20">
         <div className="container mx-auto px-4 text-center">
@@ -98,7 +112,7 @@ export default function Delivery() {
 
             <p className="mt-8 text-base">
               Мы доставляем цветы по всему Большому Сочи — Адлер, Хоста, Лоо, Мацеста, Сириус, Красная Поляна и другие районы.
-              Если вы хотите купить букет с доставкой по Сочи, просто оформите заказ на сайте — и наш курьер привезёт свежие цветы точно в срок.
+              Хотите заказать букет срочно? Просто оформите заказ онлайн — и наш курьер привезёт свежие цветы точно в срок.
             </p>
           </div>
         </div>
