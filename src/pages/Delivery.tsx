@@ -25,7 +25,7 @@ export default function Delivery() {
       <section className="py-16 md:py-20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 text-[#7e7e7e]">
-            Доставка цветов по Сочи и району
+            Доставка цветов по Сочи
           </h1>
           <p className="text-lg md:text-xl text-[#7e7e7e]/90 max-w-3xl mx-auto">
             Срочная и круглосуточная доставка свежих букетов по всему Сочи — от центра до Адлера и Красной Поляны.
