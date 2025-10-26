@@ -36,14 +36,14 @@ import { useAllProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import type { Product } from '@/types/database';
 
-// вариантные товары (для каталога) + карточка
+// вариантные товары + карточка
 import { useVariantProductsForCatalog } from '@/hooks/useVariantProductsForCatalog';
 import { VariantFlowerCard } from '@/components/VariantFlowerCard';
 import type { VariantCatalogItem } from '@/hooks/useVariantProductsForCatalog';
 
 /* ---------------- helpers: нормализация/дедуп ---------------- */
 
-// Разбиваем и нормализуем составы: запятые, точки с запятой, слэши, маркеры "и"
+// Разбиваем составы по запятым/слэшам/точкам с запятой/« и »
 const splitItems = (arr?: string[]) =>
   (arr || [])
     .flatMap((s) =>
@@ -54,7 +54,7 @@ const splitItems = (arr?: string[]) =>
     .filter(Boolean);
 
 const LEMMA_MAP: Record<string, string> = {
-  'розы': 'роза', 'роза': 'роза',
+  'розы': 'роза', 'роза': 'роза', 'рози': 'роза',
   'пионы': 'пион', 'пионов': 'пион', 'пион': 'пион',
   'тюльпаны': 'тюльпан', 'тюльпан': 'тюльпан',
   'хризантемы': 'хризантема', 'хризантема': 'хризантема',
@@ -67,7 +67,7 @@ const LEMMA_MAP: Record<string, string> = {
 
 const capitalizeFirst = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-/** Нормализация: числа/шт, x5, скобки, точки, двойные пробелы → базовая форма */
+/** Нормализация «Розы 51 шт», «x5», скобки, точки и т.п. */
 const normalizeFlower = (raw: string) => {
   const base = raw
     .toLowerCase()
@@ -94,6 +94,23 @@ const uniqueNormalized = (values: string[]) => {
     if (!map.has(key)) map.set(key, norm);
   }
   return Array.from(map.values());
+};
+
+/** Достаём «цветок» из названия товара (обычного/вариативного) */
+const extractFlowersFromName = (name?: string): string[] => {
+  if (!name) return [];
+  const low = name.toLowerCase();
+  const hits: string[] = [];
+
+  // Ищем известные слова (ключи словаря + их базовые формы)
+  const keys = Object.keys(LEMMA_MAP);
+  for (const k of keys) {
+    if (low.includes(k)) {
+      hits.push(LEMMA_MAP[k]);
+    }
+  }
+
+  return uniqueNormalized(hits);
 };
 
 function toFlower(product: Product): Flower {
@@ -131,14 +148,11 @@ export const FlowerCatalog = () => {
   const categoryParam = searchParams.get('category') ?? '';
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | 'all'>('all');
-  const [selectedColor, setSelectedColor] = useState('all');
   const [selectedComposition, setSelectedComposition] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
 
-  // сортировка: 'default' (по sort_order/created_at) и две по цене
   const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc'>('default');
 
-  // desktop-dropdown / mobile-sheet
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
@@ -154,15 +168,15 @@ export const FlowerCatalog = () => {
     error: categoriesError,
   } = useCategories();
 
-  // вариантные товары (фильтруем по категории, если выбрана)
+  // вариантные товары (учитываем выбранную категорию)
   const selectedCategoryUuid = selectedCategoryId === 'all' ? null : String(selectedCategoryId);
   const {
     data: variantItems = [],
     isLoading: variantLoading,
     error: variantError,
-  } = useVariantProductsForCatalog({ categoryId: selectedCategoryUuid }); // :contentReference[oaicite:0]{index=0}
+  } = useVariantProductsForCatalog({ categoryId: selectedCategoryUuid }); // подхватываем названия вариативных товаров для фильтра «состав» :contentReference[oaicite:3]{index=3}
 
-  // синк параметра категории из URL с локальным состоянием
+  // синк параметра категории из URL
   useEffect(() => {
     if (!categories.length) return;
 
@@ -185,61 +199,60 @@ export const FlowerCatalog = () => {
         return prev;
       });
     }
-  }, [categoryParam, categories, setSearchParams]); // :contentReference[oaicite:1]{index=1}
+  }, [categoryParam, categories, setSearchParams]); // логика как раньше :contentReference[oaicite:4]{index=4}
 
   const flowers = useMemo<Flower[]>(() => products.map(toFlower), [products]);
 
-  const availableColors = useMemo(() => {
-    const all = flowers.flatMap((f) => f.colors ?? []);
-    return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
-  }, [flowers]); // :contentReference[oaicite:2]{index=2}
-
-  // ключевая правка: формируем состав из реальных единичных позиций
+  // === ДОРАБОТАНО: теперь «Цветы в составе» = composition + названия обычных + названия вариативных ===
   const availableCompositions = useMemo(() => {
-    const all = splitItems(products.flatMap((p) => (p.composition ?? []) as string[]));
-    return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
-  }, [products]); // :contentReference[oaicite:3]{index=3}
+    const fromComposition = splitItems(products.flatMap((p) => (p.composition ?? []) as string[])); // раньше брали только это — из-за этого «Роза» могла пропасть, если была только в name :contentReference[oaicite:5]{index=5}
+    const fromProductNames = products.flatMap((p) => extractFlowersFromName(p.name));
+    const fromVariantNames = variantItems.flatMap((v) => extractFlowersFromName(v.name));
 
-  // границы цен по ОБЪЕДИНЁННОМУ набору
+    const all = [...fromComposition, ...fromProductNames, ...fromVariantNames];
+    return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
+  }, [products, variantItems]); // ключевая правка
+
+  // границы цен по объединённому набору
   const absolutePriceBounds = useMemo(
     () => getPriceBounds(flowers, variantItems),
     [flowers, variantItems]
-  ); // :contentReference[oaicite:4]{index=4}
+  );
 
   useEffect(() => {
     setPriceRange(absolutePriceBounds);
-  }, [absolutePriceBounds[0], absolutePriceBounds[1]]); // :contentReference[oaicite:5]{index=5}
+  }, [absolutePriceBounds[0], absolutePriceBounds[1]]);
 
   // индекс Product по id
   const productById = useMemo(() => {
     const m = new Map<string, Product>();
     products.forEach((p) => m.set(String(p.id), p));
     return m;
-  }, [products]); // :contentReference[oaicite:6]{index=6}
+  }, [products]);
 
-  // ФИЛЬТРАЦИЯ обычных (сортировать будем позже — в общем массиве)
+  // ФИЛЬТРАЦИЯ обычных (учитываем и composition, и НАЗВАНИЕ)
   const filteredFlowers = useMemo(() => {
     const [minPrice, maxPrice] = priceRange;
 
     return flowers.filter((flower) => {
       const prod = productById.get(String(flower.id));
 
-      // категории (many-to-many через category_ids)
+      // категории (many-to-many)
       const catIds = Array.isArray(prod?.category_ids) ? prod!.category_ids.map(String) : [];
       if (!(selectedCategoryId === 'all' || catIds.includes(String(selectedCategoryId)))) {
         return false;
       }
 
-      if (selectedColor !== 'all') {
-        const fColors = flower.colors ?? [];
-        const ok = fColors.some((c) => c.toLowerCase() === selectedColor.toLowerCase());
-        if (!ok) return false;
-      }
-
       if (selectedComposition !== 'all') {
-        const pComp = uniqueNormalized(splitItems(prod?.composition as any));
-        const ok = pComp.some((c) => c.toLowerCase() === selectedComposition.toLowerCase());
-        if (!ok) return false;
+        const comp = uniqueNormalized(splitItems(prod?.composition as any));
+        const byComp = comp.some((c) => c.toLowerCase() === selectedComposition.toLowerCase());
+
+        // ДОБАВЛЕНО: матчим и по названию (например, «Розы 51 шт»)
+        const byName = extractFlowersFromName(prod?.name).some(
+          (c) => c.toLowerCase() === selectedComposition.toLowerCase()
+        );
+
+        if (!byComp && !byName) return false;
       }
 
       const price = flower.price ?? 0;
@@ -247,10 +260,9 @@ export const FlowerCatalog = () => {
 
       return true;
     });
-  }, [flowers, productById, selectedCategoryId, selectedColor, selectedComposition, priceRange]); // :contentReference[oaicite:7]{index=7}
+  }, [flowers, productById, selectedCategoryId, selectedComposition, priceRange]); // расширенная логика фильтрации по составу
 
-  // ФИЛЬТРАЦИЯ вариантных (сортировать будем позже)
-  // КЛЮЧЕВАЯ ПРАВКА: не прячем вариативки при включённом "Цветы в составе".
+  // ФИЛЬТРАЦИЯ вариантных (по названию при включённом составе)
   const filteredVariantItems = useMemo(() => {
     const [minPrice, maxPrice] = priceRange;
 
@@ -258,21 +270,16 @@ export const FlowerCatalog = () => {
       const price = v.min_price_cache ?? 0;
       if (price < minPrice || price > maxPrice) return false;
 
-      // Цвет для вариативок пока недоступен — если выбран цвет, скрываем (до появления атрибутов цветов)
-      if (selectedColor !== 'all') {
-        return false;
-      }
-
       if (selectedComposition !== 'all') {
-        // эвристика: матчим по названию вариативного товара
-        const want = normalizeFlower(selectedComposition).toLowerCase();
-        const name = normalizeFlower(v.name).toLowerCase();
-        if (!name.includes(want)) return false;
+        const byName = extractFlowersFromName(v.name).some(
+          (c) => c.toLowerCase() === selectedComposition.toLowerCase()
+        );
+        if (!byName) return false;
       }
 
       return true;
     });
-  }, [variantItems, priceRange, selectedColor, selectedComposition]); // основано на прежней логике + правка :contentReference[oaicite:8]{index=8}
+  }, [variantItems, priceRange, selectedComposition]); // раньше при любом составе мы полностью скрывали вариативки — теперь нет :contentReference[oaicite:6]{index=6}
 
   /* ---------- ЕДИНЫЙ СПИСОК + ОБЩАЯ СОРТИРОВКА ---------- */
 
@@ -324,7 +331,7 @@ export const FlowerCatalog = () => {
     }));
 
     return [...normals, ...variants];
-  }, [filteredFlowers, filteredVariantItems, productById]); // :contentReference[oaicite:9]{index=9}
+  }, [filteredFlowers, filteredVariantItems, productById]);
 
   const byDefault = (a: CatalogUnion, b: CatalogUnion) => {
     if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
@@ -351,7 +358,7 @@ export const FlowerCatalog = () => {
     if (sortBy === 'price-asc') return arr.sort(byPriceAsc);
     if (sortBy === 'price-desc') return arr.sort(byPriceDesc);
     return arr.sort(byDefault);
-  }, [combined, sortBy]); // :contentReference[oaicite:10]{index=10}
+  }, [combined, sortBy]);
 
   /* ---------------- общая разметка ---------------- */
 
@@ -441,28 +448,6 @@ export const FlowerCatalog = () => {
         </div>
       )}
 
-      {/* Цвет (остаётся только для обычных товаров) */}
-      {availableColors.length > 0 && (
-        <div className="space-y-2">
-          <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
-            Цвет
-          </DropdownMenuLabel>
-          <Select value={selectedColor} onValueChange={setSelectedColor}>
-            <SelectTrigger>
-              <SelectValue placeholder="Выберите цвет" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все цвета</SelectItem>
-              {availableColors.map((color) => (
-                <SelectItem key={color} value={color}>
-                  {color}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
       {/* Цена */}
       <div className="space-y-2">
         <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
@@ -480,7 +465,7 @@ export const FlowerCatalog = () => {
         </div>
       </div>
     </div>
-  ); // блок фильтров — базовый (без изменений визуала) :contentReference[oaicite:11]{index=11}
+  );
 
   return (
     <div className="container px-6 py-8">
@@ -525,7 +510,6 @@ export const FlowerCatalog = () => {
                     className="flex-1 h-11"
                     onClick={() => {
                       setSelectedCategoryId('all');
-                      setSelectedColor('all');
                       setSelectedComposition('all');
                       setPriceRange(absolutePriceBounds);
                       setSearchParams((prev) => {
@@ -568,7 +552,6 @@ export const FlowerCatalog = () => {
                     className="flex-1 h-10"
                     onClick={() => {
                       setSelectedCategoryId('all');
-                      setSelectedColor('all');
                       setSelectedComposition('all');
                       setPriceRange(absolutePriceBounds);
                       setSearchParams((prev) => {
@@ -613,13 +596,12 @@ export const FlowerCatalog = () => {
               key={`v:${node.id}`}
               product={{
                 id: node.data.id,
-                name: node.data.name, // ← имя вариативного товара
+                name: node.data.name,
                 slug: node.data.slug,
                 image_url: node.data.image_url,
                 min_price_cache: node.data.min_price_cache,
                 is_active: node.data.is_active,
               }}
-              // useCatalogUrl // включи, если хочешь /catalog/:slug вместо /v/:slug
             />
           )
         )}
@@ -633,7 +615,6 @@ export const FlowerCatalog = () => {
             variant="outline"
             onClick={() => {
               setSelectedCategoryId('all');
-              setSelectedColor('all');
               setSelectedComposition('all');
               setPriceRange(absolutePriceBounds);
               setSortBy('default');
