@@ -159,7 +159,7 @@ export const Header = () => {
               rel="noopener noreferrer"
               className="uppercase text-sm font-medium text-[#819570] tracking-wide mr-4 no-underline hover:opacity-90"
             >
-              Заказать букет
+              Заказать особенный букет
             </a>
 
             <Button
