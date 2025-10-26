@@ -43,24 +43,47 @@ import type { VariantCatalogItem } from '@/hooks/useVariantProductsForCatalog';
 
 /* ---------------- helpers: нормализация/дедуп ---------------- */
 
+// Разбиваем и нормализуем составы: запятые, точки с запятой, слэши, маркеры "и"
 const splitItems = (arr?: string[]) =>
-  (arr || []).map((s) => (s || '').trim()).filter(Boolean);
+  (arr || [])
+    .flatMap((s) =>
+      String(s || '')
+        .split(/[,;\\/•·]|(?:\s+и\s+)/gi)
+        .map((x) => x.trim())
+    )
+    .filter(Boolean);
+
+const LEMMA_MAP: Record<string, string> = {
+  'розы': 'роза', 'роза': 'роза',
+  'пионы': 'пион', 'пионов': 'пион', 'пион': 'пион',
+  'тюльпаны': 'тюльпан', 'тюльпан': 'тюльпан',
+  'хризантемы': 'хризантема', 'хризантема': 'хризантема',
+  'гортензии': 'гортензия', 'гортензия': 'гортензия',
+  'ромашки': 'ромашка', 'ромашка': 'ромашка',
+  'лилии': 'лилия', 'лилия': 'лилия',
+  'альстромерии': 'альстромерия', 'альстромерия': 'альстромерия',
+  'ирисы': 'ирис', 'ирис': 'ирис',
+};
 
 const capitalizeFirst = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-/** Нормализуем возможные «Розы 3шт», «x5», «( )», точки и т.п. */
-const normalizeFlower = (raw: string) =>
-  capitalizeFirst(
-    raw
-      .toLowerCase()
-      .replace(/\b\d+\s*(шт|штук)\.?/gi, '')
-      .replace(/\b[хx]\s*\d+\b/gi, '')
-      .replace(/\b\d+\b/g, '')
-      .replace(/[()]/g, ' ')
-      .replace(/[.]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-  );
+/** Нормализация: числа/шт, x5, скобки, точки, двойные пробелы → базовая форма */
+const normalizeFlower = (raw: string) => {
+  const base = raw
+    .toLowerCase()
+    .replace(/\b\d+\s*(шт|штук)\.?/gi, '')
+    .replace(/\b[хx]\s*\d+\b/gi, '')
+    .replace(/\b\d+\b/g, '')
+    .replace(/[()]/g, ' ')
+    .replace(/[.]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (LEMMA_MAP[base]) return capitalizeFirst(LEMMA_MAP[base]);
+
+  const cleaned = base.replace(/[,/]/g, ' ').replace(/\s+/g, ' ').trim();
+  return capitalizeFirst(cleaned);
+};
 
 const uniqueNormalized = (values: string[]) => {
   const map = new Map<string, string>();
@@ -137,7 +160,7 @@ export const FlowerCatalog = () => {
     data: variantItems = [],
     isLoading: variantLoading,
     error: variantError,
-  } = useVariantProductsForCatalog({ categoryId: selectedCategoryUuid });
+  } = useVariantProductsForCatalog({ categoryId: selectedCategoryUuid }); // :contentReference[oaicite:0]{index=0}
 
   // синк параметра категории из URL с локальным состоянием
   useEffect(() => {
@@ -162,36 +185,37 @@ export const FlowerCatalog = () => {
         return prev;
       });
     }
-  }, [categoryParam, categories, setSearchParams]);
+  }, [categoryParam, categories, setSearchParams]); // :contentReference[oaicite:1]{index=1}
 
   const flowers = useMemo<Flower[]>(() => products.map(toFlower), [products]);
 
   const availableColors = useMemo(() => {
     const all = flowers.flatMap((f) => f.colors ?? []);
     return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
-  }, [flowers]);
+  }, [flowers]); // :contentReference[oaicite:2]{index=2}
 
+  // ключевая правка: формируем состав из реальных единичных позиций
   const availableCompositions = useMemo(() => {
-    const all = products.flatMap((p) => (p.composition ?? []) as string[]);
+    const all = splitItems(products.flatMap((p) => (p.composition ?? []) as string[]));
     return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
-  }, [products]);
+  }, [products]); // :contentReference[oaicite:3]{index=3}
 
   // границы цен по ОБЪЕДИНЁННОМУ набору
   const absolutePriceBounds = useMemo(
     () => getPriceBounds(flowers, variantItems),
     [flowers, variantItems]
-  );
+  ); // :contentReference[oaicite:4]{index=4}
 
   useEffect(() => {
     setPriceRange(absolutePriceBounds);
-  }, [absolutePriceBounds[0], absolutePriceBounds[1]]);
+  }, [absolutePriceBounds[0], absolutePriceBounds[1]]); // :contentReference[oaicite:5]{index=5}
 
   // индекс Product по id
   const productById = useMemo(() => {
     const m = new Map<string, Product>();
     products.forEach((p) => m.set(String(p.id), p));
     return m;
-  }, [products]);
+  }, [products]); // :contentReference[oaicite:6]{index=6}
 
   // ФИЛЬТРАЦИЯ обычных (сортировать будем позже — в общем массиве)
   const filteredFlowers = useMemo(() => {
@@ -223,21 +247,32 @@ export const FlowerCatalog = () => {
 
       return true;
     });
-  }, [flowers, productById, selectedCategoryId, selectedColor, selectedComposition, priceRange]);
+  }, [flowers, productById, selectedCategoryId, selectedColor, selectedComposition, priceRange]); // :contentReference[oaicite:7]{index=7}
 
   // ФИЛЬТРАЦИЯ вариантных (сортировать будем позже)
+  // КЛЮЧЕВАЯ ПРАВКА: не прячем вариативки при включённом "Цветы в составе".
   const filteredVariantItems = useMemo(() => {
     const [minPrice, maxPrice] = priceRange;
 
-    // если включены «цвет/состав», пока скрываем вариантные до появления атрибутов
-    const extraFiltersOn = selectedColor !== 'all' || selectedComposition !== 'all';
-    if (extraFiltersOn) return [] as VariantCatalogItem[];
-
     return variantItems.filter((v) => {
       const price = v.min_price_cache ?? 0;
-      return price >= minPrice && price <= maxPrice;
+      if (price < minPrice || price > maxPrice) return false;
+
+      // Цвет для вариативок пока недоступен — если выбран цвет, скрываем (до появления атрибутов цветов)
+      if (selectedColor !== 'all') {
+        return false;
+      }
+
+      if (selectedComposition !== 'all') {
+        // эвристика: матчим по названию вариативного товара
+        const want = normalizeFlower(selectedComposition).toLowerCase();
+        const name = normalizeFlower(v.name).toLowerCase();
+        if (!name.includes(want)) return false;
+      }
+
+      return true;
     });
-  }, [variantItems, priceRange, selectedColor, selectedComposition]);
+  }, [variantItems, priceRange, selectedColor, selectedComposition]); // основано на прежней логике + правка :contentReference[oaicite:8]{index=8}
 
   /* ---------- ЕДИНЫЙ СПИСОК + ОБЩАЯ СОРТИРОВКА ---------- */
 
@@ -278,24 +313,18 @@ export const FlowerCatalog = () => {
       };
     });
 
-const variants: CatalogUnion[] = filteredVariantItems.map((vp) => ({
-  kind: 'variant',
-  id: vp.id,
-  name: vp.name,
-  price: vp.min_price_cache ?? null,
-
-  // теперь используем реальный порядок из БД
-  sortOrder: vp.sort_order ?? BIG,
-
-  // и реальную дату, чтобы "default" был стабильным при одинаковом sort_order
-  createdAt: toTS(vp.created_at ?? null),
-
-  data: vp,
-}));
-
+    const variants: CatalogUnion[] = filteredVariantItems.map((vp) => ({
+      kind: 'variant',
+      id: vp.id,
+      name: vp.name,
+      price: vp.min_price_cache ?? null,
+      sortOrder: vp.sort_order ?? BIG,
+      createdAt: toTS(vp.created_at ?? null),
+      data: vp,
+    }));
 
     return [...normals, ...variants];
-  }, [filteredFlowers, filteredVariantItems, productById]);
+  }, [filteredFlowers, filteredVariantItems, productById]); // :contentReference[oaicite:9]{index=9}
 
   const byDefault = (a: CatalogUnion, b: CatalogUnion) => {
     if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
@@ -322,7 +351,7 @@ const variants: CatalogUnion[] = filteredVariantItems.map((vp) => ({
     if (sortBy === 'price-asc') return arr.sort(byPriceAsc);
     if (sortBy === 'price-desc') return arr.sort(byPriceDesc);
     return arr.sort(byDefault);
-  }, [combined, sortBy]);
+  }, [combined, sortBy]); // :contentReference[oaicite:10]{index=10}
 
   /* ---------------- общая разметка ---------------- */
 
@@ -412,6 +441,27 @@ const variants: CatalogUnion[] = filteredVariantItems.map((vp) => ({
         </div>
       )}
 
+      {/* Цвет (остаётся только для обычных товаров) */}
+      {availableColors.length > 0 && (
+        <div className="space-y-2">
+          <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
+            Цвет
+          </DropdownMenuLabel>
+          <Select value={selectedColor} onValueChange={setSelectedColor}>
+            <SelectTrigger>
+              <SelectValue placeholder="Выберите цвет" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все цвета</SelectItem>
+              {availableColors.map((color) => (
+                <SelectItem key={color} value={color}>
+                  {color}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Цена */}
       <div className="space-y-2">
@@ -430,7 +480,7 @@ const variants: CatalogUnion[] = filteredVariantItems.map((vp) => ({
         </div>
       </div>
     </div>
-  );
+  ); // блок фильтров — базовый (без изменений визуала) :contentReference[oaicite:11]{index=11}
 
   return (
     <div className="container px-6 py-8">
@@ -597,40 +647,37 @@ const variants: CatalogUnion[] = filteredVariantItems.map((vp) => ({
           </Button>
         </div>
       )}
-            {/* SEO-текст внизу каталога — ВСЕГДА */}
-<div className="mt-12 bg-white p-6 md:p-10 rounded-lg shadow-soft text-[#7e7e7e]">
-  <h2 className="text-2xl font-semibold mb-4 text-[#000]">
-    Почему выбирают The Ame для заказа цветов и букетов в Сочи
-  </h2>
 
-  <p className="text-base">
-    The Ame — это современный цветочный магазин, где качество и вкус всегда на первом месте. Мы предлагаем только свежие цветы от проверенных поставщиков, чтобы каждый букет выглядел безупречно. Здесь вы можете купить цветы в Сочи для любого повода — от искреннего «спасибо» до значимого праздника. Наши флористы создают авторские и вау-букеты, подчеркивающие стиль и настроение момента.
-  </p>
+      {/* SEO-текст внизу каталога — ВСЕГДА */}
+      <div className="mt-12 bg-white p-6 md:p-10 rounded-lg shadow-soft text-[#7e7e7e]">
+        <h2 className="text-2xl font-semibold mb-4 text-[#000]">
+          Почему выбирают The Ame для заказа цветов и букетов в Сочи
+        </h2>
 
-  <p className="text-base mt-4">
-    Мы заботимся о том, чтобы подарок был цельным и продуманным. В ассортименте — не только букеты, но и вазы, мягкие игрушки, шары, ароматические свечи, а также подарочные корзины со сладостями и фруктами. Всё это можно дополнить к цветам, чтобы сделать сюрприз по-настоящему тёплым и запоминающимся.
-  </p>
+        <p className="text-base">
+          The Ame — это современный цветочный магазин, где качество и вкус всегда на первом месте. Мы предлагаем только свежие цветы от проверенных поставщиков, чтобы каждый букет выглядел безупречно. Здесь вы можете купить цветы в Сочи для любого повода — от искреннего «спасибо» до значимого праздника. Наши флористы создают авторские и вау-букеты, подчеркивающие стиль и настроение момента.
+        </p>
 
-  <h3 className="text-xl font-semibold mt-8 mb-3 text-[#000]">
-    Что можно заказать в каталоге The Ame
-  </h3>
-  <ul className="list-disc ml-6 space-y-2">
-    <li>Монобукеты из роз, пионов, хризантем, гортензий, тюльпанов, ромашек, альстромерий и лилий.</li>
-    <li>Авторские букеты и премиум-композиции с сезонными цветами.</li>
-    <li>Маленькие букеты для повседневных подарков.</li>
-    <li>Объёмные букеты и шляпные коробки для особых случаев.</li>
-    <li>Корзины с фруктами и сладостями, подарочные наборы, свечи и вазы.</li>
-    <li>Сезонные коллекции — весенние, летние, осенние и зимние.</li>
-  </ul>
+        <p className="text-base mt-4">
+          Мы заботимся о том, чтобы подарок был цельным и продуманным. В ассортименте — не только букеты, но и вазы, мягкие игрушки, шары, ароматические свечи, а также подарочные корзины со сладостями и фруктами. Всё это можно дополнить к цветам, чтобы сделать сюрприз по-настоящему тёплым и запоминающимся.
+        </p>
 
-  <p className="mt-8 text-base">
-    Наши цветы дарят любимой девушке или жене — как знак внимания, любви и благодарности. Маме — на День матери, 8 Марта или день рождения, подруге — в знак поддержки и дружбы, коллеге — в качестве элегантного подарка, учителю — с уважением и теплом. А иногда — просто так, чтобы порадовать близкого человека без повода.
-  </p>
+        <h3 className="text-xl font-semibold mt-8 mb-3 text-[#000]">
+          Что можно заказать в каталоге The Ame
+        </h3>
+        <ul className="list-disc ml-6 space-y-2">
+          <li>Монобукеты из роз, пионов, хризантем, гортензий, тюльпанов, ромашек, альстромерий и лилий.</li>
+          <li>Авторские букеты и премиум-композиции с сезонными цветами.</li>
+          <li>Маленькие букеты для повседневных подарков.</li>
+          <li>Объёмные букеты и шляпные коробки для особых случаев.</li>
+          <li>Корзины с фруктами и сладостями, подарочные наборы, свечи и вазы.</li>
+          <li>Сезонные коллекции — весенние, летние, осенние и зимние.</li>
+        </ul>
 
-  <p className="mt-4 text-base">
-    Мы осуществляем доставку цветов по всему Сочи: Центр, Адлер, Хоста, Сириус, Лоо, Мацеста, Дагомыс, Красная Поляна и другие районы. Оформите заказ онлайн в два клика, и мы соберём ваш букет с любовью, аккуратно упакуем и доставим точно в срок — чтобы каждый момент стал особенным.
-  </p>
-</div>
+        <p className="mt-8 text-base">
+          Мы осуществляем доставку цветов по всему Сочи: Центр, Адлер, Хоста, Сириус, Лоо, Мацеста, Дагомыс, Красная Поляна и другие районы. Оформите заказ онлайн в два клика, и мы соберём ваш букет с любовью, аккуратно упакуем и доставим точно в срок — чтобы каждый момент стал особенным.
+        </p>
+      </div>
     </div>
   );
 };
