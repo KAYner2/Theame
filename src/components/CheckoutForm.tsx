@@ -940,7 +940,7 @@ if (deliveryPrice > 0) {
                 {!appliedDiscount ? (
                   <>
                     <Input
-                      placeholder="Промо код"
+                      placeholder="Промокод"
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                       disabled={isApplyingPromo}
