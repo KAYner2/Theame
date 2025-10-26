@@ -54,7 +54,7 @@ const splitItems = (arr?: string[]) =>
     .filter(Boolean);
 
 const LEMMA_MAP: Record<string, string> = {
-  'розы': 'роза', 'роза': 'роза', 'рози': 'роза',
+  'розы': 'роза', 'роза': 'роза',
   'пионы': 'пион', 'пионов': 'пион', 'пион': 'пион',
   'тюльпаны': 'тюльпан', 'тюльпан': 'тюльпан',
   'хризантемы': 'хризантема', 'хризантема': 'хризантема',
@@ -102,14 +102,10 @@ const extractFlowersFromName = (name?: string): string[] => {
   const low = name.toLowerCase();
   const hits: string[] = [];
 
-  // Ищем известные слова (ключи словаря + их базовые формы)
   const keys = Object.keys(LEMMA_MAP);
   for (const k of keys) {
-    if (low.includes(k)) {
-      hits.push(LEMMA_MAP[k]);
-    }
+    if (low.includes(k)) hits.push(LEMMA_MAP[k]);
   }
-
   return uniqueNormalized(hits);
 };
 
@@ -131,13 +127,42 @@ function toFlower(product: Product): Flower {
   };
 }
 
+/* ---------- утилиты для цен вариативных ---------- */
+
+const vMinPrice = (v: VariantCatalogItem) => {
+  if (Array.isArray((v as any).price_points) && (v as any).price_points.length) {
+    return Math.min(...(v as any).price_points);
+  }
+  return v.min_price_cache ?? 0;
+};
+
+const vMaxPrice = (v: VariantCatalogItem) => {
+  if (typeof (v as any).max_price_cache === 'number') {
+    return (v as any).max_price_cache as number;
+  }
+  if (Array.isArray((v as any).price_points) && (v as any).price_points.length) {
+    return Math.max(...(v as any).price_points);
+  }
+  // fallback — если ничего нет, используем min
+  return v.min_price_cache ?? 0;
+};
+
+/* -------- границы для слайдера: учитываем максимум у вариативных -------- */
+
 function getPriceBounds(flowers: Flower[], variantItems: VariantCatalogItem[]): [number, number] {
   const pricesNormal = flowers.map((f) => f.price ?? 0);
-  const pricesVariant = variantItems.map((v) => v.min_price_cache ?? 0);
-  const all = [...pricesNormal, ...pricesVariant];
-  if (!all.length) return [0, 10000];
-  const min = Math.min(...all);
-  const max = Math.max(...all);
+
+  const minsV = variantItems.map((v) => vMinPrice(v));
+  const maxsV = variantItems.map((v) => vMaxPrice(v));
+
+  const mins = [...pricesNormal, ...minsV];
+  const maxs = [...pricesNormal, ...maxsV];
+
+  if (!mins.length || !maxs.length) return [0, 10000];
+
+  const min = Math.min(...mins);
+  const max = Math.max(...maxs);
+
   return [min, Math.max(max, min)];
 }
 
@@ -174,7 +199,7 @@ export const FlowerCatalog = () => {
     data: variantItems = [],
     isLoading: variantLoading,
     error: variantError,
-  } = useVariantProductsForCatalog({ categoryId: selectedCategoryUuid }); // подхватываем названия вариативных товаров для фильтра «состав» :contentReference[oaicite:3]{index=3}
+  } = useVariantProductsForCatalog({ categoryId: selectedCategoryUuid });
 
   // синк параметра категории из URL
   useEffect(() => {
@@ -199,21 +224,20 @@ export const FlowerCatalog = () => {
         return prev;
       });
     }
-  }, [categoryParam, categories, setSearchParams]); // логика как раньше :contentReference[oaicite:4]{index=4}
+  }, [categoryParam, categories, setSearchParams]);
 
   const flowers = useMemo<Flower[]>(() => products.map(toFlower), [products]);
 
-  // === ДОРАБОТАНО: теперь «Цветы в составе» = composition + названия обычных + названия вариативных ===
+  // === «Цветы в составе» = composition + названия обычных + названия вариативных ===
   const availableCompositions = useMemo(() => {
-    const fromComposition = splitItems(products.flatMap((p) => (p.composition ?? []) as string[])); // раньше брали только это — из-за этого «Роза» могла пропасть, если была только в name :contentReference[oaicite:5]{index=5}
+    const fromComposition = splitItems(products.flatMap((p) => (p.composition ?? []) as string[]));
     const fromProductNames = products.flatMap((p) => extractFlowersFromName(p.name));
     const fromVariantNames = variantItems.flatMap((v) => extractFlowersFromName(v.name));
-
     const all = [...fromComposition, ...fromProductNames, ...fromVariantNames];
     return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
-  }, [products, variantItems]); // ключевая правка
+  }, [products, variantItems]);
 
-  // границы цен по объединённому набору
+  // границы цен по объединённому набору (с учётом vMaxPrice)
   const absolutePriceBounds = useMemo(
     () => getPriceBounds(flowers, variantItems),
     [flowers, variantItems]
@@ -247,7 +271,6 @@ export const FlowerCatalog = () => {
         const comp = uniqueNormalized(splitItems(prod?.composition as any));
         const byComp = comp.some((c) => c.toLowerCase() === selectedComposition.toLowerCase());
 
-        // ДОБАВЛЕНО: матчим и по названию (например, «Розы 51 шт»)
         const byName = extractFlowersFromName(prod?.name).some(
           (c) => c.toLowerCase() === selectedComposition.toLowerCase()
         );
@@ -260,15 +283,21 @@ export const FlowerCatalog = () => {
 
       return true;
     });
-  }, [flowers, productById, selectedCategoryId, selectedComposition, priceRange]); // расширенная логика фильтрации по составу
+  }, [flowers, productById, selectedCategoryId, selectedComposition, priceRange]);
 
-  // ФИЛЬТРАЦИЯ вариантных (по названию при включённом составе)
+  // ФИЛЬТРАЦИЯ вариантных:
+  // по цене — пересечение диапазонов [vMin..vMax] и [minPrice..maxPrice]
+  // по составу — по названию (эвристика, пока нет атрибутов у вариантов)
   const filteredVariantItems = useMemo(() => {
     const [minPrice, maxPrice] = priceRange;
 
     return variantItems.filter((v) => {
-      const price = v.min_price_cache ?? 0;
-      if (price < minPrice || price > maxPrice) return false;
+      const vMin = vMinPrice(v);
+      const vMax = vMaxPrice(v);
+
+      // есть пересечение диапазонов?
+      const overlaps = vMin <= maxPrice && vMax >= minPrice;
+      if (!overlaps) return false;
 
       if (selectedComposition !== 'all') {
         const byName = extractFlowersFromName(v.name).some(
@@ -279,7 +308,7 @@ export const FlowerCatalog = () => {
 
       return true;
     });
-  }, [variantItems, priceRange, selectedComposition]); // раньше при любом составе мы полностью скрывали вариативки — теперь нет :contentReference[oaicite:6]{index=6}
+  }, [variantItems, priceRange, selectedComposition]);
 
   /* ---------- ЕДИНЫЙ СПИСОК + ОБЩАЯ СОРТИРОВКА ---------- */
 
@@ -324,7 +353,7 @@ export const FlowerCatalog = () => {
       kind: 'variant',
       id: vp.id,
       name: vp.name,
-      price: vp.min_price_cache ?? null,
+      price: vp.min_price_cache ?? null, // для отображения можно показывать "от"
       sortOrder: vp.sort_order ?? BIG,
       createdAt: toTS(vp.created_at ?? null),
       data: vp,
