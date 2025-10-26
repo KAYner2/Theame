@@ -46,7 +46,7 @@ export default function Home() {
 
       {/* ====== Расширенный SEO-блок ====== */}
       <section
-        className="py-24 bg-white"
+        className="py-24 bg-[#fff8ea]"
         aria-labelledby="seo-the-ame"
       >
         <div className="container mx-auto px-6">
