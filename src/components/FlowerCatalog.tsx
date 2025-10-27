@@ -228,14 +228,16 @@ export const FlowerCatalog = () => {
 
   const flowers = useMemo<Flower[]>(() => products.map(toFlower), [products]);
 
-  // === «Цветы в составе» = composition + названия обычных + названия вариативных ===
-  const availableCompositions = useMemo(() => {
-    const fromComposition = splitItems(products.flatMap((p) => (p.composition ?? []) as string[]));
-    const fromProductNames = products.flatMap((p) => extractFlowersFromName(p.name));
-    const fromVariantNames = variantItems.flatMap((v) => extractFlowersFromName(v.name));
-    const all = [...fromComposition, ...fromProductNames, ...fromVariantNames];
-    return uniqueNormalized(all).sort((a, b) => a.localeCompare(b));
-  }, [products, variantItems]);
+// === «Цветы в составе» — ТОЛЬКО из админских составов товаров ===
+const availableCompositions = useMemo(() => {
+  // В products.composition уже лежит нормализованный string[]
+  // Дополнительно раскладываем на элементы и делаем дедуп
+  const fromComposition = products.flatMap(
+    (p) => (Array.isArray(p.composition) ? p.composition : []) as string[]
+  );
+
+  return uniqueNormalized(fromComposition).sort((a, b) => a.localeCompare(b));
+}, [products]);
 
   // границы цен по объединённому набору (с учётом vMaxPrice)
   const absolutePriceBounds = useMemo(
