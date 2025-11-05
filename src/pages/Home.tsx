@@ -32,11 +32,11 @@ export default function Home() {
           content="Премиальные букеты, свежие цветы и идеальный сервис. Закажите доставку по Сочи от 45 минут — создаём настроение в каждом букете."
         />
         <meta property="og:type" content="website" />
-        {/* <meta property="og:url" content="https://your-domain.ru/" /> */}
-        {/* <meta property="og:image" content="https://your-domain.ru/og/home.jpg" /> */}
+        {/* <meta property="og:url" content="https://theame.ru/" /> */}
+        {/* <meta property="og:image" content="https://theame.ru/og/home.jpg" /> */}
 
         <meta name="twitter:card" content="summary_large_image" />
-        {/* <link rel="canonical" href="https://your-domain.ru/" /> */}
+        {/* <link rel="canonical" href="https://theame.ru/" /> */}
       </Helmet>
 
       <WelcomeBonusModal />
